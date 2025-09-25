@@ -2,6 +2,7 @@
     "cSpell.words": [
         "AMSI",
         "antisandbox",
+        "askama",
         "Autoloot",
         "bootstrapper",
         "canonicalise",
@@ -64,6 +65,7 @@
         "sqlx",
         "strs",
         "subdirs",
+        "thiserror",
         "TOPT",
         "trustedsec's",
         "turbofish",

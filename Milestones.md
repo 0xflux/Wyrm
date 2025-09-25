@@ -9,7 +9,7 @@ The 0.3 version will introduce the new GUI, which makes sense to do before addin
 new commands I want present before v1.0; there is little point implementing them on a UI which
 will be deprecated soon after.
 
-1) [ ] New GUI should have its own repo to remove bloat from here.
+1) [ ] New GUI should have its own repo to remove bloat from here (im not quite sure how i want to run with that hmm).
 2) [ ] Redesign GUI into web interface
 
 ### v0.4

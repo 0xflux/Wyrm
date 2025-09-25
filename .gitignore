@@ -2,6 +2,7 @@ c2/target
 target
 implant/target
 client/target
+client_v2/target
 shared/target
 shared_c2_client/target
 /c2/staged_files/*
