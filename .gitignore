@@ -1,0 +1,10 @@
+c2/target
+target
+implant/target
+client/target
+shared/target
+shared_c2_client/target
+/c2/staged_files/*
+/c2/logs/*
+/c2/loot/*
+*Cargo.lock

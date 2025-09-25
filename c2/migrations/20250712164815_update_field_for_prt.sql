@@ -1,0 +1,2 @@
+ALTER TABLE agent_staging
+  ALTER COLUMN port TYPE INT;
