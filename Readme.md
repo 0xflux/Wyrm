@@ -13,7 +13,7 @@ Wyrm currently supports only HTTP(S) agents using a custom encryption scheme for
 the packets cannot be realistically decrypted even under firewall level TLS inspection.
 
 This project is a work in progress, currently released at v0.2 (Hatchling). Updates are planned through versions 1,0, 2.0, 3.0, and 4.0. You can view
-the planned roadmap in this project (see Milestones.md). In time, this is designed to be an open source competitor to **Cobalt Strike**, **Mythic**, **Sliver**, etc.
+the planned roadmap in this project (see [Milestones.md](https://github.com/0xflux/Wyrm/blob/master/Milestones.md)). In time, this is designed to be an open source competitor to **Cobalt Strike**, **Mythic**, **Sliver**, etc.
 
 For any bugs, or feature requests, please use the Issues tab, and for anything else - please use GitHub Discussions. I am active on this project,
 so I will be attentive to anything raised.
@@ -48,7 +48,7 @@ The below image demonstrates the **Below TLS Encryption** feature and how it is 
 
 ### Updates
 
-**WARNING:** Before pulling an update; please check the release notes to see whether there are any breaking changes - for example if the
+**WARNING:** Before pulling an update; please check the [release notes](https://github.com/0xflux/Wyrm/blob/master/RELEASE_NOTES.md) to see whether there are any breaking changes - for example if the
 **configurable C2 profile** changes in a breaking way from a previous profile you have, you will want to make sure you backup and migrate
 your profile. I will be excluding `/c2/profiles/*` from git once the project is published in pre-release to prevent accidentally overwriting
 your previous profile when running `git pull` to update your software.
