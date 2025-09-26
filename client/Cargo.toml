@@ -10,7 +10,7 @@ serde_json = "1"
 serde = { version = "1.0", features = ["derive"] }
 shared ={ path = "../shared" }
 shared_c2_client ={ path = "../shared_c2_client" }
-chrono = { version = "0.4.41", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde"] }
 dotenvy = "0.15.7"
 iced = { version = "0.13.1", features = ["tokio"] }
 rfd = { version = "0.15.4", default-features = false, features = ["tokio", "gtk3"] }

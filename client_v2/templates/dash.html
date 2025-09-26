@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        
+        <!-- Import bootstrap css -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+
+        <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.7/dist/htmx.min.js"></script>
+
+        <link href="static/main_styles.css" rel="stylesheet">
+        
+        <title>Dashboard | Wyrm C2 Panel</title>
+    </head>
+    
+    <body class="app">
+        
+
+    <nav class="navbar navbar-expand-lg">
+    <div class="container-fluid">
+        <a class="navbar-brand plain" href="#">Wyrm C2</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="/dashboard">Dashboard</a>
+            </li>
+            <li class="nav-item">
+            <a class="nav-link" href="#">Upload</a>
+            </li>
+            <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Preparation
+            </a>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">Build all agents</a></li>
+                <li><a class="dropdown-item" href="#">Website clone</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#">Something else here</a></li>
+            </ul>
+            </li>
+        </ul>
+        </div>
+    </div>
+    </nav>
+
+
+
+    <div id="connected-agent-container" class="container-fluid">
+
+        <div id="agents-header" class="row">
+            <div class="col">Agent ID</div>
+            <div class="col">Process ID</div>
+            <div class="col">Last check-in</div>
+            <div class="col-5">Process name</div>
+        </div>
+
+        <a href="#1"><div class="row agent-row">
+            <div class="col">flux@DESKTOP-EH7623/medium</div>
+            <div class="col">7416</div>
+            <div class="col">2025-09-25 17:51:29 UTC</div>
+            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exe</div>
+        </div></a>
+
+        <a href="#2"><div class="row agent-row">
+            <div class="col">flux@DESKTOP-EH7623/medium</div>
+            <div class="col">7416</div>
+            <div class="col">2025-09-25 17:51:29 UTC</div>
+            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exeeC:\Users\flux\git\wyrm\</div>
+        </div></a>
+
+        <a href="#1"><div class="row agent-row">
+            <div class="col">flux@DESKTOP-EH7623/medium</div>
+            <div class="col">7416</div>
+            <div class="col">2025-09-25 17:51:29 UTC</div>
+            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exe</div>
+        </div></a>
+
+        <a href="#2"><div class="row agent-row">
+            <div class="col">flux@DESKTOP-EH7623/medium</div>
+            <div class="col">7416</div>
+            <div class="col">2025-09-25 17:51:29 UTC</div>
+            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exeeC:\Users\flux\git\wyrm\</div>
+        </div></a>
+
+        <a href="#1"><div class="row agent-row">
+            <div class="col">flux@DESKTOP-EH7623/medium</div>
+            <div class="col">7416</div>
+            <div class="col">2025-09-25 17:51:29 UTC</div>
+            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exe</div>
+        </div></a>
+
+        <a href="#2"><div class="row agent-row">
+            <div class="col">flux@DESKTOP-EH7623/medium</div>
+            <div class="col">7416</div>
+            <div class="col">2025-09-25 17:51:29 UTC</div>
+            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exeeC:\Users\flux\git\wyrm\</div>
+        </div></a>
+
+        <a href="#1"><div class="row agent-row">
+            <div class="col">flux@DESKTOP-EH7623/medium</div>
+            <div class="col">7416</div>
+            <div class="col">2025-09-25 17:51:29 UTC</div>
+            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exe</div>
+        </div></a>
+
+        <a href="#2"><div class="row agent-row">
+            <div class="col">flux@DESKTOP-EH7623/medium</div>
+            <div class="col">7416</div>
+            <div class="col">2025-09-25 17:51:29 UTC</div>
+            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exeeC:\Users\flux\git\wyrm\</div>
+        </div></a>
+
+        <a href="#1"><div class="row agent-row">
+            <div class="col">flux@DESKTOP-EH7623/medium</div>
+            <div class="col">7416</div>
+            <div class="col">2025-09-25 17:51:29 UTC</div>
+            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exe</div>
+        </div></a>
+
+        <a href="#2"><div class="row agent-row">
+            <div class="col">flux@DESKTOP-EH7623/medium</div>
+            <div class="col">7416</div>
+            <div class="col">2025-09-25 17:51:29 UTC</div>
+            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exeeC:\Users\flux\git\wyrm\</div>
+        </div></a>
+
+        <a href="#1"><div class="row agent-row">
+            <div class="col">flux@DESKTOP-EH7623/medium</div>
+            <div class="col">7416</div>
+            <div class="col">2025-09-25 17:51:29 UTC</div>
+            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exe</div>
+        </div></a>
+
+        <a href="#2"><div class="row agent-row">
+            <div class="col">flux@DESKTOP-EH7623/medium</div>
+            <div class="col">7416</div>
+            <div class="col">2025-09-25 17:51:29 UTC</div>
+            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exeeC:\Users\flux\git\wyrm\</div>
+        </div></a>
+
+
+
+    </div>
+
+        <div class="tabbar">
+    <ul class="nav nav-tabs flex-nowrap text-nowrap m-0 px-2">
+                    <li class="nav-item">
+                        <a class="nav-link active" aria-current="page" href="#">Server</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Link</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Link</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Link</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Link</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Link</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Link</a>
+                    </li>
+                </ul>
+            </div>
+            
+            <div id="message-panel" class="container-fluid">
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+                <p>Result of command what?</p>
+            </div>
+
+            <div id="input-strip" class="d-flex align-items-center px-3">
+                <span class="me-2">&gt;&gt;</span>
+                <input type="text" class="flex-grow-1" placeholder="Type a command..." />
+                <button class="btn btn-sm btn-secondary btn-block">Send</button>
+            </div>
+        </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    </body>
+</html>

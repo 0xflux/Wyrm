@@ -7,7 +7,10 @@ use axum::{
 };
 use tower_http::services::ServeDir;
 
-use crate::api::{login::try_login, pages::serve_login};
+use crate::api::{
+    login::try_login,
+    pages::{serve_dash, serve_login},
+};
 
 mod api;
 mod net;
@@ -29,6 +32,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let app = Router::new()
         .route("/", get(serve_login))
+        .route("/dashboard", get(serve_dash))
         .route("/do_login", post(try_login))
         .nest_service("/static", static_files);
 
