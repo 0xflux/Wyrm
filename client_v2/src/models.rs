@@ -1,4 +1,8 @@
+use std::fmt;
+
 use chrono::{DateTime, Utc};
+use shared::tasks::Command;
+use shared_c2_client::{NotificationForAgent, command_to_string};
 use tokio::sync::RwLock;
 
 use crate::{api::dashboard::ConnectedAgentData, net::Credentials};
@@ -36,13 +40,63 @@ impl Agent {
             ..Default::default()
         }
     }
+
+    pub fn from_messages(
+        messages: Vec<NotificationForAgent>,
+        agent_id: String,
+        last_check_in: DateTime<Utc>,
+        pid: u32,
+        process_name: String,
+        is_stale: bool,
+    ) -> Self {
+        let mut agent = Self::from(agent_id, last_check_in, pid, process_name, is_stale);
+
+        let mut new_messages = vec![];
+
+        for msg in messages {
+            new_messages.push(TabConsoleMessages::from(msg));
+        }
+
+        agent.output_messages.append(&mut new_messages);
+
+        agent
+    }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct TabConsoleMessages {
     pub event: String,
     pub time: String,
-    pub messages: Option<Vec<String>>,
+    pub messages: Vec<String>,
+}
+
+impl From<NotificationForAgent> for TabConsoleMessages {
+    fn from(value: NotificationForAgent) -> Self {
+        let cmd = Command::from_u32(value.command_id as _);
+        let cmd_string = command_to_string(&cmd);
+        let result = value.format_console_output();
+
+        Self {
+            event: cmd_string,
+            time: value.time_completed.to_string(),
+            messages: result,
+        }
+    }
+}
+
+impl TabConsoleMessages {
+    /// Creates a new `TabConsoleMessages` event where the result isn't something that has come about from interacting
+    /// with an agent.
+    ///
+    /// This could be used for commands which just require some form of response back to the user, from the C2 or locally
+    /// within the client itself.
+    pub fn non_agent_message(event: String, message: String) -> Self {
+        Self {
+            event,
+            time: "-".into(),
+            messages: vec![message],
+        }
+    }
 }
 
 /// Tuple which, in order of params, tracks the index of the open tab

@@ -75,36 +75,27 @@
         </ul>
     </div>
             
-            <div id="message-panel" class="container-fluid">
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-            </div>
+    <div id="message-panel" class="container-fluid"
+        hx-get="/api/dashboard/show_messages"
+        hx-trigger="load, every 250ms"
+        hx-target="#message-panel"
+        hx-swap="innerHTML">
+        <p>Result of command what?</p>
+    </div>
 
-            <div id="input-strip" class="d-flex align-items-center px-3">
-                <span class="me-2">&gt;&gt;</span>
-                <input type="text" class="flex-grow-1" placeholder="Type a command..." />
-                <button class="btn btn-sm btn-secondary btn-block">Send</button>
-            </div>
+
+        <div id="input-strip" class="d-flex align-items-center px-3">
+            <span class="me-2">&gt;&gt;</span>
+             <form hx-post="/api/dashboard/send_command" 
+                hx-swap="none"
+                hx-on::after-request="this.querySelector('#cmd_input').value=''"
+                autocomplete="off"
+                class="d-flex flex-grow-1">
+                    <input id="cmd_input" name="cmd_input" type="text" class="flex-grow-1" placeholder="Type a command..." />
+                    <button class="btn btn-sm btn-secondary btn-block">Send</button>
+            </form> 
         </div>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
     </body>

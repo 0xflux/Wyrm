@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use shared::{
     process::Process,
     tasks::{Command, PowershellOutput, WyrmResult},
@@ -12,6 +13,12 @@ pub const ADMIN_AUTH_SEPARATOR: &str = "=authdivider=";
 
 /// The collective for multiple [`NotificationForAgent`].
 pub type NotificationsForAgents = Vec<NotificationForAgent>;
+
+/// A representation of in memory agents on the C2, being a tuple of:
+/// - `String`: Agent display representation
+/// - `bool`: Is stale
+/// - `Option<Value>`: Any new notifications
+pub type AgentC2MemoryNotifications = (String, bool, Option<Value>);
 
 /// A representation of the database information pertaining to agent notifications which have not
 /// yet been pulled by the operator.

@@ -17,6 +17,7 @@ use shared::tasks::{
     AdminCommand, BuildAllBins, Command, FileDropMetadata, FileUploadStagingFromClient,
     NewAgentStaging, StageType, WyrmResult,
 };
+use shared_c2_client::AgentC2MemoryNotifications;
 use tokio::fs;
 
 /// Main dispatcher for admin commands issued on the server, which may, or may not, include an
@@ -254,7 +255,7 @@ async fn build_all_bins(bab: BuildAllBins, state: State<Arc<AppState>>) -> Optio
 async fn list_agents(state: State<Arc<AppState>>) -> Option<Value> {
     let agents = state.connected_agents.list_agents();
 
-    let mut new_agents: Vec<(String, bool)> = Vec::new();
+    let mut new_agents: Vec<AgentC2MemoryNotifications> = Vec::new();
 
     let mut maybe_entry = agents.first_entry_async().await;
     while let Some(row) = maybe_entry {
@@ -271,7 +272,9 @@ async fn list_agents(state: State<Arc<AppState>>) -> Option<Value> {
             agent.uid, last_check_in, agent.first_run_data.b, agent.first_run_data.c,
         );
 
-        new_agents.push((formatted, agent.is_stale));
+        let new_messages = pull_notifications_for_agent(agent.uid.clone(), state.clone()).await;
+
+        new_agents.push((formatted, agent.is_stale, new_messages));
 
         drop(agent);
         maybe_entry = row.next_async().await;

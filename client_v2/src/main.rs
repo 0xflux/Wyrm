@@ -9,7 +9,7 @@ use tower_http::services::ServeDir;
 
 use crate::{
     api::{
-        dashboard::{poll_connected_agents, select_agent_tab},
+        dashboard::{poll_connected_agents, select_agent_tab, send_command, show_implant_messages},
         login::try_login,
         pages::{serve_dash, serve_login},
     },
@@ -41,8 +41,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/", get(serve_login))
         .route("/dashboard", get(serve_dash))
         .route("/api/do_login", post(try_login))
+        .route("/api/dashboard/send_command", post(send_command))
         .route("/api/dashboard/poll_agents", get(poll_connected_agents))
         .route("/api/dashboard/get_tabs", get(select_agent_tab))
+        .route("/api/dashboard/show_messages", get(show_implant_messages))
         .nest_service("/static", static_files)
         .with_state(state.clone());
 
