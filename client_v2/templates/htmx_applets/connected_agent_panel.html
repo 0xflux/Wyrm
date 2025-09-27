@@ -1,8 +1,8 @@
 {% for a in data %}
     <a href="#1"><div class="row agent-row">
-        <div class="col-4">{{ a.1.agent_id }}</div>
-        <div class="col-1">{{ a.1.pid }}</div>
-        <div class="col-2">{{ a.1.last_check_in }}</div>
-        <div class="col-5">{{ a.1.process_name }}</div>
+        <div class="col-4">{{ a.agent_id }}</div>
+        <div class="col-1">{{ a.pid }}</div>
+        <div class="col-2">{{ a.last_check_in }}</div>
+        <div class="col-5">{{ a.process_name }}</div>
     </div></a>
 {% endfor %}

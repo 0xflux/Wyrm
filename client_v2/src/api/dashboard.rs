@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ffi::CStr, str::FromStr, sync::Arc};
+use std::{ffi::CStr, str::FromStr, sync::Arc};
 
 use askama::Template;
 use axum::{
@@ -15,7 +15,7 @@ use crate::{
     net::{IsTaskingAgent, api_request},
 };
 
-type ConnectedAgentData = HashMap<String, Agent>;
+type ConnectedAgentData = Vec<Agent>;
 
 #[derive(Template)]
 #[template(path = "htmx_applets/connected_agent_panel.html")]
@@ -62,7 +62,7 @@ pub async fn poll_connected_agents(state: State<Arc<AppState>>) -> Response {
         }
     };
 
-    let mut buf: HashMap<String, Agent> = HashMap::new();
+    let mut buf: Vec<Agent> = Vec::new();
 
     for (agent, is_stale) in serialised {
         let split: Vec<&str> = agent.split('\t').collect();
@@ -79,10 +79,7 @@ pub async fn poll_connected_agents(state: State<Arc<AppState>>) -> Response {
             .to_string_lossy()
             .into_owned();
 
-        buf.insert(
-            uid.clone(),
-            Agent::from(uid, last_seen, pid, process_image, is_stale),
-        );
+        buf.push(Agent::from(uid, last_seen, pid, process_image, is_stale));
     }
 
     let page = ConnectedAgentPage { data: buf };
