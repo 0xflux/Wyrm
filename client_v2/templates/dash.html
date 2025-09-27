@@ -47,102 +47,20 @@
     </div>
     </nav>
 
-
-
     <div id="connected-agent-container" class="container-fluid">
 
         <div id="agents-header" class="row">
-            <div class="col">Agent ID</div>
-            <div class="col">Process ID</div>
-            <div class="col">Last check-in</div>
+            <div class="col-4">Agent ID</div>
+            <div class="col-1">Process ID</div>
+            <div class="col-2">Last check-in</div>
             <div class="col-5">Process name</div>
         </div>
 
-        <a href="#1"><div class="row agent-row">
-            <div class="col">flux@DESKTOP-EH7623/medium</div>
-            <div class="col">7416</div>
-            <div class="col">2025-09-25 17:51:29 UTC</div>
-            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exe</div>
-        </div></a>
-
-        <a href="#2"><div class="row agent-row">
-            <div class="col">flux@DESKTOP-EH7623/medium</div>
-            <div class="col">7416</div>
-            <div class="col">2025-09-25 17:51:29 UTC</div>
-            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exeeC:\Users\flux\git\wyrm\</div>
-        </div></a>
-
-        <a href="#1"><div class="row agent-row">
-            <div class="col">flux@DESKTOP-EH7623/medium</div>
-            <div class="col">7416</div>
-            <div class="col">2025-09-25 17:51:29 UTC</div>
-            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exe</div>
-        </div></a>
-
-        <a href="#2"><div class="row agent-row">
-            <div class="col">flux@DESKTOP-EH7623/medium</div>
-            <div class="col">7416</div>
-            <div class="col">2025-09-25 17:51:29 UTC</div>
-            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exeeC:\Users\flux\git\wyrm\</div>
-        </div></a>
-
-        <a href="#1"><div class="row agent-row">
-            <div class="col">flux@DESKTOP-EH7623/medium</div>
-            <div class="col">7416</div>
-            <div class="col">2025-09-25 17:51:29 UTC</div>
-            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exe</div>
-        </div></a>
-
-        <a href="#2"><div class="row agent-row">
-            <div class="col">flux@DESKTOP-EH7623/medium</div>
-            <div class="col">7416</div>
-            <div class="col">2025-09-25 17:51:29 UTC</div>
-            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exeeC:\Users\flux\git\wyrm\</div>
-        </div></a>
-
-        <a href="#1"><div class="row agent-row">
-            <div class="col">flux@DESKTOP-EH7623/medium</div>
-            <div class="col">7416</div>
-            <div class="col">2025-09-25 17:51:29 UTC</div>
-            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exe</div>
-        </div></a>
-
-        <a href="#2"><div class="row agent-row">
-            <div class="col">flux@DESKTOP-EH7623/medium</div>
-            <div class="col">7416</div>
-            <div class="col">2025-09-25 17:51:29 UTC</div>
-            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exeeC:\Users\flux\git\wyrm\</div>
-        </div></a>
-
-        <a href="#1"><div class="row agent-row">
-            <div class="col">flux@DESKTOP-EH7623/medium</div>
-            <div class="col">7416</div>
-            <div class="col">2025-09-25 17:51:29 UTC</div>
-            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exe</div>
-        </div></a>
-
-        <a href="#2"><div class="row agent-row">
-            <div class="col">flux@DESKTOP-EH7623/medium</div>
-            <div class="col">7416</div>
-            <div class="col">2025-09-25 17:51:29 UTC</div>
-            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exeeC:\Users\flux\git\wyrm\</div>
-        </div></a>
-
-        <a href="#1"><div class="row agent-row">
-            <div class="col">flux@DESKTOP-EH7623/medium</div>
-            <div class="col">7416</div>
-            <div class="col">2025-09-25 17:51:29 UTC</div>
-            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exe</div>
-        </div></a>
-
-        <a href="#2"><div class="row agent-row">
-            <div class="col">flux@DESKTOP-EH7623/medium</div>
-            <div class="col">7416</div>
-            <div class="col">2025-09-25 17:51:29 UTC</div>
-            <div class="col-5">C:\Users\flux\git\wyrm\target\debug\wyrm_gui.exeeC:\Users\flux\git\wyrm\</div>
-        </div></a>
-
-
+        <div id="agent-rows"
+            hx-get="/api/dashboard/poll_agents"
+            hx-trigger="load, every 1s"
+            hx-target="#agent-rows"
+            hx-swap="innerHTML"></div>
 
     </div>
 
