@@ -5,16 +5,15 @@ use axum::{
     routing::{get, post},
     serve,
 };
-use tokio::sync::RwLock;
 use tower_http::services::ServeDir;
 
 use crate::{
     api::{
-        dashboard::poll_connected_agents,
+        dashboard::{poll_connected_agents, select_agent_tab},
         login::try_login,
         pages::{serve_dash, serve_login},
     },
-    net::Credentials,
+    models::AppState,
 };
 
 mod api;
@@ -43,6 +42,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/dashboard", get(serve_dash))
         .route("/api/do_login", post(try_login))
         .route("/api/dashboard/poll_agents", get(poll_connected_agents))
+        .route("/api/dashboard/get_tabs", get(select_agent_tab))
         .nest_service("/static", static_files)
         .with_state(state.clone());
 
@@ -59,21 +59,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await?;
 
     Ok(())
-}
-
-pub struct AppState {
-    creds: RwLock<Option<Credentials>>,
-}
-
-impl AppState {
-    fn new() -> Self {
-        Self {
-            creds: RwLock::new(Some(Credentials {
-                username: "flux".into(),
-                password: "password".into(),
-                admin_env_token: "fdgiyh%^l!udjfh78364LU7&%df!!".into(),
-                c2_url: "http://127.0.0.1:8080".into(),
-            })),
-        }
-    }
 }

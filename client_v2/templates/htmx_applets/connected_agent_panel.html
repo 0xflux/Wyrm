@@ -1,8 +1,20 @@
-{% for a in data %}
-    <a href="#1"><div class="row agent-row">
-        <div class="col-4">{{ a.agent_id }}</div>
-        <div class="col-1">{{ a.pid }}</div>
-        <div class="col-2">{{ a.last_check_in }}</div>
-        <div class="col-5">{{ a.process_name }}</div>
-    </div></a>
+{% for a in data %}       
+    {% if a.is_stale %} 
+        <a href="#" 
+            class="agent-stale" 
+            hx-get="/api/dashboard/get_tabs?agent={{a.agent_id}}"
+            hx-target="#tab-bar-ul">
+    {% else %}
+        <a href="#" 
+            hx-get="/api/dashboard/get_tabs?agent={{a.agent_id}}"
+            hx-target="#tab-bar-ul">
+    {% endif %}
+
+        <div class="row agent-row">
+            <div class="col-4">{{ a.agent_id }}</div>
+            <div class="col-1">{{ a.pid }}</div>
+            <div class="col-2">{{ a.last_check_in }}</div>
+            <div class="col-5">{{ a.process_name }}</div>
+        </div>
+    </a>
 {% endfor %}

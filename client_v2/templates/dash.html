@@ -64,48 +64,18 @@
 
     </div>
 
-        <div class="tabbar">
-    <ul class="nav nav-tabs flex-nowrap text-nowrap m-0 px-2">
-                    <li class="nav-item">
-                        <a class="nav-link active" aria-current="page" href="#">Server</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">Link</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">Link</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">Link</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">Link</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">Link</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#">Link</a>
-                    </li>
-                </ul>
-            </div>
+    <div class="tabbar"
+        hx-trigger="load"
+            hx-get="/api/dashboard/get_tabs?agent=Server"
+            hx-target="#tab-bar-ul">
+        <ul id="tab-bar-ul" class="nav nav-tabs flex-nowrap text-nowrap m-0 px-20">
+            <li class="nav-item">
+                <a class="nav-link active" aria-current="page" href="#">Server</a>
+            </li>
+        </ul>
+    </div>
             
             <div id="message-panel" class="container-fluid">
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
-                <p>Result of command what?</p>
                 <p>Result of command what?</p>
                 <p>Result of command what?</p>
                 <p>Result of command what?</p>

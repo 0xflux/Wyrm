@@ -1,0 +1,12 @@
+{% for tab in data.1 %}
+    <li class="nav-item">
+        {% if loop.index0 == data.0 %}
+            <a class="nav-link active" aria-current="page" href="#">
+        {% else %}
+            <a class="nav-link" href="#">
+        {% endif %}
+        
+        {{ tab }}
+        </a>
+    </li>
+{% endfor %}

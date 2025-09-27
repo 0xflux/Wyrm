@@ -1,4 +1,7 @@
 use chrono::{DateTime, Utc};
+use tokio::sync::RwLock;
+
+use crate::{api::dashboard::ConnectedAgentData, net::Credentials};
 
 /// A local client representation of an agent with a definition not shared across the
 /// `Wyrm` ecosystem.
@@ -40,4 +43,29 @@ pub struct TabConsoleMessages {
     pub event: String,
     pub time: String,
     pub messages: Option<Vec<String>>,
+}
+
+/// Tuple which, in order of params, tracks the index of the open tab
+/// and a vector of agent ID's.
+pub type ActiveTabData = (usize, Vec<String>);
+
+pub struct AppState {
+    pub creds: RwLock<Option<Credentials>>,
+    pub connected_agents: RwLock<ConnectedAgentData>,
+    pub active_tabs: RwLock<ActiveTabData>,
+}
+
+impl AppState {
+    pub fn new() -> Self {
+        Self {
+            creds: RwLock::new(Some(Credentials {
+                username: "flux".into(),
+                password: "password".into(),
+                admin_env_token: "fdgiyh%^l!udjfh78364LU7&%df!!".into(),
+                c2_url: "http://127.0.0.1:8080".into(),
+            })),
+            connected_agents: RwLock::new(ConnectedAgentData::default()),
+            active_tabs: RwLock::new((0, vec!["Server".into()])),
+        }
+    }
 }

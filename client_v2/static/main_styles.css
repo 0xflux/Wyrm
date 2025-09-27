@@ -192,3 +192,7 @@ div#connected-agent-container div#agents-header {
 .tabbar::-webkit-scrollbar { height:6px; }
 .tabbar::-webkit-scrollbar-thumb { background:#868e96; border-radius:3px; }
 .tabbar { scrollbar-width:thin; scrollbar-color:#868e96 transparent; }
+
+a.agent-stale {
+  color: rgb(128, 135, 162)!important;
+}
