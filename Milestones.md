@@ -9,13 +9,10 @@ The 0.3 version will introduce the new GUI, which makes sense to do before addin
 new commands I want present before v1.0; there is little point implementing them on a UI which
 will be deprecated soon after.
 
-1) [ ] New GUI should have its own repo to remove bloat from here (im not quite sure how i want to run with that hmm).
-2) [ ] Redesign GUI into web interface
-
-### 0.3.1
-
-1) [ ] Dockerise the gui
-2) [ ] Max upload size becomes env
+1) [ ] Redesign GUI into web interface
+   1) [ ] Staged resources need their own panel somewhere, or a menu item / "Server" item drop down; or maybe in the server tab?
+2) [ ] Dockerise the gui
+3) [ ] Max upload size becomes env
 
 ### v0.4
 
