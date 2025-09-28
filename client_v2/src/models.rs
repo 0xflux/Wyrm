@@ -107,6 +107,7 @@ pub struct AppState {
     pub creds: RwLock<Option<Credentials>>,
     pub connected_agents: RwLock<ConnectedAgentData>,
     pub active_tabs: RwLock<ActiveTabData>,
+    pub last_tabs_hash: RwLock<Option<u64>>,
 }
 
 impl AppState {
@@ -120,6 +121,7 @@ impl AppState {
             })),
             connected_agents: RwLock::new(ConnectedAgentData::default()),
             active_tabs: RwLock::new((0, vec!["Server".into()])),
+            last_tabs_hash: RwLock::new(None),
         }
     }
 

@@ -1,8 +1,6 @@
-use std::{collections::HashMap, ffi::CStr, str::FromStr, sync::Arc};
-
 use askama::Template;
+use axum::extract::Form;
 use axum::{
-    Form,
     extract::{Query, State},
     http::StatusCode,
     response::{Html, IntoResponse, Response},
@@ -11,6 +9,7 @@ use chrono::{DateTime, Utc};
 use serde::Deserialize;
 use shared::{pretty_print::print_failed, tasks::AdminCommand};
 use shared_c2_client::{AgentC2MemoryNotifications, NotificationForAgent};
+use std::{collections::HashMap, ffi::CStr, str::FromStr, sync::Arc};
 
 use crate::{
     models::{ActiveTabData, Agent, AppState, TabConsoleMessages},
@@ -157,18 +156,31 @@ struct TabsPage {
 }
 
 pub async fn draw_tabs(state: State<Arc<AppState>>) -> Response {
-    let current_agent_id = {
-        let lock = state.active_tabs.read().await;
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
 
-        if let Some(agent_id) = lock.1.get(lock.0) {
-            agent_id.clone()
-        } else {
-            println!("Index not found in haystack when searching in draw_tabs.");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+    let lock = state.active_tabs.read().await;
+    let tab_data = (lock.0, lock.1.clone());
+
+    // Hash the tab_data to detect changes
+    let mut hasher = DefaultHasher::new();
+    tab_data.hash(&mut hasher);
+    let current_hash = hasher.finish();
+
+    // Store last sent hash in AppState
+    let mut last_hash_lock = state.last_tabs_hash.write().await;
+    if let Some(last_hash) = *last_hash_lock {
+        if last_hash == current_hash {
+            // No change, return 204
+            return StatusCode::NO_CONTENT.into_response();
         }
-    };
+    }
+    // Update last hash
+    *last_hash_lock = Some(current_hash);
 
-    render_tabs(current_agent_id, state.clone()).await
+    // Render tabs as before
+    let tab_page = TabsPage { tab_data };
+    return Html(tab_page.render().unwrap()).into_response();
 }
 
 pub async fn select_agent_tab(
@@ -370,4 +382,25 @@ pub async fn send_command(
     }
 
     StatusCode::OK.into_response()
+}
+
+#[derive(Deserialize)]
+pub struct CloseTabRequest {
+    pub index: usize,
+}
+
+pub async fn close_tab(state: State<Arc<AppState>>, Form(req): Form<CloseTabRequest>) -> Response {
+    let mut lock = state.active_tabs.write().await;
+    if lock.1.len() > 1 && req.index < lock.1.len() {
+        lock.1.remove(req.index);
+        if lock.0 >= lock.1.len() {
+            lock.0 = lock.1.len().saturating_sub(1);
+        }
+    }
+    let mut last_hash_lock = state.last_tabs_hash.write().await;
+    *last_hash_lock = None;
+    let tab_page = TabsPage {
+        tab_data: (lock.0, lock.1.clone()),
+    };
+    Html(tab_page.render().unwrap()).into_response()
 }
