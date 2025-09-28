@@ -1,12 +1,11 @@
 {% for tab in tab_data.1 %}
-    <li class="nav-item">
-        {% if loop.index0 == tab_data.0 %}
-            <a class="nav-link active" aria-current="page" href="#">
-        {% else %}
-            <a class="nav-link" href="#">
-        {% endif %}
-        
-        {{ tab }}
-        </a>
-    </li>
+  <li class="nav-item" id="tab-{{ tab }}">
+    <a id="tab-link-{{ tab }}"
+       class="nav-link {% if loop.index0 == tab_data.0 %}active{% endif %}"
+       href="#"
+       hx-get="/api/dashboard/get_tabs_id?index={{ loop.index0 }}"
+       hx-target="#tab-bar-ul">
+      {{ tab }}
+    </a>
+  </li>
 {% endfor %}

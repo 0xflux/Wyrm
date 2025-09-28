@@ -8,6 +8,7 @@
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
 
         <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.7/dist/htmx.min.js"></script>
+        <script src="https://unpkg.com/idiomorph@0.7.3/dist/idiomorph-ext.min.js" integrity="sha384-szktAZju9fwY15dZ6D2FKFN4eZoltuXiHStNDJWK9+FARrxJtquql828JzikODob" crossorigin="anonymous"></script>
 
         <link href="static/main_styles.css" rel="stylesheet">
         
@@ -61,27 +62,25 @@
             hx-trigger="load, every 1s"
             hx-target="#agent-rows"
             hx-swap="innerHTML"></div>
-
     </div>
 
-    <div class="tabbar"
-        hx-trigger="load"
-            hx-get="/api/dashboard/get_tabs?agent=Server"
-            hx-target="#tab-bar-ul">
-        <ul id="tab-bar-ul" class="nav nav-tabs flex-nowrap text-nowrap m-0 px-20">
-            <li class="nav-item">
-                <a class="nav-link active" aria-current="page" href="#">Server</a>
-            </li>
+    <div class="tabbar">
+        <ul id="tab-bar-ul"
+            class="nav nav-tabs flex-nowrap text-nowrap m-0 px-20"
+            hx-get="/api/dashboard/draw_tabs"
+            hx-trigger="load, every 500ms"
+            hx-target="#tab-bar-ul"
+            hx-swap="morphdom"
+            hx-ext="morphdom"
+            hx-sync="this:abort">
         </ul>
     </div>
             
     <div id="message-panel" class="container-fluid"
         hx-get="/api/dashboard/show_messages"
-        hx-trigger="load, every 250ms"
+        hx-trigger="load, every 300ms"
         hx-target="#message-panel"
-        hx-swap="innerHTML">
-        <p>Result of command what?</p>
-    </div>
+        hx-swap="innerHTML"></div>
 
 
         <div id="input-strip" class="d-flex align-items-center px-3">

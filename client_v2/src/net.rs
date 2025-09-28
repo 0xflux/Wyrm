@@ -3,9 +3,26 @@ use shared::{net::ADMIN_ENDPOINT, tasks::AdminCommand};
 use shared_c2_client::ADMIN_AUTH_SEPARATOR;
 use thiserror::Error;
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum IsTaskingAgent<'a> {
     Yes(&'a String),
     No,
+}
+
+#[derive(Debug, Error)]
+pub enum IsTaskingAgentErr {
+    #[error("No ID found on IsTaskingAgent")]
+    NoId,
+}
+
+impl IsTaskingAgent<'_> {
+    pub fn has_agent_id(&self) -> Result<(), IsTaskingAgentErr> {
+        if let IsTaskingAgent::Yes(_) = self {
+            return Ok(());
+        }
+
+        Err(IsTaskingAgentErr::NoId)
+    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -38,7 +55,7 @@ pub enum ApiError {
 /// Make an API request to the C2 from the GUI
 pub async fn api_request(
     command: AdminCommand,
-    is_tasking_agent: IsTaskingAgent<'_>,
+    is_tasking_agent: &IsTaskingAgent<'_>,
     creds: &Credentials,
 ) -> Result<Vec<u8>, ApiError> {
     let c2_url: String = match is_tasking_agent {

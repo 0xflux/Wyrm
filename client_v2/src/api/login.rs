@@ -25,7 +25,7 @@ pub async fn try_login(Form(login): Form<LoginFormData>) -> impl IntoResponse {
         c2_url: login.c2.clone(),
     };
 
-    let result = api_request(AdminCommand::Login, IsTaskingAgent::No, &creds).await;
+    let result = api_request(AdminCommand::Login, &IsTaskingAgent::No, &creds).await;
 
     let result_deser = match result {
         Ok(b) => match serde_json::from_slice::<String>(&b) {

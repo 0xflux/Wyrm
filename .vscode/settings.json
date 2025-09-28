@@ -57,6 +57,7 @@
         "regq",
         "repr",
         "reqwest",
+        "rwlock",
         "Serialise",
         "serialised",
         "serialising",

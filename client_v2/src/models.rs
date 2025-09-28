@@ -1,4 +1,4 @@
-use std::fmt;
+use std::hash::{DefaultHasher, Hash, Hasher};
 
 use chrono::{DateTime, Utc};
 use shared::tasks::Command;
@@ -120,6 +120,13 @@ impl AppState {
             })),
             connected_agents: RwLock::new(ConnectedAgentData::default()),
             active_tabs: RwLock::new((0, vec!["Server".into()])),
+        }
+    }
+
+    pub async fn push_console_msg(&self, msg: TabConsoleMessages, agent_id: &str) {
+        let mut agents_lock = self.connected_agents.write().await;
+        if let Some(agent) = agents_lock.iter_mut().find(|a| a.agent_id == agent_id) {
+            agent.output_messages.push(msg);
         }
     }
 }

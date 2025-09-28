@@ -9,7 +9,10 @@ use tower_http::services::ServeDir;
 
 use crate::{
     api::{
-        dashboard::{poll_connected_agents, select_agent_tab, send_command, show_implant_messages},
+        dashboard::{
+            draw_tabs, poll_connected_agents, select_agent_tab, select_agent_tab_idx, send_command,
+            show_implant_messages,
+        },
         login::try_login,
         pages::{serve_dash, serve_login},
     },
@@ -19,6 +22,7 @@ use crate::{
 mod api;
 mod models;
 mod net;
+mod tasks;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -44,6 +48,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/dashboard/send_command", post(send_command))
         .route("/api/dashboard/poll_agents", get(poll_connected_agents))
         .route("/api/dashboard/get_tabs", get(select_agent_tab))
+        .route("/api/dashboard/get_tabs_id", get(select_agent_tab_idx))
+        .route("/api/dashboard/draw_tabs", get(draw_tabs))
         .route("/api/dashboard/show_messages", get(show_implant_messages))
         .nest_service("/static", static_files)
         .with_state(state.clone());
