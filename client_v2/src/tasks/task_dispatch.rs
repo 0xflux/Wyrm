@@ -62,7 +62,7 @@ async fn dispatcher(
         ["ps"] => list_processes(creds, &agent).await,
         ["cd", pat @ ..] => change_directory(pat, creds, &agent).await,
         ["pwd"] => pwd(creds, &agent).await,
-        ["kill_agent"] => kill_agent(creds, &agent).await,
+        ["kill_agent"] => kill_agent(creds, &agent, state).await,
         ["kill", pid] => kill_process(creds, &agent, pid).await,
         ["remove_agent"] => remove_agent(creds, &agent, state).await,
         ["ls"] => dir_listing(creds, &agent).await,

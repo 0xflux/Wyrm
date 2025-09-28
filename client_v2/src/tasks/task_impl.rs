@@ -53,11 +53,29 @@ pub async fn change_directory(
 pub async fn kill_agent(
     creds: &Credentials,
     agent: &IsTaskingAgent<'_>,
+    state: State<Arc<AppState>>,
 ) -> Result<(), TaskDispatchError> {
     agent.has_agent_id()?;
 
     api_request(AdminCommand::KillAgent, agent, creds).await?;
 
+    if let IsTaskingAgent::Yes(agent_id) = agent {
+        {
+            let mut agents_lock = state.connected_agents.write().await;
+            agents_lock.retain(|a| a.agent_id != agent_id.as_str());
+        }
+        {
+            let mut lock = state.active_tabs.write().await;
+            let pos = lock.1.iter().position(|a| a == *agent_id);
+            if let Some(pos) = pos {
+                // Do not remove index 0
+                if pos > 0 {
+                    lock.1.remove(pos);
+                    lock.0 = lock.0.saturating_sub(1);
+                }
+            }
+        }
+    }
     Ok(())
 }
 
