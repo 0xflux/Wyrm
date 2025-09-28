@@ -23,9 +23,16 @@ struct Dash {
     tab_data: ActiveTabData,
 }
 
-#[axum::debug_handler]
 pub async fn serve_dash(state: State<Arc<AppState>>) -> impl IntoResponse {
     let lock = state.active_tabs.read().await;
     let tab_data = (lock.0, lock.1.clone());
     Html(Dash { tab_data }.render().unwrap())
+}
+
+#[derive(Template)]
+#[template(path = "file_upload.html")]
+struct FileUpload;
+
+pub async fn upload_file_page() -> impl IntoResponse {
+    Html(FileUpload.render().unwrap())
 }
