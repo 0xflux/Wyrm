@@ -12,6 +12,11 @@ will be deprecated soon after.
 1) [ ] New GUI should have its own repo to remove bloat from here (im not quite sure how i want to run with that hmm).
 2) [ ] Redesign GUI into web interface
 
+### 0.3.1
+
+1) [ ] Dockerise the gui
+2) [ ] Max upload size becomes env
+
 ### v0.4
 
 1) [ ] Add a note to an implant
