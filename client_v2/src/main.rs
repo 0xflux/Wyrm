@@ -2,6 +2,7 @@ use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
     Router,
+    extract::DefaultBodyLimit,
     routing::{get, post},
     serve,
 };
@@ -13,6 +14,7 @@ use crate::{
             close_tab, draw_tabs, poll_connected_agents, select_agent_tab, select_agent_tab_idx,
             send_command, show_implant_messages,
         },
+        file_upload::upload_file_api,
         login::try_login,
         pages::{serve_dash, serve_login, upload_file_page},
     },
@@ -56,10 +58,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/dashboard/draw_tabs", get(draw_tabs))
         .route("/api/dashboard/close_tab", post(close_tab))
         .route("/api/dashboard/show_messages", get(show_implant_messages))
+        .route("/api/upload_file", post(upload_file_api))
         //
         // Static content
         //
         .nest_service("/static", static_files)
+        // Max upload sz of 500 MB
+        .layer(DefaultBodyLimit::max(1500 * 1024 * 1024))
         .with_state(state.clone());
 
     //

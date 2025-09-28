@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 askama = "0.14.0"
-axum = { version = "0.8.4", features = ["macros"]}
+axum = { version = "0.8.4", features = ["macros", "multipart"]}
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0.226", features = ["derive"] }
 tokio = { version = "1.47.1", features = [ "rt-multi-thread", "macros" ]}

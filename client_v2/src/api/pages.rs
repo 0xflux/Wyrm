@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
+use crate::models::{ActiveTabData, AppState};
 use askama::Template;
 use axum::{
     extract::State,
     response::{Html, IntoResponse},
 };
-
-use crate::models::{ActiveTabData, AppState};
+use std::sync::Arc;
 
 #[derive(Template)]
 #[template(path = "login.html")]

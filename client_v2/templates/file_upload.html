@@ -9,10 +9,7 @@
     </div>
     <div class="row justify-content-center">
         <div class="col-md-7 col-lg-6">
-            <form id="file-upload-form" enctype="multipart/form-data"
-                  hx-post="/api/upload_file"
-                  hx-target="#upload-status"
-                  hx-swap="innerHTML"
+            <form id="file-upload-form" enctype="multipart/form-data" method="POST" action="/api/upload_file"
                   class="border rounded-3 p-4 shadow-sm" style="background: rgb(202, 211, 245);">
                 <div class="mb-3">
                     <label for="download_name" class="form-label fw-semibold">Download Name</label>
@@ -26,7 +23,7 @@
                 </div>
                 <div class="mb-3">
                     <label for="file_input" class="form-label fw-semibold">Choose File</label>
-                    <input class="form-control" type="file" id="file_input" name="file" required>
+                    <input class="form-control" type="file" id="file_input" name="file_input" required>
                 </div>
                 <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Upload</button>
             </form>
