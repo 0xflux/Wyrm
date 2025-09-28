@@ -21,18 +21,34 @@ pub async fn serve_login() -> impl IntoResponse {
 #[template(path = "dash.html")]
 struct Dash {
     tab_data: ActiveTabData,
+    active_page: &'static str,
 }
 
 pub async fn serve_dash(state: State<Arc<AppState>>) -> impl IntoResponse {
     let lock = state.active_tabs.read().await;
     let tab_data = (lock.0, lock.1.clone());
-    Html(Dash { tab_data }.render().unwrap())
+    Html(
+        Dash {
+            tab_data,
+            active_page: "dashboard",
+        }
+        .render()
+        .unwrap(),
+    )
 }
 
 #[derive(Template)]
 #[template(path = "file_upload.html")]
-struct FileUpload;
+struct FileUpload {
+    active_page: &'static str,
+}
 
 pub async fn upload_file_page() -> impl IntoResponse {
-    Html(FileUpload.render().unwrap())
+    Html(
+        FileUpload {
+            active_page: "upload",
+        }
+        .render()
+        .unwrap(),
+    )
 }
