@@ -159,18 +159,23 @@ pub async fn draw_tabs(state: State<Arc<AppState>>) -> Response {
     use std::collections::hash_map::DefaultHasher;
     use std::hash::{Hash, Hasher};
 
-    let lock = state.active_tabs.read().await;
+    let mut lock = state.active_tabs.write().await;
+    // Ensure 'Server' tab is always present at index 0
+    if lock.1.is_empty() || lock.1[0] != "Server" {
+        lock.1.insert(0, "Server".to_string());
+        lock.0 = 0;
+    }
     let tab_data = (lock.0, lock.1.clone());
 
-    // Hash the tab_data to detect changes
+    // Hash-based change detection
     let mut hasher = DefaultHasher::new();
     tab_data.hash(&mut hasher);
     let current_hash = hasher.finish();
 
-    // Store last sent hash in AppState
     let mut last_hash_lock = state.last_tabs_hash.write().await;
     if let Some(last_hash) = *last_hash_lock {
-        if last_hash == current_hash {
+        // Always render if only 'Server' tab is present
+        if last_hash == current_hash && !(lock.1.len() == 1 && lock.1[0] == "Server") {
             // No change, return 204
             return StatusCode::NO_CONTENT.into_response();
         }
@@ -178,9 +183,8 @@ pub async fn draw_tabs(state: State<Arc<AppState>>) -> Response {
     // Update last hash
     *last_hash_lock = Some(current_hash);
 
-    // Render tabs as before
     let tab_page = TabsPage { tab_data };
-    return Html(tab_page.render().unwrap()).into_response();
+    Html(tab_page.render().unwrap()).into_response()
 }
 
 pub async fn select_agent_tab(
@@ -391,11 +395,19 @@ pub struct CloseTabRequest {
 
 pub async fn close_tab(state: State<Arc<AppState>>, Form(req): Form<CloseTabRequest>) -> Response {
     let mut lock = state.active_tabs.write().await;
-    if lock.1.len() > 1 && req.index < lock.1.len() {
+    // Prevent closing the 'Server' tab (index 0)
+    if req.index == 0 {
+        // Do nothing, always keep 'Server' tab
+    } else if lock.1.len() > 1 && req.index < lock.1.len() {
         lock.1.remove(req.index);
         if lock.0 >= lock.1.len() {
             lock.0 = lock.1.len().saturating_sub(1);
         }
+    }
+    // Ensure 'Server' tab is always present at index 0
+    if lock.1.is_empty() || lock.1[0] != "Server" {
+        lock.1.insert(0, "Server".to_string());
+        lock.0 = 0;
     }
     let mut last_hash_lock = state.last_tabs_hash.write().await;
     *last_hash_lock = None;

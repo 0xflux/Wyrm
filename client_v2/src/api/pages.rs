@@ -1,5 +1,12 @@
+use std::sync::Arc;
+
 use askama::Template;
-use axum::response::{Html, IntoResponse};
+use axum::{
+    extract::State,
+    response::{Html, IntoResponse},
+};
+
+use crate::models::{ActiveTabData, AppState};
 
 #[derive(Template)]
 #[template(path = "login.html")]
@@ -12,9 +19,13 @@ pub async fn serve_login() -> impl IntoResponse {
 
 #[derive(Template)]
 #[template(path = "dash.html")]
-struct Dash;
+struct Dash {
+    tab_data: ActiveTabData,
+}
 
 #[axum::debug_handler]
-pub async fn serve_dash() -> impl IntoResponse {
-    Html(Dash.render().unwrap())
+pub async fn serve_dash(state: State<Arc<AppState>>) -> impl IntoResponse {
+    let lock = state.active_tabs.read().await;
+    let tab_data = (lock.0, lock.1.clone());
+    Html(Dash { tab_data }.render().unwrap())
 }
