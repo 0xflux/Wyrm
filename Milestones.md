@@ -27,6 +27,7 @@ will be deprecated soon after.
 9) [ ] Round robin and different styles for URI & URL rotation
 10) [ ] `rm` command
 11) [ ] Improve formatting of output of running `ps`
+12) [ ] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp). The C2 can run this on the binary; maybe build as a separate lib and include, or just a separate module.
 
 ### 0.5
 
