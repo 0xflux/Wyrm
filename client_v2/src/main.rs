@@ -16,7 +16,7 @@ use crate::{
         },
         file_upload::upload_file_api,
         login::try_login,
-        pages::{serve_dash, serve_login, upload_file_page},
+        pages::{build_all_profiles_page, serve_dash, serve_login, upload_file_page},
     },
     models::AppState,
 };
@@ -47,6 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/", get(serve_login))
         .route("/dashboard", get(serve_dash))
         .route("/file_upload", get(upload_file_page))
+        .route("/build_profiles", get(build_all_profiles_page))
         //
         // APIs
         //

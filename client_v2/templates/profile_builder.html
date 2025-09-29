@@ -3,20 +3,27 @@
 <div id="file-upload-container" class="container-fluid py-4">
     <div class="row mb-4">
         <div class="col-12 text-center">
-            <h2 class="mb-2 fw-bold">Upload a File</h2>
-            <p>Easily stage files for download and delivery, use the below form to upload a file. Note, the maximum upload size is
-                whatever you set in your environment settings, or defaults to 500 mb.
+            <h2 class="mb-2 fw-bold">Build all payloads</h2>
+            <p>Type the name of the profile you wish to build from (do not include the
+                <code>.toml</code>). For example, to build from the default profile, type <code>default</code>
             </p>
         </div>
     </div>
     <div class="row justify-content-center">
         <div class="col-md-7 col-lg-6">
-            <form id="file-upload-form" enctype="multipart/form-data" method="POST" action="/api/upload_file"
+            <form id="stage-all-form" method="POST" action="/api/stage_all"
                   class="border rounded-3 p-4 shadow-sm">
                 <div class="mb-3">
-                    <label for="download_name" class="form-label fw-semibold">Download Name</label>
-                    <input type="text" class="form-control" placeholder="invoice.pdf" name="download_name" id="download_name" required>
-                    <div class="form-text">Include the file extension (e.g. <strong>.pdf</strong>, <strong>.exe</strong>). This is the name that will be downloaded onto the machine of the person downloading (e.g. what the browser will save it as), unless you grab it programmatically.</div>
+                    <label for="profile_name" class="form-label fw-semibold">Profile name</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        name="profile_name"
+                        id="profile_name"
+                        placeholder="Profile name"
+                        required
+                        >
+                    <div class="form-text">The profile name <strong>should not include the toml extension</strong>, and it should be present under <code>c2/profiles/</code>.</div>
                 </div>
                 <div class="mb-3">
                     <label for="staging_uri" class="form-label fw-semibold">Staging C2 URI Endpoint</label>

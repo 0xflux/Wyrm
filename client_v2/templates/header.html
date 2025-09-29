@@ -12,7 +12,7 @@
 
         <link href="static/main_styles.css" rel="stylesheet">
         
-        <title>Dashboard | Wyrm C2 Panel</title>
+        <title>{{ title }} | Wyrm C2 Panel</title>
     </head>
     
     <body class="app">
@@ -27,17 +27,23 @@
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
             <li class="nav-item">
-            <a class="nav-link{% if active_page == "dashboard" %} active{% endif %}" aria-current="page" href="/dashboard">Dashboard</a>
+                <a class="nav-link{% if active_page == "dashboard" %} active{% endif %}" aria-current="page" href="/dashboard">Dashboard</a>
             </li>
             <li class="nav-item">
-            <a class="nav-link{% if active_page == "upload" %} active{% endif %}" href="/file_upload">Upload</a>
+                <a class="nav-link{% if active_page == "upload" %} active{% endif %}" href="/file_upload">Upload</a>
             </li>
             <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <a class="nav-link dropdown-toggle {% 
+                if active_page == "build_profiles" %} active{% endif %}" 
+                    href="#" 
+                    role="button" 
+                    data-bs-toggle="dropdown" 
+                    aria-expanded="false">
                 Preparation
             </a>
             <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">Build all agents</a></li>
+                <li>
+                    <a class="dropdown-item {% if active_page == "build_profiles" %} active{% endif %}" href="/build_profiles">Build all agents</a></li>
                 <li><a class="dropdown-item" href="#">Website clone</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="#">Something else here</a></li>

@@ -197,7 +197,7 @@ a.agent-stale {
   color: rgb(128, 135, 162)!important;
 }
 
-#file-upload-form {
+#file-upload-form, #stage-all-form {
   background-color: rgb(54, 58, 79)!important;
 }
 
@@ -207,4 +207,8 @@ a.agent-stale {
 
 div.form-text {
   color: rgb(165, 173, 203);
+}
+
+.dropdown-item.active, .dropdown-item:active {
+  background-color: rgb(54, 58, 79);
 }
