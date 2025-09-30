@@ -48,8 +48,8 @@ fn auth_header(creds: &Credentials) -> String {
 pub enum ApiError {
     #[error("HTTP error {0}.")]
     Reqwest(#[from] reqwest::Error),
-    #[error("Server returned status {0}.")]
-    BadStatus(reqwest::StatusCode),
+    #[error("Server returned status {0}. {1}")]
+    BadStatus(reqwest::StatusCode, String),
 }
 
 /// Make an API request to the C2 from the GUI
@@ -93,7 +93,10 @@ pub async fn api_request(
     // Note, all admin commands return ACCEPTED (status 202) on successful authentication / completion
     // not the anticipated 200 OK. Dont recall why I went that route, but here we are :)
     if request.status() != StatusCode::ACCEPTED {
-        return Err(ApiError::BadStatus(request.status()));
+        return Err(ApiError::BadStatus(
+            request.status(),
+            request.text().await.unwrap_or_default(),
+        ));
     }
 
     let bytes = request.bytes().await?;

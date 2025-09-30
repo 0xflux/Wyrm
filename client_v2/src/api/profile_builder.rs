@@ -5,11 +5,14 @@ use crate::{
     net::{IsTaskingAgent, api_request},
 };
 use axum::{
-    Form, debug_handler,
+    Form,
+    body::Bytes,
+    debug_handler,
     extract::State,
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse, Response},
 };
+use reqwest::header::{CONTENT_DISPOSITION, CONTENT_LENGTH, CONTENT_TYPE};
 use serde::Deserialize;
 use shared::tasks::AdminCommand;
 
@@ -53,7 +56,21 @@ pub async fn build_all_profiles(
     )
     .await;
 
-    println!("Result? {result:?}");
+    match result {
+        Ok(zip_bytes) => {
+            let filename = format!("{profile_name}.7z");
+            let mut headers = HeaderMap::new();
+            headers.insert(CONTENT_TYPE, "application/x-7z-compressed".parse().unwrap());
+            headers.insert(
+                CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{}\"", filename)
+                    .parse()
+                    .unwrap(),
+            );
+            headers.insert(CONTENT_LENGTH, zip_bytes.len().try_into().unwrap());
 
-    StatusCode::OK.into_response()
+            (headers, Bytes::from(zip_bytes)).into_response()
+        }
+        Err(e) => (StatusCode::BAD_REQUEST, Html(format!("Error: {e}"))).into_response(),
+    }
 }

@@ -14,11 +14,7 @@
     </div>
     <div class="row justify-content-center">
         <div class="col-md-7 col-lg-6">
-            <form id="stage-all-form" 
-                hx-post="/api/stage_all"
-                hx-target="#response-box"
-                hx-indicator="#building-indicator"
-                class="border rounded-3 p-4 shadow-sm">
+           <form method="post" action="/api/stage_all" class="border rounded-3 p-4 shadow-sm">
                 <div class="mb-3">
                     <label for="profile_name" class="form-label fw-semibold">Profile name</label>
                     <input

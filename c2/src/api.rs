@@ -11,7 +11,7 @@ use axum::{
     Json,
     extract::{Path, Query, Request, State},
     http::{HeaderMap, StatusCode},
-    response::{IntoResponse, Response},
+    response::{Html, IntoResponse, Response},
 };
 use serde::Deserialize;
 use shared::{
@@ -233,5 +233,12 @@ pub async fn build_all_binaries_handler(
     let bab = (data.profile_name.clone(), "".to_string(), None, None);
     let result = build_all_bins(bab, state).await;
 
-    (StatusCode::ACCEPTED, result).into_response()
+    match result {
+        Ok(data) => (StatusCode::ACCEPTED, data).into_response(),
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Html(format!("Error building binaries: {e}",)),
+        )
+            .into_response(),
+    }
 }
