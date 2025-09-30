@@ -1,5 +1,13 @@
 # Release Notes
 
+## v 0.3
+
+This release introduces the new GUI, which is a web based UI used to interact with the Wyrm C2.
+
+- New web based GUI!
+- Building payloads now downloads as a 7zip archive through the browser.
+  - Install `sh` script updated to include 7z dependencies, if manually updating through a pull; make sure you have 7zip installed and available on PATH.
+
 ## v 0.2
 
 - Wyrm C2 now uses profiles to build agents with fully customisable configurations.
