@@ -53,5 +53,7 @@ pub async fn build_all_profiles(
     )
     .await;
 
+    println!("Result? {result:?}");
+
     StatusCode::OK.into_response()
 }

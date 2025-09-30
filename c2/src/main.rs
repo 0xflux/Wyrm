@@ -113,6 +113,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         //
         // ADMIN ROUTES
         //
+        // Build all binaries path
+        .route(
+            "/admin_bab",
+            post(build_all_binaries_handler)
+                .layer(from_fn_with_state(state.clone(), authenticate_admin)),
+        )
         // Admin endpoint when operating a command which is not related to a specific agent
         .route(
             &format!("/{ADMIN_ENDPOINT}"),
@@ -129,12 +135,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             &format!("/{NOTIFICATION_CHECK_AGENT_ENDPOINT}/{}", "{id}"),
             get(poll_agent_notifications)
-                .layer(from_fn_with_state(state.clone(), authenticate_admin)),
-        )
-        // Build all binaries path
-        .route(
-            "/admin_bab",
-            get(build_all_binaries_handler)
                 .layer(from_fn_with_state(state.clone(), authenticate_admin)),
         )
         //

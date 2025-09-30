@@ -233,5 +233,5 @@ pub async fn build_all_binaries_handler(
     let bab = (data.profile_name.clone(), "".to_string(), None, None);
     let result = build_all_bins(bab, state).await;
 
-    StatusCode::OK.into_response()
+    result.into_response()
 }

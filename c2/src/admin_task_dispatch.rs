@@ -123,7 +123,9 @@ pub async fn build_all_bins(
     let profile_name = bab.0;
 
     if let Err(e) = create_dir(&save_path) {
-        return Err(format!("Failed to create temp directory on c2. {e}"));
+        let msg = format!("Failed to create temp directory on c2. {}", e.kind());
+        log_error_async(&msg).await;
+        return Err(msg);
     };
 
     //
@@ -261,6 +263,21 @@ pub async fn build_all_bins(
     // - 7zip the archive, maybe using process and including 7z in the sh installer
     // - delete the temp directory once we have read the 7z into memory
     // - return the 7z file as a buffer and have the client serve as a download for the user
+    let mut cmd = tokio::process::Command::new("7z");
+    cmd.args([
+        "a",
+        "tmp.7z",
+        &format!("{}", save_path.as_os_str().display()),
+    ]);
+    let output = cmd.output().await;
+
+    println!("Output: {:?}", output);
+
+    if let Err(e) = fs::remove_dir_all(&save_path).await {
+        let msg = format!("Failed to remove directory for tmp after building profiles. {e}");
+        log_error_async(&msg).await;
+        return Err(msg);
+    }
 
     Ok(vec![])
 }
