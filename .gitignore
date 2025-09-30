@@ -9,3 +9,6 @@ shared_c2_client/target
 /c2/logs/*
 /c2/loot/*
 *Cargo.lock
+*.exe
+*.dll
+*.svc
