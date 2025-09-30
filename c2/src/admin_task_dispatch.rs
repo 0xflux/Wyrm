@@ -1,4 +1,5 @@
 use std::{
+    fs::create_dir,
     io,
     path::{Path, PathBuf},
     sync::Arc,
@@ -104,7 +105,7 @@ pub async fn admin_dispatch(
         AdminCommand::Pull(file_path) => {
             task_agent(Command::Pull, Some(file_path), uid.unwrap(), state).await
         }
-        AdminCommand::BuildAllBins(bab) => build_all_bins(bab, state).await,
+        AdminCommand::BuildAllBins(_) => None,
     };
 
     serde_json::to_vec(&result).unwrap()
@@ -113,9 +114,17 @@ pub async fn admin_dispatch(
 /// Builds all binaries from a given profile
 ///
 /// On success, this function returns None, otherwise an Error is encoded within a `Value` as a `WyrmResult`
-async fn build_all_bins(bab: BuildAllBins, state: State<Arc<AppState>>) -> Option<Value> {
-    let save_path = PathBuf::from(bab.1);
+pub async fn build_all_bins(
+    bab: BuildAllBins,
+    state: State<Arc<AppState>>,
+) -> Result<Vec<u8>, String> {
+    // Save into tmp within profiles, we will delete it on completion.
+    let save_path = PathBuf::from("./profiles/tmp");
     let profile_name = bab.0;
+
+    if let Err(e) = create_dir(&save_path) {
+        return Err(format!("Failed to create temp directory on c2. {e}"));
+    };
 
     //
     // Read the profile from disk
@@ -126,10 +135,7 @@ async fn build_all_bins(bab: BuildAllBins, state: State<Arc<AppState>>) -> Optio
         Err(e) => {
             let msg = format!("Error reading profile: {profile_name}. {e:?}");
             log_error_async(&msg).await;
-
-            let msg_s = WyrmResult::Err::<String>(msg);
-            let ser = serde_json::to_value(msg_s).unwrap();
-            return Some(ser);
+            return Err(msg);
         }
     };
 
@@ -148,9 +154,7 @@ async fn build_all_bins(bab: BuildAllBins, state: State<Arc<AppState>>) -> Optio
         WyrmResult::Err(e) => {
             let msg = format!("Error constructing a NewAgentStaging: {profile_name}. {e:?}");
             log_error_async(&msg).await;
-
-            let ser = serde_json::to_value(WyrmResult::Err::<String>(msg)).unwrap();
-            return Some(ser);
+            return Err(msg);
         }
     };
 
@@ -171,7 +175,8 @@ async fn build_all_bins(bab: BuildAllBins, state: State<Arc<AppState>>) -> Optio
         if let Err(e) = cmd_build_output {
             let msg = &format!("Failed to build agent. {e}");
             log_error_async(msg).await;
-            return stage_new_agent_error_printer(msg, &data.staging_endpoint, state).await;
+            let _ = stage_new_agent_error_printer(msg, &data.staging_endpoint, state).await;
+            return Err(msg.to_owned());
         }
 
         let output = cmd_build_output.unwrap();
@@ -182,7 +187,8 @@ async fn build_all_bins(bab: BuildAllBins, state: State<Arc<AppState>>) -> Optio
             );
             log_error_async(msg).await;
 
-            return stage_new_agent_error_printer(msg, &data.staging_endpoint, state).await;
+            let _ = stage_new_agent_error_printer(msg, &data.staging_endpoint, state).await;
+            return Err(msg.to_owned());
         }
 
         //
@@ -218,12 +224,12 @@ async fn build_all_bins(bab: BuildAllBins, state: State<Arc<AppState>>) -> Optio
             let msg = format!("Failed to add extension to local file. {dest:?}");
             log_error_async(&msg).await;
 
-            return Some(serde_json::to_value(WyrmResult::Err::<String>(msg)).unwrap());
+            return Err(msg);
         };
 
         // Error check..
         if let Err(e) = tokio::fs::rename(&src, &dest).await {
-            return stage_new_agent_error_printer(
+            let _ = stage_new_agent_error_printer(
                 &format!(
                     "Failed to rename built agent, looking for: {}, to rename to: {}. {e}",
                     src.display(),
@@ -233,23 +239,30 @@ async fn build_all_bins(bab: BuildAllBins, state: State<Arc<AppState>>) -> Optio
                 state,
             )
             .await;
+
+            return Err(format!("Failed to rename agent. {e}"));
         };
 
         //
         // Update state to include a new endpoint for the listeners
         //
         if let Err(e) = is_download_staging_url_error(&data, &state).await {
-            return stage_new_agent_error_printer(
-                &format!("The download URL matches an existing one, or a URL which is used for agent check-in, \
-                this is not permitted. Kind: {e:?}"),
-                &data.staging_endpoint,
-                state,
-            )
-            .await;
+            let msg = format!(
+                "The download URL matches an existing one, or a URL which is used for agent check-in, \
+                this is not permitted. Kind: {e:?}"
+            );
+            let _ = stage_new_agent_error_printer(&msg, &data.staging_endpoint, state).await;
+
+            return Err(msg);
         }
     }
 
-    None
+    // TODO
+    // - 7zip the archive, maybe using process and including 7z in the sh installer
+    // - delete the temp directory once we have read the 7z into memory
+    // - return the 7z file as a buffer and have the client serve as a download for the user
+
+    Ok(vec![])
 }
 
 async fn list_agents(state: State<Arc<AppState>>) -> Option<Value> {

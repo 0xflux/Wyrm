@@ -38,6 +38,7 @@ pub async fn poll_connected_agents(state: State<Arc<AppState>>) -> Response {
         AdminCommand::ListAgents,
         &IsTaskingAgent::No,
         creds.as_ref().unwrap(),
+        None,
     )
     .await
     {

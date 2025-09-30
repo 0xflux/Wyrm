@@ -57,10 +57,27 @@ pub async fn api_request(
     command: AdminCommand,
     is_tasking_agent: &IsTaskingAgent<'_>,
     creds: &Credentials,
+    custom_uri: Option<&str>,
 ) -> Result<Vec<u8>, ApiError> {
+    // Remove any leading '/' as we want to format correctly in the below builder
+    let custom_uri = if let Some(u) = custom_uri {
+        let u = match u.strip_prefix("/") {
+            Some(s) => s,
+            None => u,
+        };
+        Some(u)
+    } else {
+        None
+    };
+
     let c2_url: String = match is_tasking_agent {
-        IsTaskingAgent::Yes(uid) => format!("{}/{}/{}", creds.c2_url, ADMIN_ENDPOINT, uid),
-        IsTaskingAgent::No => format!("{}/{}", creds.c2_url, ADMIN_ENDPOINT),
+        IsTaskingAgent::Yes(uid) => format!(
+            "{}/{}/{}",
+            creds.c2_url,
+            custom_uri.unwrap_or(ADMIN_ENDPOINT),
+            uid
+        ),
+        IsTaskingAgent::No => format!("{}/{}", creds.c2_url, custom_uri.unwrap_or(ADMIN_ENDPOINT)),
     };
 
     let body_bytes = serde_json::to_vec(&command).expect("Could not convert command to bytes");

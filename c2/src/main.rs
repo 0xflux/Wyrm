@@ -17,8 +17,9 @@ use shared::{
 
 use crate::{
     api::{
-        handle_admin_commands_on_agent, handle_admin_commands_without_agent,
-        handle_agent_get_with_path, handle_agent_post_with_path, poll_agent_notifications,
+        build_all_binaries_handler, handle_admin_commands_on_agent,
+        handle_admin_commands_without_agent, handle_agent_get_with_path,
+        handle_agent_post_with_path, poll_agent_notifications,
     },
     app_state::{AppState, detect_stale_agents},
     db::Db,
@@ -128,6 +129,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route(
             &format!("/{NOTIFICATION_CHECK_AGENT_ENDPOINT}/{}", "{id}"),
             get(poll_agent_notifications)
+                .layer(from_fn_with_state(state.clone(), authenticate_admin)),
+        )
+        // Build all binaries path
+        .route(
+            "/admin_bab",
+            get(build_all_binaries_handler)
                 .layer(from_fn_with_state(state.clone(), authenticate_admin)),
         )
         //

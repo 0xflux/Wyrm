@@ -31,7 +31,7 @@ pub async fn list_processes(
 ) -> Result<(), TaskDispatchError> {
     agent.has_agent_id()?;
 
-    let _ = api_request(AdminCommand::ListProcesses, agent, creds).await?;
+    let _ = api_request(AdminCommand::ListProcesses, agent, creds, None).await?;
 
     Ok(())
 }
@@ -45,7 +45,7 @@ pub async fn change_directory(
 
     let new_dir = new_dir.join(" ").trim().to_string();
 
-    api_request(AdminCommand::Cd(new_dir), agent, creds).await?;
+    api_request(AdminCommand::Cd(new_dir), agent, creds, None).await?;
 
     Ok(())
 }
@@ -57,7 +57,7 @@ pub async fn kill_agent(
 ) -> Result<(), TaskDispatchError> {
     agent.has_agent_id()?;
 
-    api_request(AdminCommand::KillAgent, agent, creds).await?;
+    api_request(AdminCommand::KillAgent, agent, creds, None).await?;
 
     if let IsTaskingAgent::Yes(agent_id) = agent {
         {
@@ -94,7 +94,13 @@ pub async fn kill_process(
         ));
     }
 
-    api_request(AdminCommand::KillProcessById(pid.to_string()), agent, creds).await?;
+    api_request(
+        AdminCommand::KillProcessById(pid.to_string()),
+        agent,
+        creds,
+        None,
+    )
+    .await?;
 
     Ok(())
 }
@@ -124,7 +130,7 @@ pub async fn copy_file(
         }
     };
 
-    api_request(AdminCommand::Copy((from, to)), agent, creds).await?;
+    api_request(AdminCommand::Copy((from, to)), agent, creds, None).await?;
 
     Ok(())
 }
@@ -157,6 +163,7 @@ pub async fn move_file(
         AdminCommand::Move((from.to_string(), to.to_string())),
         agent,
         creds,
+        None,
     )
     .await?;
 
@@ -184,7 +191,7 @@ pub async fn pull_file(
         }
     };
 
-    api_request(AdminCommand::Pull(target.to_string()), agent, creds).await?;
+    api_request(AdminCommand::Pull(target.to_string()), agent, creds, None).await?;
 
     Ok(())
 }
@@ -195,7 +202,7 @@ pub async fn remove_agent(
     state: State<Arc<AppState>>,
 ) -> Result<(), TaskDispatchError> {
     agent.has_agent_id()?;
-    api_request(AdminCommand::RemoveAgentFromList, &agent, creds).await?;
+    api_request(AdminCommand::RemoveAgentFromList, &agent, creds, None).await?;
 
     // Remove agent from connected_agents
     if let IsTaskingAgent::Yes(agent_id) = agent {
@@ -256,7 +263,7 @@ pub async fn set_sleep(
         ));
     }
 
-    api_request(AdminCommand::Sleep(sleep_time), agent, creds).await?;
+    api_request(AdminCommand::Sleep(sleep_time), agent, creds, None).await?;
 
     Ok(())
 }
@@ -283,7 +290,7 @@ pub async fn clear_terminal(
 pub async fn pwd(creds: &Credentials, agent: &IsTaskingAgent<'_>) -> Result<(), TaskDispatchError> {
     agent.has_agent_id()?;
 
-    api_request(AdminCommand::Pwd, agent, creds).await?;
+    api_request(AdminCommand::Pwd, agent, creds, None).await?;
 
     Ok(())
 }
@@ -294,7 +301,7 @@ pub async fn dir_listing(
 ) -> Result<(), TaskDispatchError> {
     agent.has_agent_id()?;
 
-    api_request(AdminCommand::Ls, agent, creds).await?;
+    api_request(AdminCommand::Ls, agent, creds, None).await?;
 
     Ok(())
 }
@@ -303,7 +310,13 @@ pub async fn show_server_time(
     creds: &Credentials,
     state: State<Arc<AppState>>,
 ) -> Result<(), TaskDispatchError> {
-    let result = api_request(AdminCommand::ShowServerTime, &IsTaskingAgent::No, creds).await?;
+    let result = api_request(
+        AdminCommand::ShowServerTime,
+        &IsTaskingAgent::No,
+        creds,
+        None,
+    )
+    .await?;
 
     let deserialised_response: DateTime<Utc> = serde_json::from_slice(&result)?;
 
@@ -327,7 +340,7 @@ pub async fn pillage(
 ) -> Result<(), TaskDispatchError> {
     agent.has_agent_id()?;
 
-    api_request(AdminCommand::ListUsersDirs, agent, creds).await?;
+    api_request(AdminCommand::ListUsersDirs, agent, creds, None).await?;
 
     Ok(())
 }
@@ -436,7 +449,7 @@ pub async fn run_powershell_command(
 
     let args_trimmed = args_string.trim().to_string();
 
-    api_request(AdminCommand::Run(args_trimmed), agent, creds).await?;
+    api_request(AdminCommand::Run(args_trimmed), agent, creds, None).await?;
 
     Ok(())
 }
@@ -464,7 +477,7 @@ pub async fn file_dropper(
         }
     };
 
-    api_request(AdminCommand::Drop(file_data), agent, creds).await?;
+    api_request(AdminCommand::Drop(file_data), agent, creds, None).await?;
 
     Ok(())
 }

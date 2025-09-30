@@ -63,6 +63,7 @@ pub async fn upload_file_api(state: State<Arc<AppState>>, mut multipart: Multipa
         AdminCommand::StageFileOnC2(staging_info),
         &IsTaskingAgent::No,
         &creds_lock,
+        None,
     )
     .await
     {
