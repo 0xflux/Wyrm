@@ -216,3 +216,8 @@ div.form-text {
 #building-indicator { display: none; }
 
 .htmx-request#building-indicator { display: block; }
+
+div.alert-wyrm {
+  background-color: rgb(244, 219, 214);
+  color: rgb(54, 58, 79);
+}
