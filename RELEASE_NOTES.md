@@ -4,7 +4,7 @@
 
 This release introduces the new GUI, which is a web based UI used to interact with the Wyrm C2.
 
-- New web based GUI! I have moved this to a [new repo](https://github.com/0xflux/wyrm_client) to reduce the pull and build sizes of this primary repo.
+- New web based GUI!
 - Docker is used to build and deploy the GUI, making it really straightforward.
 - Building payloads now downloads as a 7zip archive through the browser.
   - Install `sh` script updated to include 7z dependencies, if manually updating through a pull; make sure you have 7zip installed and available on PATH.
