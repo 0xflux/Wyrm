@@ -39,9 +39,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //
     print_info("Starting Wyrm GUI");
 
-    // dotenvy::dotenv()
-    //     .expect("dotenv file must be present and must contain admin token, refer to docs.");
-
     let static_files = ServeDir::new("static");
 
     let state = Arc::new(AppState::new());

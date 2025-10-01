@@ -113,12 +113,7 @@ pub struct AppState {
 impl AppState {
     pub fn new() -> Self {
         Self {
-            creds: RwLock::new(Some(Credentials {
-                username: "flux".into(),
-                password: "password".into(),
-                admin_env_token: "fdgiyh%^l!udjfh78364LU7&%df!!".into(),
-                c2_url: "http://127.0.0.1:8080".into(),
-            })),
+            creds: RwLock::new(None),
             connected_agents: RwLock::new(ConnectedAgentData::default()),
             active_tabs: RwLock::new((0, vec!["Server".into()])),
             last_tabs_hash: RwLock::new(None),

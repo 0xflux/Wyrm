@@ -1,13 +1,19 @@
-use std::env;
+use std::{env, sync::Arc};
 
 use axum::{
     Form,
+    extract::State,
+    http::HeaderMap,
+    http::StatusCode,
     response::{Html, IntoResponse},
 };
 use serde::Deserialize;
 use shared::tasks::AdminCommand;
 
-use crate::net::{Credentials, IsTaskingAgent, api_request};
+use crate::{
+    models::AppState,
+    net::{Credentials, IsTaskingAgent, api_request},
+};
 
 #[derive(Debug, Deserialize)]
 pub struct LoginFormData {
@@ -16,7 +22,10 @@ pub struct LoginFormData {
     pub password: String,
 }
 
-pub async fn try_login(Form(login): Form<LoginFormData>) -> impl IntoResponse {
+pub async fn try_login(
+    state: State<Arc<AppState>>,
+    Form(login): Form<LoginFormData>,
+) -> impl IntoResponse {
     let creds = Credentials {
         username: login.username.clone(),
         password: login.password.clone(),
@@ -49,6 +58,13 @@ pub async fn try_login(Form(login): Form<LoginFormData>) -> impl IntoResponse {
 
     if result_deser == "success" {
         // Login successful
+        let mut lock = state.creds.write().await;
+        *lock = Some(creds);
+
+        let mut headers = HeaderMap::new();
+        headers.insert("HX-Redirect", "/dashboard".parse().unwrap());
+
+        return (StatusCode::OK, headers).into_response();
     }
 
     let unknown_error = format!(
