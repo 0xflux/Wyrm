@@ -14,7 +14,7 @@
             <form id="file-upload-form" enctype="multipart/form-data" method="POST" action="/api/upload_file"
                   class="border rounded-3 p-4 shadow-sm">
                 <div class="mb-3">
-                    <label for="download_name" class="form-label fw-semibold">Download Name</label>
+                    <label for="download_name" class="form-label fw-semibold">Download Name (INCLUDING file extension)</label>
                     <input type="text" class="form-control" placeholder="invoice.pdf" name="download_name" id="download_name" required>
                     <div class="form-text">Include the file extension (e.g. <strong>.pdf</strong>, <strong>.exe</strong>). This is the name that will be downloaded onto the machine of the person downloading (e.g. what the browser will save it as), unless you grab it programmatically.</div>
                 </div>
