@@ -26,17 +26,19 @@ pub async fn build_all_profiles(
     state: State<Arc<AppState>>,
     Form(page_data): Form<BuildAllProfilesPageData>,
 ) -> Response {
-    if page_data.profile_name.is_empty() {
+    let profile_name = page_data.profile_name.trim();
+
+    if profile_name.is_empty() || profile_name.contains(" ") {
         return (
             StatusCode::BAD_REQUEST,
             Html(
-                r#"<div class="alert alert-danger">Please supply the profile name in your request.</div>"#,
+                r#"<div class="alert alert-danger">Please supply the profile name in your request and ensure it does not contain a space.</div>"#,
             ),
         ).into_response();
     }
 
     // Cleanse the input
-    let profile_name = page_data.profile_name.replace(".toml", "");
+    let profile_name = profile_name.replace(".toml", "");
 
     let creds = {
         let c = state.creds.read().await;
