@@ -7,11 +7,11 @@ edition = "2024"
 askama = "0.14.0"
 axum = { version = "0.8", features = ["macros", "multipart"]}
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
-serde = { version = "1.0.226", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.47.1", features = [ "rt-multi-thread", "macros" ]}
 tower-http = { version = "0.6.6", features = ["fs"] }
-shared = { git = "https://github.com/0xflux/wyrm", package = "shared", rev = "bcab08197e8f4a6f65215a2a9205879d1d10ff90" }
-shared_c2_client = { git = "https://github.com/0xflux/wyrm", package = "shared_c2_client", rev = "bcab08197e8f4a6f65215a2a9205879d1d10ff90" }
+shared = { git = "https://github.com/0xflux/wyrm", package = "shared", rev = "a5cb4252bd4f568d150293ba70510ec7ef793306" }
+shared_c2_client = { git = "https://github.com/0xflux/wyrm", package = "shared_c2_client", rev = "a5cb4252bd4f568d150293ba70510ec7ef793306" }
 serde_json = "1.0.145"
 dotenvy = "0.15.7"
 thiserror = "2.0.16"
