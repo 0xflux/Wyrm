@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        
+        <!-- Import bootstrap css -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+
+        <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.7/dist/htmx.min.js"></script>
+
+        <link href="static/styles.css" rel="stylesheet">
+        
+        <title>Login | Wyrm C2 Panel</title>
+        <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+    </head>
+    
+    <body class="text-center">
+        <div class="grid text-center">
+            <form 
+                class="form-signin"
+                autocomplete="off"
+                hx-post="/api/do_login"
+                hx-target="#login-box"
+                >
+                <img class="mb-4 logo" src="/static/wyrm_portrait.png" alt="">
+    
+                <h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>
+    
+                <label for="c2" class="sr-only">C2 address (and port if non-standard)</label>
+                <input type="url" id="c2" name="c2" class="form-control" placeholder="https://myc2.com" required autofocus>
+    
+                <label for="username" class="sr-only">Username</label>
+                <input type="username" id="username" name="username" class="form-control" placeholder="Username" required>
+    
+                <label for="password" class="sr-only">Password</label>
+                <input type="password" id="password" name="password" class="form-control" placeholder="Password" required>
+    
+                <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+
+                <div id="login-box"></div>
+            </form>
+
+            <footer>
+                <p class="mt-5 mb-3">&copy; Wyrm C2 <a href="https://github.com/0xflux/" target="_blank">0xflux</a></p>
+            </footer>
+        </div>
+
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+    </body>
+</html>

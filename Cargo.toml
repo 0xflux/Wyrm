@@ -1,3 +1,3 @@
 [workspace]
 resolver = "2"
-members = ["c2", "client","implant", "shared", "shared_c2_client", "client_v2"] 
+members = ["c2", "client","implant", "shared", "shared_c2_client"] 
