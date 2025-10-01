@@ -44,9 +44,11 @@
             <ul class="dropdown-menu">
                 <li>
                     <a class="dropdown-item {% if active_page == "build_profiles" %} active{% endif %}" href="/build_profiles">Build all agents</a></li>
-                <li><a class="dropdown-item" href="#">Website clone</a></li>
+                <li><a class="dropdown-item disabled" href="#">Website clone</a></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="#">Something else here</a></li>
+                <li>
+                    <a class="dropdown-item {% if active_page == "build_profiles" %} active{% endif %}" href="/staged_resources">View staged resources</a>
+                </li>
             </ul>
             </li>
         </ul>

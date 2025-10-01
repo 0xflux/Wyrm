@@ -108,3 +108,30 @@ pub async fn build_all_profiles_page() -> impl IntoResponse {
         .unwrap(),
     )
 }
+
+#[derive(Template)]
+#[template(path = "staged_resources.html")]
+struct StagedResourcesPage {
+    active_page: &'static str,
+    title: &'static str,
+}
+
+impl Page for StagedResourcesPage {
+    fn page_attributes() -> PageAttributes {
+        PageAttributes {
+            active_page: "staged_resources",
+            title: "Staged Resources",
+        }
+    }
+}
+
+pub async fn staged_resources_page() -> impl IntoResponse {
+    Html(
+        StagedResourcesPage {
+            active_page: StagedResourcesPage::page_attributes().active_page,
+            title: StagedResourcesPage::page_attributes().title,
+        }
+        .render()
+        .unwrap(),
+    )
+}

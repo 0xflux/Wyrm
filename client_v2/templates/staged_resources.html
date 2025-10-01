@@ -1,0 +1,56 @@
+{% include "header.html" %}
+
+<div id="file-upload-container" class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <h2 class="mb-2 fw-bold">Staged resources</h2>
+            <p>Type the name of the profile you wish to build from (do not include the
+                <code>.toml</code>). For example, to build from the default profile, type <code>default</code>.
+            </p>
+            <p>This builder will serve you the generated payloads as a 7zip archive for which you can do with as you please. 
+                It is recommended after using this, you use the upload function to stage a payload on the C2. 
+            </p>
+        </div>
+    </div>
+    <div class="row justify-content-center">
+        <div class="col-md-7 col-lg-6">
+            
+            <form id="stage-all-form" 
+                method="post" 
+                action="/api/stage_all" 
+                class="border rounded-3 p-4 shadow-sm">
+
+                <div class="mb-3">
+                    <label for="profile_name" class="form-label fw-semibold">Profile name</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        name="profile_name"
+                        id="profile_name"
+                        placeholder="Profile name"
+                        required
+                        >
+                    <div class="form-text">The profile name <strong>should not include the toml extension</strong>, and it should be present under <code>c2/profiles/</code>.</div>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Build</button>
+                <div class="form-text">
+                    Please do not refresh or navigate away from the page. The builder will return you a 7zip archive 
+                    containing the agent binaries. Note: This may take some time, and unless you get an error message - <strong>please
+                    wait and allow it to serve you the files</strong>.
+                </div>
+            </form>
+
+            <div id="response-box" class="mt-3"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+  document.getElementById("stage-all-form").addEventListener("submit", () => {
+    document.getElementById("response-box").innerHTML =
+      '<div class="alert alert-wyrm">Building all payloads, please wait… This may take up to a minute.. or so...</div>';
+  });
+</script>
+
+{% include "footer.html" %}
