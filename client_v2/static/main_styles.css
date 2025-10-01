@@ -4,14 +4,17 @@
   --bg: rgb(36,39,58);
   --link: rgb(202, 211, 245);
   --link-hover: rgb(240, 198, 198);
+  --page-inner-box: rgb(54, 58, 79);
+  --text-color: rgb(202, 211, 245);
 }
 
 html, body { height:100%; margin:0; }
+
 body.app{
   display:grid;
   grid-template-rows: auto var(--agents-h) auto 1fr var(--input-h);
   min-height:100vh;
-  overflow:hidden;
+  /* overflow:hidden; */
   background: var(--bg);
 }
 
@@ -69,6 +72,10 @@ div#connected-agent-container div#agents-header {
   color: var(--link);
 }
 
+div.center-table {
+  overflow-y: scroll!important;
+}
+
 #display-panel {
   margin-top: 20px;
 }
@@ -93,8 +100,7 @@ div#connected-agent-container div#agents-header {
 #message-panel{
   overflow:auto;
   padding: 15px 15px 0 15px!important;
-  background: rgb(54, 58, 79);
-  /* keep last lines + scrollbar visible above the input bar */
+  background: var(--page-inner-box);
   padding-bottom: var(--input-h);
   scrollbar-gutter: stable both-edges;
   color: var(--link);
@@ -185,7 +191,7 @@ div#connected-agent-container div#agents-header {
 .tabbar .nav-link { color: rgb(238,212,159); }
 .tabbar .nav-link:hover { color: rgb(238,153,160); }
 .tabbar .nav-link.active{
-  background: rgb(54, 58, 79) !important;
+  background: var(--page-inner-box);
   color: var(--link-hover) !important;
 }
 
@@ -198,10 +204,10 @@ a.agent-stale {
 }
 
 #file-upload-form, #stage-all-form {
-  background-color: rgb(54, 58, 79)!important;
+  background-color: var(--page-inner-box);
 }
 
-#file-upload-container, #file-upload-container p {
+.app-page, .app-page p {
   color: rgb(202, 211, 245);
 }
 
@@ -219,5 +225,25 @@ div.form-text {
 
 div.alert-wyrm {
   background-color: rgb(244, 219, 214);
-  color: rgb(54, 58, 79);
+  color: var(--page-inner-box);
+}
+
+table#staged-resources-tbl, 
+table#staged-resources-tbl thead, 
+table#staged-resources-tbl tbody, 
+table#staged-resources-tbl tr th,
+table#staged-resources-tbl tr td,
+table#staged-resources-tbl tr {
+  background-color: var(--page-inner-box)!important;
+  color: var(--text-color)!important;
+}
+
+table#staged-resources-tbl tr td a {
+  color: var(--link-hover);
+  text-decoration: none;
+}
+
+table#staged-resources-tbl tr td a:hover {
+  color: var(--link);
+  text-decoration: none;
 }
