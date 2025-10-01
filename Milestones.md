@@ -9,11 +9,9 @@ The 0.3 version will introduce the new GUI, which makes sense to do before addin
 new commands I want present before v1.0; there is little point implementing them on a UI which
 will be deprecated soon after.
 
-1) [ ] Redesign GUI into web interface
-   1) [ ] Staged resources need their own panel somewhere, or a menu item / "Server" item drop down; or maybe in the server tab?
-2) [ ] Dockerise the gui
-3) [ ] Max upload size becomes env (or default 500 mb) - this should also be matched on the c2
-4) [ ] Connect up creds and URL on login
+1) [ ] Dockerise the gui
+2) [ ] Max upload size becomes env (or default 500 mb) - this should also be matched on the c2
+3) [ ] Connect up creds and URL on login
 
 ### v0.4
 
