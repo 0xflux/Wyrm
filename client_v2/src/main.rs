@@ -6,6 +6,7 @@ use axum::{
     routing::{get, post},
     serve,
 };
+use shared::pretty_print::print_info;
 use tower_http::services::ServeDir;
 
 use crate::{
@@ -36,9 +37,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //
     // Environment setup
     //
+    print_info("Starting Wyrm GUI");
 
-    dotenvy::dotenv()
-        .expect("dotenv file must be present and must contain admin token, refer to docs.");
+    // dotenvy::dotenv()
+    //     .expect("dotenv file must be present and must contain admin token, refer to docs.");
 
     let static_files = ServeDir::new("static");
 
@@ -80,7 +82,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Serve the app
     //
 
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:4040").await?;
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:4040").await?;
+
+    print_info("Started app..");
 
     serve(
         listener,

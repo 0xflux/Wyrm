@@ -12,6 +12,7 @@ will be deprecated soon after.
 1) [ ] Dockerise the gui
 2) [ ] Max upload size becomes env (or default 500 mb) - this should also be matched on the c2
 3) [ ] Connect up creds and URL on login
+4) [ ] Update revision deps for shared (or remove?)
 
 ### v0.4
 
