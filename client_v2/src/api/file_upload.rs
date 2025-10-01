@@ -1,15 +1,11 @@
 use std::sync::Arc;
 
 use axum::{
-    Form,
     extract::{Multipart, State},
     http::StatusCode,
-    response::{IntoResponse, Redirect, Response},
+    response::{Html, IntoResponse, Redirect, Response},
 };
-use shared::{
-    pretty_print::print_failed,
-    tasks::{AdminCommand, FileUploadStagingFromClient, WyrmResult},
-};
+use shared::tasks::{AdminCommand, FileUploadStagingFromClient, WyrmResult};
 
 use crate::{
     models::AppState,
@@ -36,17 +32,35 @@ pub async fn upload_file_api(state: State<Arc<AppState>>, mut multipart: Multipa
         }
     }
 
-    if form_data.download_name.is_empty() || form_data.download_api.is_empty() {
-        // TODO return bad
+    let download_api = form_data.download_api.trim();
+
+    if form_data.download_name.is_empty() || download_api.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Html(r#"<div class="alert alert-danger">Fields cannot be empty.</div>"#),
+        )
+            .into_response();
     }
 
     if form_data.file_data.len() == 0 {
-        // TODO return bad
+        return (
+            StatusCode::BAD_REQUEST,
+            Html(r#"<div class="alert alert-danger">File upload must not be empty.</div>"#),
+        )
+            .into_response();
+    }
+
+    if download_api.contains(" ") {
+        return (
+            StatusCode::BAD_REQUEST,
+            Html(r#"<div class="alert alert-danger">Download API cannot contain a space.</div>"#),
+        )
+            .into_response();
     }
 
     let staging_info = FileUploadStagingFromClient {
         download_name: form_data.download_name,
-        api_endpoint: form_data.download_api,
+        api_endpoint: download_api.into(),
         file_data: form_data.file_data,
     };
 
