@@ -38,7 +38,7 @@ set +o allexport
 sudo apt update -qq
 sudo apt install -qq -y postgresql postgresql-contrib build-essential \
     pkg-config libssl-dev gcc-mingw-w64-x86-64 \
-    g++-mingw-w64-x86-64 curl libgtk-3-dev clang
+    g++-mingw-w64-x86-64 curl libgtk-3-dev clang p7zip-full p7zip-rar
 
 
 #

@@ -14,7 +14,8 @@ use shared_c2_client::ADMIN_AUTH_SEPARATOR;
 use crate::{
     app_state::AppState,
     logging::{
-        log_admin_login_attempt, log_download_accessed, log_error_async, log_page_accessed_auth, log_page_accessed_no_auth
+        log_admin_login_attempt, log_download_accessed, log_error_async, log_page_accessed_auth,
+        log_page_accessed_no_auth,
     },
 };
 
@@ -93,7 +94,8 @@ pub async fn authenticate_admin(
                     log_error_async(&format!(
                         "There was an error with the db whilst trying to log in with creds: \
                         {username} {password}. {e}",
-                    )).await;
+                    ))
+                    .await;
                     log_admin_login_attempt(username, password, token, ip, false).await;
                     return StatusCode::NOT_FOUND.into_response();
                 }

@@ -1,11 +1,11 @@
-# Wyrm - v0.2 Hatchling
+# Wyrm - v0.3 Hatchling
 
 &#128679; Pre-release version &#128679;. If you want to support this project, please give it a star! I will be releasing updates and
 devlogs on my [blog](https://fluxsec.red/) and [YouTube](https://www.youtube.com/@FluxSec) to document progress, so please give me a follow there.
 
-Wyrm (pronounced 'worm', an old English word for 'serpent' or 'dragon') is a post exploitation, open source, Red Team malware framework, written in Rust designed to be used by Red Teams, Purple Teams, 
+Wyrm (pronounced 'worm', an old English word for 'serpent' or 'dragon') is a post exploitation, open source, Red Team security testing framework framework, written in Rust designed to be used by Red Teams, Purple Teams, 
 Penetration Testers, and general infosec hobbyists. This project is fully built in Rust, with extra effort going into obfuscating artifacts which
-could be present in memory. Project created and maintained by [flux](https://github.com/0xflux/), for legal authorised security testing only.
+could be present in memory. Project created and maintained by [flux](https://github.com/0xflux/), for **legal authorised security testing only**.
 
 ![Wyrm Malware Post Exploitation Implant Red Team](resources/wyrm_landscape.png)
 
@@ -84,25 +84,8 @@ The user account is created as `sudo useradd --system --no-create-home --shell /
 
 **Client Setup**
 
-1) Clone the repo to your local machine (for running the client) and ensure you have Rust installed on your local machine.
-2) Edit `client/.env`:
-   1) `ADMIN_TOKEN` must match what you set the `/c2/.env` `ADMIN_TOKEN` to. This token is used to authorise your comms with the C2.
-   2) `C2_URL` must be the address of where your serverr is running, if localhost then you can leave as is, otherwise, edit so the client can connect to the c2. 
-3) You can run the client from the client crate, with `cargo run`
-
-You will be asked to login - if this is the first time logging in, the act of logging in here will create your account. The C2
-uses the `ADMIN_TOKEN` you set when creating the account so that an adversary cannot take over the C2 before you create the user; the adversary would need
-your `ADMIN_TOKEN`, so make sure it is **sufficiently complex**.
-
-If you are manually building the client from LInux, you must ensure GTK3 is installed, this can be done via:
-
-| Distro | Command |
-| ---- | ---- |
-| Fedora | `dnf install gtk3-devel` | 
-| Arch | `pacman -S gtk3` | 
-| Debian & Ubuntu | `apt install libgtk-3-dev` |
-
-On Windows, installing gtk3 is not required.
+Simply follow the instructions in the `client` directory, using `docker` to run the GUI. You will need to ensure the admin token (instructions found
+within) matches the admin token on the C2 as explained above.
 
 **If running locally**
 

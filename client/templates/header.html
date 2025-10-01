@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        
+        <!-- Import bootstrap css -->
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+
+        <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.7/dist/htmx.min.js"></script>
+        <script src="https://unpkg.com/idiomorph@0.7.3/dist/idiomorph-ext.min.js" integrity="sha384-szktAZju9fwY15dZ6D2FKFN4eZoltuXiHStNDJWK9+FARrxJtquql828JzikODob" crossorigin="anonymous"></script>
+
+        <link href="static/main_styles.css" rel="stylesheet">
+        
+        <title>{{ title }} | Wyrm C2 Panel</title>
+        <link rel="icon" type="image/x-icon" href="/static/favicon.ico" />
+    </head>
+    
+    <body class="app">
+        
+
+    <nav class="navbar navbar-expand-lg">
+    <div class="container-fluid">
+        <a class="navbar-brand plain" href="#">Wyrm C2</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+            <li class="nav-item">
+                <a class="nav-link{% if active_page == "dashboard" %} active{% endif %}" aria-current="page" href="/dashboard">Dashboard</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link{% if active_page == "upload" %} active{% endif %}" href="/file_upload">Upload</a>
+            </li>
+            <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle {% 
+                if active_page == "build_profiles" || active_page == "staged_resources" %} active{% endif %}" 
+                    href="#" 
+                    role="button" 
+                    data-bs-toggle="dropdown" 
+                    aria-expanded="false">
+                Preparation
+            </a>
+            <ul class="dropdown-menu">
+                <li>
+                    <a class="dropdown-item {% if active_page == "build_profiles" %} active{% endif %}" href="/build_profiles">Build all agents</a></li>
+                <li><a class="dropdown-item disabled" href="#">Website clone</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li>
+                    <a class="dropdown-item {% if active_page == "staged_resources" %} active{% endif %}" href="/staged_resources">View staged resources</a>
+                </li>
+            </ul>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="/logout">Logout</a>
+            </li>
+        </ul>
+        </div>
+    </div>
+    </nav>

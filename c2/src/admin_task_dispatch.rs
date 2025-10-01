@@ -1,4 +1,5 @@
 use std::{
+    fs::{create_dir, create_dir_all},
     io,
     path::{Path, PathBuf},
     sync::Arc,
@@ -13,11 +14,15 @@ use crate::{
 use axum::extract::State;
 use chrono::{SecondsFormat, Utc};
 use serde_json::Value;
-use shared::tasks::{
-    AdminCommand, BuildAllBins, Command, FileDropMetadata, FileUploadStagingFromClient,
-    NewAgentStaging, StageType, WyrmResult,
+use shared::{
+    pretty_print::print_failed,
+    tasks::{
+        AdminCommand, BuildAllBins, Command, FileDropMetadata, FileUploadStagingFromClient,
+        NewAgentStaging, StageType, WyrmResult,
+    },
 };
-use tokio::fs;
+use shared_c2_client::AgentC2MemoryNotifications;
+use tokio::{fs, io::AsyncReadExt};
 
 /// Main dispatcher for admin commands issued on the server, which may, or may not, include an
 /// implant UID.
@@ -103,7 +108,7 @@ pub async fn admin_dispatch(
         AdminCommand::Pull(file_path) => {
             task_agent(Command::Pull, Some(file_path), uid.unwrap(), state).await
         }
-        AdminCommand::BuildAllBins(bab) => build_all_bins(bab, state).await,
+        AdminCommand::BuildAllBins(_) => None,
     };
 
     serde_json::to_vec(&result).unwrap()
@@ -112,9 +117,22 @@ pub async fn admin_dispatch(
 /// Builds all binaries from a given profile
 ///
 /// On success, this function returns None, otherwise an Error is encoded within a `Value` as a `WyrmResult`
-async fn build_all_bins(bab: BuildAllBins, state: State<Arc<AppState>>) -> Option<Value> {
-    let save_path = PathBuf::from(bab.1);
+pub async fn build_all_bins(
+    bab: BuildAllBins,
+    state: State<Arc<AppState>>,
+) -> Result<Vec<u8>, String> {
+    // Save into tmp within profiles, we will delete it on completion.
+    let save_path = PathBuf::from("./profiles/tmp");
     let profile_name = bab.0;
+
+    if let Err(e) = create_dir_all(&save_path) {
+        let msg = format!(
+            "Failed to create tmp directory on c2 for profile staging. {}",
+            e.kind()
+        );
+        log_error_async(&msg).await;
+        return Err(msg);
+    };
 
     //
     // Read the profile from disk
@@ -125,10 +143,8 @@ async fn build_all_bins(bab: BuildAllBins, state: State<Arc<AppState>>) -> Optio
         Err(e) => {
             let msg = format!("Error reading profile: {profile_name}. {e:?}");
             log_error_async(&msg).await;
-
-            let msg_s = WyrmResult::Err::<String>(msg);
-            let ser = serde_json::to_value(msg_s).unwrap();
-            return Some(ser);
+            let _ = remove_dir(&save_path).await?;
+            return Err(msg);
         }
     };
 
@@ -138,7 +154,7 @@ async fn build_all_bins(bab: BuildAllBins, state: State<Arc<AppState>>) -> Optio
     //
     // Transform the profile into a valid `NewAgentStaging`
     //
-    let mut data = match profile.as_staged_agent(
+    let data = match profile.as_staged_agent(
         listener_profile_name,
         implant_profile_name,
         StageType::All,
@@ -147,9 +163,8 @@ async fn build_all_bins(bab: BuildAllBins, state: State<Arc<AppState>>) -> Optio
         WyrmResult::Err(e) => {
             let msg = format!("Error constructing a NewAgentStaging: {profile_name}. {e:?}");
             log_error_async(&msg).await;
-
-            let ser = serde_json::to_value(WyrmResult::Err::<String>(msg)).unwrap();
-            return Some(ser);
+            let _ = remove_dir(&save_path).await?;
+            return Err(msg);
         }
     };
 
@@ -170,7 +185,9 @@ async fn build_all_bins(bab: BuildAllBins, state: State<Arc<AppState>>) -> Optio
         if let Err(e) = cmd_build_output {
             let msg = &format!("Failed to build agent. {e}");
             log_error_async(msg).await;
-            return stage_new_agent_error_printer(msg, &data.staging_endpoint, state).await;
+            let _ = stage_new_agent_error_printer(msg, &data.staging_endpoint, state).await;
+            let _ = remove_dir(&save_path).await?;
+            return Err(msg.to_owned());
         }
 
         let output = cmd_build_output.unwrap();
@@ -181,7 +198,10 @@ async fn build_all_bins(bab: BuildAllBins, state: State<Arc<AppState>>) -> Optio
             );
             log_error_async(msg).await;
 
-            return stage_new_agent_error_printer(msg, &data.staging_endpoint, state).await;
+            let _ = stage_new_agent_error_printer(msg, &data.staging_endpoint, state).await;
+            let _ = remove_dir(&save_path).await?;
+
+            return Err(msg.to_owned());
         }
 
         //
@@ -216,13 +236,14 @@ async fn build_all_bins(bab: BuildAllBins, state: State<Arc<AppState>>) -> Optio
         }) {
             let msg = format!("Failed to add extension to local file. {dest:?}");
             log_error_async(&msg).await;
+            let _ = remove_dir(&save_path).await?;
 
-            return Some(serde_json::to_value(WyrmResult::Err::<String>(msg)).unwrap());
+            return Err(msg);
         };
 
         // Error check..
         if let Err(e) = tokio::fs::rename(&src, &dest).await {
-            return stage_new_agent_error_printer(
+            let _ = stage_new_agent_error_printer(
                 &format!(
                     "Failed to rename built agent, looking for: {}, to rename to: {}. {e}",
                     src.display(),
@@ -232,29 +253,104 @@ async fn build_all_bins(bab: BuildAllBins, state: State<Arc<AppState>>) -> Optio
                 state,
             )
             .await;
+            let _ = remove_dir(&save_path).await?;
+
+            return Err(format!("Failed to rename agent. {e}"));
         };
 
         //
         // Update state to include a new endpoint for the listeners
         //
         if let Err(e) = is_download_staging_url_error(&data, &state).await {
-            return stage_new_agent_error_printer(
-                &format!("The download URL matches an existing one, or a URL which is used for agent check-in, \
-                this is not permitted. Kind: {e:?}"),
-                &data.staging_endpoint,
-                state,
-            )
-            .await;
+            let msg = format!(
+                "The download URL matches an existing one, or a URL which is used for agent check-in, \
+                this is not permitted. Kind: {e:?}"
+            );
+            let _ = stage_new_agent_error_printer(&msg, &data.staging_endpoint, state).await;
+            let _ = remove_dir(&save_path).await?;
+
+            return Err(msg);
         }
     }
 
-    None
+    // TODO
+    // - delete the temp directory once we have read the 7z into memory
+    // - return the 7z file as a buffer and have the client serve as a download for the user
+    const ZIP_OUTPUT_PATH: &str = "./profiles/tmp.7z";
+    let mut cmd = tokio::process::Command::new("7z");
+    cmd.args([
+        "a",
+        ZIP_OUTPUT_PATH,
+        &format!("{}", save_path.as_os_str().display()),
+    ]);
+
+    if let Err(e) = cmd.output().await {
+        let msg = format!("Error creating 7z archive with resulting payloads. {e}");
+        let _ = stage_new_agent_error_printer(&msg, &data.staging_endpoint, state).await;
+        print_failed(&msg);
+        let _ = remove_dir(&save_path).await?;
+
+        return Err(msg);
+    };
+
+    //
+    // At this point, we have created the 7z. We now want to read it into a buffer in memory,
+    // delete the archive, then return the buffer back to the user. We will send it through as a
+    // byte stream, which the client can then re-interpret as a file download.
+    //
+    let _ = remove_dir(&save_path).await?;
+
+    let mut buf = Vec::new();
+    let mut file = match tokio::fs::File::open(ZIP_OUTPUT_PATH).await {
+        Ok(f) => f,
+        Err(e) => {
+            let msg = format!("Error opening 7z file. {e}");
+            let _ = stage_new_agent_error_printer(&msg, &data.staging_endpoint, state).await;
+            print_failed(&msg);
+            let _ = remove_dir(&save_path).await?;
+
+            return Err(msg);
+        }
+    };
+
+    if let Err(e) = file.read_to_end(&mut buf).await {
+        let msg = format!("Error reading 7z file. {e}");
+        let _ = stage_new_agent_error_printer(&msg, &data.staging_endpoint, state).await;
+        print_failed(&msg);
+        let _ = remove_dir(&save_path).await?;
+
+        return Err(msg);
+    }
+
+    remove_file(ZIP_OUTPUT_PATH).await?;
+
+    Ok(buf)
+}
+
+async fn remove_dir(save_path: impl AsRef<Path>) -> Result<(), String> {
+    if let Err(e) = fs::remove_dir_all(save_path).await {
+        let msg = format!("Failed to remove directory for tmp after building profiles. {e}");
+        log_error_async(&msg).await;
+        return Err(msg);
+    }
+
+    Ok(())
+}
+
+async fn remove_file(file_path: impl AsRef<Path>) -> Result<(), String> {
+    if let Err(e) = fs::remove_file(file_path.as_ref()).await {
+        let msg = format!("Failed to remove file for tmp.7z after building profiles. {e}");
+        log_error_async(&msg).await;
+        return Err(msg);
+    }
+
+    Ok(())
 }
 
 async fn list_agents(state: State<Arc<AppState>>) -> Option<Value> {
     let agents = state.connected_agents.list_agents();
 
-    let mut new_agents: Vec<(String, bool)> = Vec::new();
+    let mut new_agents: Vec<AgentC2MemoryNotifications> = Vec::new();
 
     let mut maybe_entry = agents.first_entry_async().await;
     while let Some(row) = maybe_entry {
@@ -271,7 +367,9 @@ async fn list_agents(state: State<Arc<AppState>>) -> Option<Value> {
             agent.uid, last_check_in, agent.first_run_data.b, agent.first_run_data.c,
         );
 
-        new_agents.push((formatted, agent.is_stale));
+        let new_messages = pull_notifications_for_agent(agent.uid.clone(), state.clone()).await;
+
+        new_agents.push((formatted, agent.is_stale, new_messages));
 
         drop(agent);
         maybe_entry = row.next_async().await;

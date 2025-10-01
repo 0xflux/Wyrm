@@ -9,8 +9,7 @@ The 0.3 version will introduce the new GUI, which makes sense to do before addin
 new commands I want present before v1.0; there is little point implementing them on a UI which
 will be deprecated soon after.
 
-1) [ ] New GUI should have its own repo to remove bloat from here.
-2) [ ] Redesign GUI into web interface
+1) [ ] Update revision deps for shared (or remove?)
 
 ### v0.4
 
@@ -25,6 +24,7 @@ will be deprecated soon after.
 9) [ ] Round robin and different styles for URI & URL rotation
 10) [ ] `rm` command
 11) [ ] Improve formatting of output of running `ps`
+12) [ ] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp). The C2 can run this on the binary; maybe build as a separate lib and include, or just a separate module.
 
 ### 0.5
 
@@ -36,10 +36,12 @@ will be deprecated soon after.
 3) [ ] Build implant as svc
 4) [ ] Multiple profiles for listener and implant
 5) [ ] Admin URI can be configured specifically in the profile - this will help defeat a little CTI
+6) [ ] Number of downloads for staged resources
 
 ### 0.6
 
 1) [ ] C2 'dockerised' for easier deployment
+2) [ ] Max upload size set on C2
  
 ### v1.0 - Whelpfire
 
