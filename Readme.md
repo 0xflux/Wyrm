@@ -3,6 +3,13 @@
 &#128679; Pre-release version &#128679;. If you want to support this project, please give it a star! I will be releasing updates and
 devlogs on my [blog](https://fluxsec.red/) and [YouTube](https://www.youtube.com/@FluxSec) to document progress, so please give me a follow there.
 
+**TL;DR**
+
+- Pull this repo which contains the C2 and Implant, build and run instructions below (note, moving to docker soon)
+- The GUI can be found in [wyrm_client](https://github.com/0xflux/wyrm_client) repo - I have separated the code out to make pull sizes a little smaller
+
+## Wyrm
+
 Wyrm (pronounced 'worm', an old English word for 'serpent' or 'dragon') is a post exploitation, open source, Red Team security testing framework framework, written in Rust designed to be used by Red Teams, Purple Teams, 
 Penetration Testers, and general infosec hobbyists. This project is fully built in Rust, with extra effort going into obfuscating artifacts which
 could be present in memory. Project created and maintained by [flux](https://github.com/0xflux/), for **legal authorised security testing only**.
