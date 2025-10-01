@@ -3,6 +3,7 @@ use std::{net::SocketAddr, sync::Arc};
 use axum::{
     Router,
     extract::DefaultBodyLimit,
+    middleware::{from_fn, from_fn_with_state},
     routing::{get, post},
     serve,
 };
@@ -24,10 +25,12 @@ use crate::{
         profile_builder::build_all_profiles,
         staged_resources::fetch_staged_resources,
     },
+    middleware::check_logged_in,
     models::AppState,
 };
 
 mod api;
+mod middleware;
 mod models;
 mod net;
 mod tasks;
@@ -73,6 +76,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nest_service("/static", static_files)
         // Max upload sz of 500 MB
         .layer(DefaultBodyLimit::max(1500 * 1024 * 1024))
+        .layer(from_fn_with_state(state.clone(), check_logged_in))
         .with_state(state.clone());
 
     //
