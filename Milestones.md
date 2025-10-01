@@ -39,6 +39,7 @@ will be deprecated soon after.
 3) [ ] Build implant as svc
 4) [ ] Multiple profiles for listener and implant
 5) [ ] Admin URI can be configured specifically in the profile - this will help defeat a little CTI
+6) [ ] Number of downloads for staged resources
 
 ### 0.6
 
