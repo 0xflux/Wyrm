@@ -16,17 +16,20 @@
                     <tr>
                         <th class="col">Download name</th>
                         <th class="col">URI</th>
-                        <th class="col">Link</th>
                         <th class="col"># downloads</th>
                     </tr>
                 </thead>
 
-                <tbody>
+                <tbody
+                id="staged-resource-rows"
+                    hx-get="/api/list_staged_resources"
+                    hx-trigger="load"
+                    hx-target="#staged-resource-rows"
+                    hx-swap="innerHTML">
                     <tr>
-                        <td class="col">my_test.html</td>
-                        <td class="col">/something</td>
-                        <td class="col"><a href="#">Link</a></td>
-                        <td class="col disabled">Coming soon</td>
+                        <td class="col">Loading data please wait..</td>
+                        <td class="col"></td>
+                        <td class="col disabled"></td>
                     </tr>
                 </tbody>
 
@@ -36,12 +39,5 @@
     </div>
 
 </div>
-
-<script>
-  document.getElementById("stage-all-form").addEventListener("submit", () => {
-    document.getElementById("response-box").innerHTML =
-      '<div class="alert alert-wyrm">Building all payloads, please wait… This may take up to a minute.. or so...</div>';
-  });
-</script>
 
 {% include "footer.html" %}
