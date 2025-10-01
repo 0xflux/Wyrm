@@ -3,14 +3,6 @@
 Any item with a (L) tag is a contribution which will not be live (or requires further decision making) as this is intended to be
 developed as a premium or otherwise private feature. These will be few and far between.
 
-### 0.3
-
-The 0.3 version will introduce the new GUI, which makes sense to do before adding in the
-new commands I want present before v1.0; there is little point implementing them on a UI which
-will be deprecated soon after.
-
-1) [ ] Update revision deps for shared (or remove?)
-
 ### v0.4
 
 1) [ ] Add a note to an implant
