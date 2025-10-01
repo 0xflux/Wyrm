@@ -21,7 +21,7 @@
                 <div class="mb-3">
                     <label for="staging_uri" class="form-label fw-semibold">Staging C2 URI Endpoint</label>
                     <input type="text" class="form-control" placeholder="contracts/microsoft/2025/msft_contract_25&auth=..." name="staging_uri" id="staging_uri" required>
-                    <div class="form-text">Multi-path and URL params allowed. Example: <code>download</code> or <code>files/secret?auth=token</code></div>
+                    <div class="form-text">Multi-path and URL params allowed. Example: <code>download</code> or <code>files/secret?auth=token</code>. Note: the server will reject the path if it contains a space, so do not include a space here.</div>
                 </div>
                 <div class="mb-3">
                     <label for="file_input" class="form-label fw-semibold">Choose File</label>

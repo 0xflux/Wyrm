@@ -13,6 +13,7 @@ will be deprecated soon after.
    1) [ ] Staged resources need their own panel somewhere, or a menu item / "Server" item drop down; or maybe in the server tab?
 2) [ ] Dockerise the gui
 3) [ ] Max upload size becomes env (or default 500 mb) - this should also be matched on the c2
+4) [ ] Connect up creds and URL on login
 
 ### v0.4
 

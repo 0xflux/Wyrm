@@ -32,7 +32,7 @@ pub async fn upload_file_api(state: State<Arc<AppState>>, mut multipart: Multipa
         }
     }
 
-    let download_api = form_data.download_api.trim();
+    let mut download_api = form_data.download_api.trim();
 
     if form_data.download_name.is_empty() || download_api.is_empty() {
         return (
@@ -56,6 +56,10 @@ pub async fn upload_file_api(state: State<Arc<AppState>>, mut multipart: Multipa
             Html(r#"<div class="alert alert-danger">Download API cannot contain a space.</div>"#),
         )
             .into_response();
+    }
+
+    if download_api.starts_with("/") {
+        download_api = download_api.strip_prefix("/").unwrap().into();
     }
 
     let staging_info = FileUploadStagingFromClient {
