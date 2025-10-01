@@ -21,6 +21,7 @@ use crate::{
             upload_file_page,
         },
         profile_builder::build_all_profiles,
+        staged_resources::fetch_staged_resources,
     },
     models::AppState,
 };
@@ -66,6 +67,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/api/dashboard/show_messages", get(show_implant_messages))
         .route("/api/upload_file", post(upload_file_api))
         .route("/api/stage_all", post(build_all_profiles))
+        .route("/api/list_staged_resources", get(fetch_staged_resources))
         //
         // Static content
         //
