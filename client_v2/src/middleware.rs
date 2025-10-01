@@ -16,7 +16,7 @@ pub async fn check_logged_in(
 ) -> Response {
     // public allowlist
     let path = req.uri().path();
-    if path == "/" || path == "/api/do_login" || path.starts_with("/static/") {
+    if path == "/" || path == "/api/do_login" || path == "/logout" || path.starts_with("/static/") {
         return next.run(req).await;
     }
 
@@ -27,7 +27,7 @@ pub async fn check_logged_in(
     let lock = state.creds.read().await;
 
     if lock.is_none() {
-        return Redirect::temporary("/").into_response();
+        return Redirect::to("/").into_response();
     }
 
     next.run(req).await

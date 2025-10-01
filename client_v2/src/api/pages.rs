@@ -2,7 +2,7 @@ use crate::models::{ActiveTabData, AppState};
 use askama::Template;
 use axum::{
     extract::State,
-    response::{Html, IntoResponse},
+    response::{Html, IntoResponse, Redirect, Response},
 };
 use std::sync::Arc;
 
@@ -134,4 +134,11 @@ pub async fn staged_resources_page() -> impl IntoResponse {
         .render()
         .unwrap(),
     )
+}
+
+pub async fn logout(state: State<Arc<AppState>>) -> Response {
+    let mut lock = state.creds.write().await;
+    *lock = None;
+
+    Redirect::to("/").into_response()
 }

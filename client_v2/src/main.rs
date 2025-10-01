@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, sync::Arc};
+use std::{env, net::SocketAddr, sync::Arc};
 
 use axum::{
     Router,
@@ -19,7 +19,7 @@ use crate::{
         file_upload::upload_file_api,
         login::try_login,
         pages::{
-            build_all_profiles_page, serve_dash, serve_login, staged_resources_page,
+            build_all_profiles_page, logout, serve_dash, serve_login, staged_resources_page,
             upload_file_page,
         },
         profile_builder::build_all_profiles,
@@ -45,6 +45,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let static_files = ServeDir::new("static");
 
     let state = Arc::new(AppState::new());
+    let max_upload_mb = 50000000; // this is stupidly big, and will be controlled on the C2.
+
+    println!("Max upload {max_upload_mb}");
 
     //
     // Build the routes
@@ -56,6 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .route("/file_upload", get(upload_file_page))
         .route("/build_profiles", get(build_all_profiles_page))
         .route("/staged_resources", get(staged_resources_page))
+        .route("/logout", get(logout))
         //
         // APIs
         //
@@ -75,7 +79,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         //
         .nest_service("/static", static_files)
         // Max upload sz of 500 MB
-        .layer(DefaultBodyLimit::max(1500 * 1024 * 1024))
+        .layer(DefaultBodyLimit::max(max_upload_mb * 1024 * 1024))
         .layer(from_fn_with_state(state.clone(), check_logged_in))
         .with_state(state.clone());
 
