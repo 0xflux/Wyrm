@@ -5,18 +5,19 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 ### v0.4
 
-1) [ ] Add a note to an implant
-2) [ ] `reg add`, `reg query`, `reg delete`
-3) [ ] .env migrated to the profile TOML
-4) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
-5) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
-6) [ ] Consider deprecating the sleep in `listener` and moving it to the `implant` section instead
-7) [ ] Multiple URLs / IPs for C2
-8) [ ] Separate URIs for POST and GET
-9) [ ] Round robin and different styles for URI & URL rotation
-10) [ ] `rm` command
-11) [ ] Improve formatting of output of running `ps`
-12) [ ] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp). The C2 can run this on the binary; maybe build as a separate lib and include, or just a separate module.
+1) [ ] Don't use fields a,b,c,d,e etc - use some serde magic if its an artifact issue
+2) [ ] Add a note to an implant
+3) [ ] `reg add`, `reg query`, `reg delete`
+4) [ ] .env migrated to the profile TOML
+5) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
+6) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
+7) [ ] Consider deprecating the sleep in `listener` and moving it to the `implant` section instead
+8) [ ] Multiple URLs / IPs for C2
+9) [ ] Separate URIs for POST and GET
+10) [ ] Round robin and different styles for URI & URL rotation
+11) [ ] `rm` command
+12) [ ] Improve formatting of output of running `ps`
+13) [ ] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp). The C2 can run this on the binary; maybe build as a separate lib and include, or just a separate module.
 
 ### 0.5
 
@@ -29,6 +30,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 4) [ ] Multiple profiles for listener and implant
 5) [ ] Admin URI can be configured specifically in the profile - this will help defeat a little CTI
 6) [ ] Number of downloads for staged resources
+7) [ ] String stomping options on built binary 
 
 ### 0.6
 
