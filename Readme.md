@@ -3,6 +3,12 @@
 &#128679; Pre-release version &#128679;. If you want to support this project, please give it a star! I will be releasing updates and
 devlogs on my [blog](https://fluxsec.red/) and [YouTube](https://www.youtube.com/@FluxSec) to document progress, so please give me a follow there.
 
+**IMPORTANT**: Before pulling updates, check the [Release Notes](https://github.com/0xflux/Wyrm/blob/master/RELEASE_NOTES.md) for any 
+breaking changes to profiles / configs which you may need to manually adjust or migrate. This is done especially so that updates do not
+overwrite your local configs and agent profiles.
+
+### Post exploitation Red Team framework
+
 Wyrm (pronounced 'worm', an old English word for 'serpent' or 'dragon') is a post exploitation, open source, Red Team security testing framework framework, written in Rust designed to be used by Red Teams, Purple Teams, 
 Penetration Testers, and general infosec hobbyists. This project is fully built in Rust, with extra effort going into obfuscating artifacts which
 could be present in memory. Project created and maintained by [flux](https://github.com/0xflux/), for **legal authorised security testing only**.
