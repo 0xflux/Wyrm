@@ -51,4 +51,3 @@ patch_etw = true # Optional, patches Events Tracing for Windows on the process
 [implants.default.anti_sandbox]
 ram = true # Optional
 trig = true # Optional
-test = true
