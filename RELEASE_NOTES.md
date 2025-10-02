@@ -1,5 +1,13 @@
 # Release Notes
 
+Anything found labelled with a '&#128679;' indicates a possible breaking change to a profile which you will need to adjust from
+the `default.example.profile` found in `/c2/profiles/`. This is done especially as to not overwrite your custom profiles when
+pulling updates.
+
+## v 0.4 &#128679;
+
+todo
+
 ## v 0.3
 
 This release introduces the new GUI, which is a web based UI used to interact with the Wyrm C2.
