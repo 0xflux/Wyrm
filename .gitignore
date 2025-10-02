@@ -12,3 +12,8 @@ shared_c2_client/target
 *.exe
 *.dll
 *.svc
+
+# Ignore user defined profiles, dont want to overwrite those
+/c2/profiles/*.toml
+# Track the example profile - 
+!/c2/profiles/profile.example.toml
