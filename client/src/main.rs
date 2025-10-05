@@ -30,6 +30,7 @@ use crate::{
 };
 
 mod api;
+mod console_output;
 mod middleware;
 mod models;
 mod net;

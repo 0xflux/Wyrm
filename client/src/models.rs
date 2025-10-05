@@ -1,5 +1,3 @@
-use std::hash::{DefaultHasher, Hash, Hasher};
-
 use chrono::{DateTime, Utc};
 use shared::tasks::Command;
 use shared_c2_client::{NotificationForAgent, command_to_string};
