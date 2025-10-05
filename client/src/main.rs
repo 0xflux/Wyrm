@@ -1,9 +1,9 @@
-use std::{env, net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
     Router,
     extract::DefaultBodyLimit,
-    middleware::{from_fn, from_fn_with_state},
+    middleware::from_fn_with_state,
     routing::{get, post},
     serve,
 };

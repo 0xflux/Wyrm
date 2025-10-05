@@ -10,8 +10,8 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 serde = { version = "1.0", features = ["derive"] }
 tokio = { version = "1.47.1", features = [ "rt-multi-thread", "macros" ]}
 tower-http = { version = "0.6.6", features = ["fs"] }
-shared = { git = "https://github.com/0xflux/wyrm", package = "shared", rev = "a5cb4252bd4f568d150293ba70510ec7ef793306" }
-shared_c2_client = { git = "https://github.com/0xflux/wyrm", package = "shared_c2_client", rev = "a5cb4252bd4f568d150293ba70510ec7ef793306" }
+shared = { git = "https://github.com/0xflux/wyrm", package = "shared", rev = "0065c18f57f67647252e1ec47333a04d51a1bc1a" }
+shared_c2_client = { git = "https://github.com/0xflux/wyrm", package = "shared_c2_client", rev = "0065c18f57f67647252e1ec47333a04d51a1bc1a" }
 serde_json = "1.0.145"
 dotenvy = "0.15.7"
 thiserror = "2.0.16"
