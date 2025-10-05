@@ -48,8 +48,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let state = Arc::new(AppState::new());
     let max_upload_mb = 50000000; // this is stupidly big, and will be controlled on the C2.
 
-    println!("Max upload {max_upload_mb}");
-
     //
     // Build the routes
     //

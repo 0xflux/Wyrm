@@ -1,26 +1,25 @@
-FROM rust:1.90-alpine AS builder
-RUN rustup target add x86_64-unknown-linux-musl
-RUN apk add gcc musl-dev libffi-dev openssl-dev
-
+FROM lukemathwalker/cargo-chef:latest-rust-1.90 AS chef
 WORKDIR /app
 
-COPY Cargo.toml Cargo.lock ./
-RUN mkdir -p src && echo "fn main(){}" > src/main.rs
-RUN cargo build --release --target x86_64-unknown-linux-musl
+FROM chef AS planner
+WORKDIR /app
+COPY . .
+RUN cargo chef prepare --recipe-path recipe.json
 
-COPY src ./src
-COPY static ./static
-COPY templates ./templates
+FROM chef AS builder 
+WORKDIR /app
+COPY --from=planner /app/recipe.json ./recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
+COPY . .
+RUN cargo build --release
 
-RUN cargo build --release --target=x86_64-unknown-linux-musl 
-
-FROM alpine:latest
+FROM debian:bookworm-slim AS runtime
 EXPOSE 4040
 
 WORKDIR /app
 
-COPY --from=builder /app/target/x86_64-unknown-linux-musl/release/wyrm_gui .
+COPY --from=builder /app/target/release/wyrm_gui .
 COPY --from=builder /app/static ./static
 COPY --from=builder /app/templates ./templates
 
-CMD ["./wyrm_gui"]
+ENTRYPOINT ["/app/wyrm_gui"]
