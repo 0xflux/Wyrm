@@ -880,9 +880,13 @@ async fn drop_file_handler(
     }
 
     if !found {
-        log_error_async(&format!("Could not find staged file when instructing agent to drop a file to disk. Looking for file name: '{}' \
-            but it does not exist in memory.", data.internal_name)).await;
-        return None;
+        let msg = format!(
+            "Could not find staged file when instructing agent to drop a file to disk. Looking for file name: '{}' \
+            but it does not exist in memory.",
+            data.internal_name
+        );
+        log_error_async(&msg).await;
+        return Some(serde_json::to_value(WyrmResult::Err::<String>(msg)).unwrap());
     }
 
     task_agent::<String>(Command::Drop, Some(data.into()), uid.unwrap(), state).await

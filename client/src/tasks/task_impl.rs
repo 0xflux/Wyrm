@@ -4,7 +4,7 @@ use axum::extract::State;
 use chrono::{DateTime, Utc};
 use shared::{
     pretty_print::{print_failed, print_success},
-    tasks::{AdminCommand, DELIM_FILE_DROP_METADATA, FileDropMetadata},
+    tasks::{AdminCommand, DELIM_FILE_DROP_METADATA, FileDropMetadata, WyrmResult},
 };
 use thiserror::Error;
 
@@ -459,6 +459,7 @@ pub async fn file_dropper(
     args: &[&str],
     creds: &Credentials,
     agent: &IsTaskingAgent<'_>,
+    state: State<Arc<AppState>>,
 ) -> Result<(), TaskDispatchError> {
     agent.has_agent_id()?;
 
@@ -481,7 +482,23 @@ pub async fn file_dropper(
         download_uri: None,
     };
 
-    api_request(AdminCommand::Drop(file_data), agent, creds, None).await?;
+    let response = api_request(AdminCommand::Drop(file_data), agent, creds, None).await?;
+
+    let result = serde_json::from_slice::<WyrmResult<String>>(&response)
+        .expect("could not deser response from Drop");
+
+    if let WyrmResult::Err(e) = result {
+        if let IsTaskingAgent::Yes(agent_id) = agent {
+            let mut lock = state.connected_agents.write().await;
+            for a in lock.iter_mut() {
+                if a.agent_id == **agent_id {
+                    a.output_messages
+                        .push(TabConsoleMessages::non_agent_message("[Drop]".into(), e));
+                    break;
+                }
+            }
+        }
+    }
 
     Ok(())
 }

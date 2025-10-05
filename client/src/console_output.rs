@@ -183,8 +183,6 @@ impl FormatOutput for NotificationForAgent {
                         }
                     };
 
-                    println!("Drop res: {result:?}");
-
                     if let WyrmResult::Err(e) = result {
                         return vec![format!(
                             "An error occurred whilst trying to drop a file. {e}"
