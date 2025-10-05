@@ -1,3 +1,4 @@
+use core::panic;
 use std::sync::Arc;
 
 use axum::http::HeaderMap;
@@ -9,7 +10,7 @@ use tokio::sync::RwLock;
 
 use crate::db::Db;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Agent {
     pub uid: String,
     pub sleep: u64,
@@ -131,7 +132,9 @@ impl AgentList {
             re_request_frd = first_run_data.is_none();
 
             let arc = Arc::new(RwLock::new(new_agent));
-            self.agents.insert(agent_id.clone(), arc.clone()).unwrap();
+            if let Err((k, _)) = self.agents.insert(agent_id.clone(), arc.clone()) {
+                panic!("Failed to insert new agent into active agents. Agent: {k}");
+            };
 
             arc
         };

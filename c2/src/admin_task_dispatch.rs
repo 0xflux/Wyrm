@@ -17,8 +17,8 @@ use serde_json::Value;
 use shared::{
     pretty_print::print_failed,
     tasks::{
-        AdminCommand, BuildAllBins, Command, FileDropMetadata, FileUploadStagingFromClient,
-        NewAgentStaging, StageType, WyrmResult,
+        AdminCommand, BuildAllBins, Command, DELIM_FILE_DROP_METADATA, FileDropMetadata,
+        FileUploadStagingFromClient, NewAgentStaging, StageType, WyrmResult,
     },
 };
 use shared_c2_client::AgentC2MemoryNotifications;
@@ -843,6 +843,23 @@ async fn drop_file_handler(
     mut data: FileDropMetadata,
     state: State<Arc<AppState>>,
 ) -> Option<Value> {
+    // check we dont have the delimiter in the input
+    if data.download_name.contains(DELIM_FILE_DROP_METADATA)
+        || data.internal_name.contains(DELIM_FILE_DROP_METADATA)
+        || data
+            .download_uri
+            .as_deref()
+            .unwrap_or_default()
+            .contains(DELIM_FILE_DROP_METADATA)
+    {
+        return Some(
+            serde_json::to_value(WyrmResult::Err::<String>(format!(
+                "Content cannot contain {DELIM_FILE_DROP_METADATA}"
+            )))
+            .unwrap(),
+        );
+    }
+
     //
     // Check whether we actually have that file available on the server.
     // If we do not have the file, we want to return `None` as to not task the agent with downloading a file that doesn't

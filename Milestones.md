@@ -5,19 +5,21 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 ### v0.4
 
-1) [ ] Don't use fields a,b,c,d,e etc - use some serde magic if its an artifact issue
-2) [ ] Add a note to an implant
-3) [ ] `reg add`, `reg query`, `reg delete`
-4) [ ] .env migrated to the profile TOML
-5) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
-6) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
-7) [ ] Consider deprecating the sleep in `listener` and moving it to the `implant` section instead
-8) [ ] Multiple URLs / IPs for C2
-9) [ ] Separate URIs for POST and GET
-10) [ ] Round robin and different styles for URI & URL rotation
-11) [ ] `rm` command
-12) [ ] Improve formatting of output of running `ps`
-13) [ ] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp). The C2 can run this on the binary; maybe build as a separate lib and include, or just a separate module.
+1) [ ] BUG: https://github.com/0xflux/Wyrm/issues/3
+2) [ ] Investigate FileDropMetadata appearing in the binary.
+   1) [ ] Needs converting from_str to vec's, for the task.metadata at large
+3) [ ] Add a note to an implant
+4) [ ] `reg add`, `reg query`, `reg delete`
+5) [ ] .env migrated to the profile TOML
+6) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
+7) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
+8) [ ] Consider deprecating the sleep in `listener` and moving it to the `implant` section instead
+9)  [ ] Multiple URLs / IPs for C2
+10) [ ] Separate URIs for POST and GET
+11) [ ] Round robin and different styles for URI & URL rotation
+12) [ ] `rm` command
+13) [ ] Improve formatting of output of running `ps`
+14) [ ] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp). The C2 can run this on the binary; maybe build as a separate lib and include, or just a separate module.
 
 ### 0.5
 

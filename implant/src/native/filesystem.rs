@@ -208,10 +208,7 @@ pub fn drop_file_to_disk(
         None => return None,
     };
 
-    let metadata = match FileDropMetadata::try_from(metadata_str.as_str()) {
-        Ok(m) => m,
-        Err(e) => return Some(WyrmResult::Err(e.to_string())),
-    };
+    let metadata = FileDropMetadata::from(metadata_str.as_str());
 
     // Note: The download uri should be guaranteed here, so an unwrap is acceptable
     let file_data = match download_file_with_uri_in_memory(&metadata.download_uri.unwrap(), wyrm) {
