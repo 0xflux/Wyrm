@@ -4,7 +4,7 @@ use axum::extract::State;
 use chrono::{DateTime, Utc};
 use shared::{
     pretty_print::{print_failed, print_success},
-    tasks::{AdminCommand, FileDropMetadata},
+    tasks::{AdminCommand, DELIM_FILE_DROP_METADATA, FileDropMetadata},
 };
 use thiserror::Error;
 
@@ -468,13 +468,17 @@ pub async fn file_dropper(
         ));
     }
 
-    let file_data = unsafe {
-        FileDropMetadata {
-            internal_name: args.get_unchecked(0).to_string(),
-            download_name: args.get_unchecked(1).to_string(),
-            // This is computed on the C2
-            download_uri: None,
-        }
+    if args[0].contains(DELIM_FILE_DROP_METADATA) || args[1].contains(DELIM_FILE_DROP_METADATA) {
+        return Err(TaskDispatchError::BadTokens(
+            "Input cannot contain a comma.".into(),
+        ));
+    }
+
+    let file_data = FileDropMetadata {
+        internal_name: args[0].to_string(),
+        download_name: args[1].to_string(),
+        // This is computed on the C2
+        download_uri: None,
     };
 
     api_request(AdminCommand::Drop(file_data), agent, creds, None).await?;

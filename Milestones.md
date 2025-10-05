@@ -20,6 +20,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 12) [ ] `rm` command
 13) [ ] Improve formatting of output of running `ps`
 14) [ ] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp). The C2 can run this on the binary; maybe build as a separate lib and include, or just a separate module.
+15) [ ] Re-pin / remove pin for shared libs
 
 ### 0.5
 
