@@ -3,7 +3,7 @@ use shared::tasks::Command;
 use shared_c2_client::{NotificationForAgent, command_to_string};
 use tokio::sync::RwLock;
 
-use crate::{api::dashboard::ConnectedAgentData, net::Credentials};
+use crate::{api::dashboard::ConnectedAgentData, console_output::FormatOutput, net::Credentials};
 
 /// A local client representation of an agent with a definition not shared across the
 /// `Wyrm` ecosystem.

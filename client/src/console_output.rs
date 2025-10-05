@@ -6,7 +6,7 @@ use shared::{
 };
 use shared_c2_client::NotificationForAgent;
 
-trait FormatOutput {
+pub trait FormatOutput {
     fn format_console_output(&self) -> Vec<String>;
 }
 
