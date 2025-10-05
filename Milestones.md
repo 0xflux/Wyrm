@@ -6,19 +6,18 @@ developed as a premium or otherwise private feature. These will be few and far b
 ### v0.4
 
 1) [ ] BUG: https://github.com/0xflux/Wyrm/issues/3
-2) [ ] Add a note to an implant
-3) [ ] `reg add`, `reg query`, `reg delete`
-4) [ ] .env migrated to the profile TOML
-5) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
-6) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
-7) [ ] Consider deprecating the sleep in `listener` and moving it to the `implant` section instead
-8)  [ ] Multiple URLs / IPs for C2
-9)  [ ] Separate URIs for POST and GET
-10) [ ] Round robin and different styles for URI & URL rotation
-11) [ ] `rm` command
-12) [ ] Improve formatting of output of running `ps`
-13) [ ] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp). The C2 can run this on the binary; maybe build as a separate lib and include, or just a separate module.
-14) [ ] Re-pin / remove pin for shared libs
+2) [ ] `reg add`, `reg query`, `reg delete`
+3) [ ] .env migrated to the profile TOML
+4) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
+5) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
+6) [ ] Consider deprecating the sleep in `listener` and moving it to the `implant` section instead
+7)  [ ] Multiple URLs / IPs for C2
+8)  [ ] Separate URIs for POST and GET
+9)  [ ] Round robin and different styles for URI & URL rotation
+10) [ ] `rm` command
+11) [ ] Improve formatting of output of running `ps`
+12) [ ] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp). The C2 can run this on the binary; maybe build as a separate lib and include, or just a separate module.
+13) [ ] Re-pin / remove pin for shared libs
 
 ### 0.5
 
@@ -99,6 +98,7 @@ These are to be split out further as required for more manageable releases.
 30) [ ] Profile option for mutex
 31) [ ] `drives` search for additional drive volumes
 32) [ ] Scope / date / time checks
+33) [ ] Add a note to an implant
 
 ### Voidheart - v2.0
 
