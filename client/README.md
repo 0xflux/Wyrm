@@ -11,9 +11,9 @@ If you are using this with the Wyrm C2 running locally; rather than connecting v
 
 # Usage
 
-To run - simply install docker and: `docker compose up -d`
+To run (from workspace root) - simply install docker and: `docker compose up -d client`
 
-If any local edits are required during development / debugging, you can rebuild only the changes with: `docker compose up -d --build`
+If any local edits are required during development / debugging, you can rebuild only the changes with (from workspace root): `docker compose up -d --build client`
 
 **IMPORTANT**: If you are logging into the C2 for the first time, note that whatever creds you login with will become the operator's
 credentials.

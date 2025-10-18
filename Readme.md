@@ -93,6 +93,8 @@ The user account is created as `sudo useradd --system --no-create-home --shell /
 Simply follow the instructions in the `client` directory, using `docker` to run the GUI. You will need to ensure the admin token (instructions found
 within) matches the admin token on the C2 as explained above.
 
+You can run the client from the workspace root with: `docker compose up -d --build client`
+
 **If running locally**
 
 If you are running locally, and want to use the implant in debug mode (for testing) you will need to log into the C2 and stage a new agent, that matches
