@@ -248,20 +248,22 @@ impl FormatOutput for NotificationForAgent {
                 if let Some(response) = &self.result {
                     match serde_json::from_str::<WyrmResult<String>>(&response) {
                         Ok(data) => match data {
-                            WyrmResult::Ok(d) => match serde_json::from_str::<Vec<String>>(&d) {
-                                Ok(results) => return results,
-                                Err(e) => {
-                                    return vec![format!(
-                                        "Could not deserialise into Vec<String>. {e}"
-                                    )];
+                            WyrmResult::Ok(inner_string_from_result) => {
+                                match serde_json::from_str::<Vec<String>>(&inner_string_from_result)
+                                {
+                                    Ok(results_as_vec) => return results_as_vec,
+                                    Err(_) => {
+                                        // Try as a single string (in the event it was querying an exact value)
+                                        return vec![inner_string_from_result];
+                                    }
                                 }
-                            },
+                            }
                             WyrmResult::Err(e) => {
                                 return vec![format!("Error with operation. {e}")];
                             }
                         },
                         Err(e) => {
-                            return vec![format!("Could not deserialise response data. {e}")];
+                            return vec![format!("Could not deserialise response data. {e}.")];
                         }
                     }
                 } else {

