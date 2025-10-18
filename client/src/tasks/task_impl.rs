@@ -417,6 +417,10 @@ pub async fn show_help_for_command(
             "on the target machine in full, thus you should only use this on files which are smaller than the amount of available RAM on the machine.".into(),
             "Streamed `pull` is coming in a future release.".into(),
         ],
+        "reg query" => vec![
+            "Usage: reg query <path_to_key> <OPTIONAL: value>".into(),
+            "Queries the registry by a path to the key, with an optional value if you wish to query only a specific value".into(),
+        ],
         _ => vec!["No help pages available for this command, or it does not exist.".into()],
     };
 
