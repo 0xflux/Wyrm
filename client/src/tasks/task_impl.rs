@@ -373,6 +373,8 @@ pub async fn show_help(
         "run".into(),
         "kill <pid>".into(),
         "drop <server recognised name> <filename to drop on disk (including extension)>".into(),
+        "reg query <path_to_key>".into(),
+        "reg query <path_to_key> <value>".into(),
     ];
 
     if let IsTaskingAgent::Yes(agent_id) = agent {
