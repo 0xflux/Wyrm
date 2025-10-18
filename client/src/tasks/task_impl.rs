@@ -4,6 +4,7 @@ use axum::extract::State;
 use chrono::{DateTime, Utc};
 use shared::{
     pretty_print::{print_failed, print_success},
+    task_types::RegQueryInner,
     tasks::{AdminCommand, DELIM_FILE_DROP_METADATA, FileDropMetadata, WyrmResult},
 };
 use thiserror::Error;
@@ -11,6 +12,7 @@ use thiserror::Error;
 use crate::{
     models::{AppState, TabConsoleMessages},
     net::{ApiError, Credentials, IsTaskingAgent, IsTaskingAgentErr, api_request},
+    tasks::utils::{DiscardFirst, split_string_slices_to_n},
 };
 
 #[derive(Debug, Error)]
@@ -503,144 +505,52 @@ pub async fn file_dropper(
     Ok(())
 }
 
-/// Determines whether the [`split_string_slices_to_n`] function should discard the first
-/// found substring or not - this would be useful where the command is present in the input
-/// string.
-#[derive(PartialEq, Eq)]
-enum DiscardFirst {
-    Chop,
-    DontChop,
-}
+/// Queries a registry key
+pub async fn reg_query(
+    inputs: String,
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
 
-/// Splits a string into exactly `n` chunks, treating quoted substrings as single tokens.
-/// Optionally discards the first token, which is useful if the input string begins with a command.
-///
-/// # Args
-/// * `n` - The expected number of resulting tokens.  
-/// * `strs` - The input string slice to be tokenised.  
-/// * `discard_first` - Whether the first discovered token should be discarded (`Chop`) or kept (`DontChop`).  
-///
-/// # Returns
-/// Returns `Some(Vec<String>)` if exactly `n` tokens are produced after processing,  
-/// otherwise returns `None`.
-///
-/// # Example
-/// ```
-/// let s = "a b  \"c d\" e".to_string();
-/// assert_eq!(
-///     split_string_slices_to_n(4, &s, DiscardFirst::DontChop),
-///     Some(vec![
-///         "a".to_string(),
-///         "b".to_string(),
-///         "c d".to_string(),
-///         "e".to_string(),
-///     ])
-/// )
-/// ```
-fn split_string_slices_to_n(
-    n: usize,
-    strs: &str,
-    mut discard_first: DiscardFirst,
-) -> Option<Vec<String>> {
-    // Flatten the slices
-    let mut chunks: Vec<String> = Vec::new();
-    let mut s = String::new();
-    let mut toggle: bool = false;
+    if inputs.is_empty() {
+        print_failed(format!("Please specify options."));
+    }
 
-    for (_, c) in strs.chars().enumerate() {
-        if c == '"' {
-            if toggle {
-                toggle = false;
-                if !s.is_empty() {
-                    chunks.push(take(&mut s));
-                }
-                s.clear();
-            } else {
-                // Start of a quoted string
-                toggle = true;
-            }
-        } else if c == ' ' && !toggle {
-            if discard_first == DiscardFirst::Chop && chunks.is_empty() {
-                discard_first = DiscardFirst::DontChop;
-                s.clear();
-            }
+    //
+    // We have a max of 2 values we can get from this task. The first is specifying a key and value,
+    // second is just the key.
+    //
+    // The strategy here is to try resolve 2 strings in the input, if that fails, we try 1 string, then we have
+    // the proper options
+    //
 
-            if !s.is_empty() {
-                chunks.push(take(&mut s));
+    let reg_query_options = split_string_slices_to_n(2, &inputs, DiscardFirst::ChopTwo);
+    let mut reg_query_options = if reg_query_options.is_none() {
+        match split_string_slices_to_n(1, &inputs, DiscardFirst::ChopTwo) {
+            Some(s) => s,
+            None => {
+                return Err(TaskDispatchError::BadTokens(
+                    "Could not find options for command".into(),
+                ));
             }
-            s.clear();
-        } else {
-            s.push(c);
         }
-    }
+    } else {
+        reg_query_options.unwrap()
+    };
 
-    // Handle the very last chunk which didn't get pushed by the loop
-    if !s.is_empty() {
-        chunks.push(s);
-    }
-
-    if chunks.len() != n {
-        return None;
-    }
-
-    Some(chunks)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn tokens_with_no_quotes() {
-        let s = "a b  c d e f    g    ".to_string();
-        assert_eq!(
-            split_string_slices_to_n(7, &s, DiscardFirst::DontChop),
-            Some(vec![
-                "a".to_string(),
-                "b".to_string(),
-                "c".to_string(),
-                "d".to_string(),
-                "e".to_string(),
-                "f".to_string(),
-                "g".to_string()
-            ])
+    let query_data: RegQueryInner = if reg_query_options.len() == 2 {
+        (
+            take(&mut reg_query_options[0]),
+            Some(take(&mut reg_query_options[1])),
         )
-    }
+    } else {
+        (take(&mut reg_query_options[0]), None)
+    };
 
-    #[test]
-    fn tokens_with_quotes_space() {
-        let s = "a b  \"c  d\" e".to_string();
-        assert_eq!(
-            split_string_slices_to_n(4, &s, DiscardFirst::DontChop),
-            Some(vec![
-                "a".to_string(),
-                "b".to_string(),
-                "c  d".to_string(),
-                "e".to_string(),
-            ])
-        )
-    }
+    println!("Prepared reg query task: {query_data:#?}");
 
-    #[test]
-    fn tokens_with_quotes() {
-        let s = "a b  \"c d\" e".to_string();
-        assert_eq!(
-            split_string_slices_to_n(4, &s, DiscardFirst::DontChop),
-            Some(vec![
-                "a".to_string(),
-                "b".to_string(),
-                "c d".to_string(),
-                "e".to_string(),
-            ])
-        )
-    }
+    api_request(AdminCommand::RegQuery(query_data), agent, creds, None).await?;
 
-    #[test]
-    fn tokens_bad_count() {
-        let s = "a b  \"c d\" e".to_string();
-        assert_eq!(
-            split_string_slices_to_n(5, &s, DiscardFirst::DontChop),
-            None
-        )
-    }
+    Ok(())
 }
