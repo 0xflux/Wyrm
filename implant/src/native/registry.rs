@@ -1,12 +1,15 @@
+use std::slice::from_raw_parts;
+
 use serde::Serialize;
 use shared::{task_types::RegQueryInner, tasks::WyrmResult};
-use windows_registry::{CLASSES_ROOT, CURRENT_USER, Key, LOCAL_MACHINE, Transaction, USERS};
+use str_crypter::{decrypt_string, sc};
+use windows_registry::{CLASSES_ROOT, CURRENT_USER, Key, LOCAL_MACHINE, Transaction, USERS, Value};
 use windows_sys::Win32::Foundation::GetLastError;
 
 #[cfg(debug_assertions)]
 use shared::pretty_print::print_failed;
 
-pub fn reg_query(raw_input: &Option<String>) {
+pub fn reg_query(raw_input: &Option<String>) -> Option<impl Serialize> {
     let input_deser = match raw_input {
         Some(s) => match serde_json::from_str::<RegQueryInner>(s) {
             Ok(s) => s,
@@ -17,8 +20,9 @@ pub fn reg_query(raw_input: &Option<String>) {
 
     // If the 2nd arg is empty, just query the key, otherwise query key + val
     if input_deser.1.is_none() {
-        query_key(&input_deser.0);
+        return query_key(input_deser.0);
     } else {
+        return None;
     }
 }
 
@@ -26,13 +30,13 @@ pub enum RegistryError {
     CannotExtractKey,
 }
 
-fn query_key(path: &str) -> Option<impl Serialize> {
-    let key = match extract_hive_from_str(path) {
+fn query_key(path: String) -> Option<impl Serialize> {
+    let key = match extract_hive_from_str(&path) {
         Ok(k) => k,
         Err(_) => return Some(WyrmResult::Err::<String>("Bad data".into())),
     };
 
-    let path_stripped = match strip_hive(path) {
+    let path_stripped = match strip_hive(&path) {
         Ok(p) => p,
         Err(_) => return Some(WyrmResult::Err::<String>("Bad data".into())),
     };
@@ -76,14 +80,52 @@ fn query_key(path: &str) -> Option<impl Serialize> {
         }
     };
 
+    let mut constructed: Vec<String> = vec![];
+
     // We got the values, so iterate them - we need to reconstruct everything as a string to send back
-    for v in vals {
-        // todo..
-        println!("String: {}, value: {:?}", v.0, v.1);
+    for (name, data) in vals {
+        let data_as_str = match data.ty() {
+            windows_registry::Type::U32 => val_u32_to_str(&data),
+            windows_registry::Type::U64 => val_u64_to_str(&data),
+            windows_registry::Type::String => val_string_to_str(&data.to_vec()),
+            windows_registry::Type::ExpandString => val_string_to_str(&data.to_vec()),
+            windows_registry::Type::MultiString => val_string_to_str(&data.to_vec()),
+            windows_registry::Type::Bytes => String::from("Not implemented"),
+            windows_registry::Type::Other(_) => String::from("Not implemented"),
+        };
+
+        constructed.push(format!(
+            "{} {name}{} {data_as_str}",
+            sc!("Name:", 52).unwrap(),
+            sc!(", Value:", 67).unwrap(),
+        ));
     }
 
-    // todo should be the result
-    None
+    // todo should be the result#
+    match serde_json::to_string(&constructed) {
+        Ok(s) => Some(WyrmResult::Ok(s)),
+        Err(e) => {
+            let msg = format!("{}. {e}", sc!("Could not serialise data.", 84).unwrap());
+            Some(WyrmResult::Err(msg))
+        }
+    }
+}
+
+fn val_u32_to_str(value: &Value) -> String {
+    u32::from_le_bytes(value[0..4].try_into().unwrap()).to_string()
+}
+
+fn val_u64_to_str(value: &Value) -> String {
+    u64::from_le_bytes(value[0..8].try_into().unwrap()).to_string()
+}
+
+fn val_string_to_str(value: &[u8]) -> String {
+    if value.len() < 2 {
+        return String::new();
+    }
+
+    let u16_slice = unsafe { from_raw_parts(value.as_ptr() as *const u16, value.len() / 2) };
+    String::from_utf16_lossy(u16_slice)
 }
 
 fn strip_hive<'a>(path: &'a str) -> Result<&'a str, RegistryError> {

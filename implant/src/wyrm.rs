@@ -269,10 +269,7 @@ impl Wyrm {
                 }
                 Command::RegQuery => {
                     let result = reg_query(&task.metadata);
-                    self.push_completed_task(
-                        &task,
-                        Some(WyrmResult::Err::<String>("Bad request.".into())),
-                    );
+                    self.push_completed_task(&task, result);
                 }
             }
         }
