@@ -79,8 +79,6 @@ pub fn split_string_slices_to_n(
         chunks.remove(0);
     }
 
-    println!("CHUNKS: {chunks:#?}");
-
     if chunks.len() != n {
         return None;
     }
