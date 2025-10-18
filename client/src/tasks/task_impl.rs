@@ -548,8 +548,6 @@ pub async fn reg_query(
         (take(&mut reg_query_options[0]), None)
     };
 
-    println!("Prepared reg query task: {query_data:#?}");
-
     api_request(AdminCommand::RegQuery(query_data), agent, creds, None).await?;
 
     Ok(())
