@@ -1,5 +1,5 @@
 use std::{
-    fs::{create_dir, create_dir_all},
+    fs::create_dir_all,
     io,
     path::{Path, PathBuf},
     sync::Arc,
@@ -109,6 +109,7 @@ pub async fn admin_dispatch(
             task_agent(Command::Pull, Some(file_path), uid.unwrap(), state).await
         }
         AdminCommand::BuildAllBins(_) => None,
+        AdminCommand::RegQuery(_) => todo!(),
     };
 
     serde_json::to_vec(&result).unwrap()

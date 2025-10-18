@@ -38,6 +38,8 @@ pub enum Command {
     Move,
     /// Pulls a file from the target machine, downloading to the C2
     Pull,
+    /// Query the registry
+    RegQuery,
     // This should be totally unreachable; but keeping to make sure we don't get any weird UB, and
     // make sure it is itemised last in the enum
     Undefined,
@@ -162,6 +164,7 @@ impl Display for Command {
             Command::Copy => "Copy",
             Command::Move => "Move",
             Command::Pull => "Pull",
+            Command::RegQuery => "reg query",
         };
 
         write!(f, "{choice}")
@@ -204,6 +207,7 @@ pub enum AdminCommand {
     /// Pulls a file from the target machine, downloading to the C2
     Pull(String),
     BuildAllBins(BuildAllBins),
+    RegQuery(String),
     Undefined,
 }
 

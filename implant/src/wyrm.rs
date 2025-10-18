@@ -266,6 +266,7 @@ impl Wyrm {
                         );
                     }
                 }
+                Command::RegQuery => todo!(),
             }
         }
     }
