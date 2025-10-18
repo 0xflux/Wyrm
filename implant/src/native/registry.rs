@@ -82,48 +82,41 @@ fn query_key(path: String) -> Option<WyrmResult<String>> {
     let open_key = match key.open(path_stripped) {
         Ok(k) => k,
         Err(e) => {
-            let le = unsafe { GetLastError() };
-            let msg = format!("Failed with status: {le:#X}");
-
-            #[cfg(debug_assertions)]
-            {
-                let msg = format!("{msg}, from crate: {e}");
-                print_failed(&msg);
-            }
+            let msg = format!("{} {path} - {e}", sc!("Could not open key.", 19).unwrap());
 
             return Some(WyrmResult::Err(msg));
         }
     };
 
     //
-    // As we are querying the key itself, we need to iterate through it
+    // As we are querying the keys/values themselves, we need to iterate through it
     //
-
-    let vals = match open_key.values() {
-        Ok(v) => v,
-        Err(e) => {
-            let le = unsafe { GetLastError() };
-            let msg = format!("Failed with status: {le:#X}");
-
-            #[cfg(debug_assertions)]
-            {
-                let msg = format!("{msg}, from crate: {e}");
-                print_failed(&msg);
-            }
-
-            return Some(WyrmResult::Err(msg));
-        }
-    };
-
     let mut constructed: Vec<String> = vec![];
 
-    // We got the values, so iterate them - we need to reconstruct everything as a string to send back
-    for (name, data) in vals {
-        let data_as_str = value_to_string(&data);
-        constructed.push(format!("{name} {data_as_str}",));
+    if let Ok(keys) = open_key.keys() {
+        for k in keys {
+            constructed.push(k);
+        }
     }
 
-    // todo should be the result#
+    // We got the values, so iterate them - we need to reconstruct everything as a string to send back
+    if let Ok(vals) = open_key.values() {
+        for (name, data) in vals {
+            let data_as_str = value_to_string(&data);
+            constructed.push(format!("{name} {data_as_str}",));
+        }
+    }
+
+    if constructed.is_empty() {
+        return Some(WyrmResult::Err(
+            sc!(
+                "Could not find data, it is possible there was an unknown error.",
+                71
+            )
+            .unwrap(),
+        ));
+    }
+
     match serde_json::to_string(&constructed) {
         Ok(s) => Some(WyrmResult::Ok(s)),
         Err(e) => {
