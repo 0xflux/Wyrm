@@ -241,7 +241,33 @@ impl FormatOutput for NotificationForAgent {
 
                 return vec!["File exfiltrated successfully and can be found on the C2.".into()];
             }
-            Command::RegQuery => todo!(),
+            Command::RegQuery => {
+                //
+                // alright this deser is gross ...
+                //
+                if let Some(response) = &self.result {
+                    match serde_json::from_str::<WyrmResult<String>>(&response) {
+                        Ok(data) => match data {
+                            WyrmResult::Ok(d) => match serde_json::from_str::<Vec<String>>(&d) {
+                                Ok(results) => return results,
+                                Err(e) => {
+                                    return vec![format!(
+                                        "Could not deserialise into Vec<String>. {e}"
+                                    )];
+                                }
+                            },
+                            WyrmResult::Err(e) => {
+                                return vec![format!("Error with operation. {e}")];
+                            }
+                        },
+                        Err(e) => {
+                            return vec![format!("Could not deserialise response data. {e}")];
+                        }
+                    }
+                } else {
+                    return vec!["No data returned, something may have gone wrong.".into()];
+                }
+            }
         }
 
         match self.result.as_ref() {
