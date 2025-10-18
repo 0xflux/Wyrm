@@ -420,6 +420,7 @@ pub async fn show_help_for_command(
         "reg query" => vec![
             "Usage: reg query <path_to_key> <OPTIONAL: value>".into(),
             "Queries the registry by a path to the key, with an optional value if you wish to query only a specific value".into(),
+            "If the path contains whitespace, ensure you wrap it in \"quotes\".".into(),
         ],
         _ => vec!["No help pages available for this command, or it does not exist.".into()],
     };
