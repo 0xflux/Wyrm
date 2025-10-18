@@ -241,6 +241,7 @@ impl FormatOutput for NotificationForAgent {
 
                 return vec!["File exfiltrated successfully and can be found on the C2.".into()];
             }
+            Command::RegQuery => todo!(),
         }
 
         match self.result.as_ref() {

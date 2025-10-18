@@ -1,0 +1,19 @@
+services: 
+  client:
+    container_name: "client"
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    ports: 
+      - 4040:4040
+    environment:
+      # This must match the token on the C2!
+      - ADMIN_TOKEN=fdgiyh%^l!udjfh78364LU7&%df!!
+
+  # c2:
+  #   container_name: "c2"
+  #   build: 
+  #     context: .
+  #     dockerfile: # todo
+  #   ports: # todo
+  #   environment: #todo
