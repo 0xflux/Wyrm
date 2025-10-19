@@ -8,12 +8,11 @@ developed as a premium or otherwise private feature. These will be few and far b
 1) [ ] BUG: https://github.com/0xflux/Wyrm/issues/3
 2) [x] `reg add`, `reg query`, `reg delete`
 3) [ ] .env migrated to the profile TOML
-4) [ ] Consider deprecating the sleep in `listener` and moving it to the `implant` section instead
-5) [x] `rm` command
-6) [x] Improve formatting of output of running `ps`
-7) [ ] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp). The C2 can run this on the binary; maybe build as a separate lib and include, or just a separate module.
-8) [ ] Output data as JSON so it is ingestible into ELK etc perhaps from the C2 or a db export option?
-9) [ ] Does the inner enum appear in the strings? Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
+4) [x] `rm` command
+5) [x] Improve formatting of output of running `ps`
+6) [ ] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp). The C2 can run this on the binary; maybe build as a separate lib and include, or just a separate module.
+7) [ ] Output data as JSON so it is ingestible into ELK etc perhaps from the C2 or a db export option?
+8) [ ] Does the inner enum appear in the strings? Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 
 ### 0.5
 
@@ -35,11 +34,13 @@ developed as a premium or otherwise private feature. These will be few and far b
 2) [ ] Max upload size set on C2
 3) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
 4) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
-5) [ ] Multiple URLs / IPs for C2
-6) [ ] Separate URIs for POST and GET
-7) [ ] Round robin and different styles for URI & URL rotation
-8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
-9) [ ] Ps should show parent pids with children in a hierarchy
+5) [ ] Consider deprecating the sleep in `listener` and moving it to the `implant` section instead
+   1) [ ] Or, keep `listener` but the implant options you can have an array of listener key names to include in the build
+6) [ ] Multiple URLs / IPs for C2
+7) [ ] Separate URIs for POST and GET
+8) [ ] Round robin and different styles for URI & URL rotation
+9) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
+10) [ ] Ps should show parent pids with children in a hierarchy
  
 ### v1.0 - Whelpfire
 
