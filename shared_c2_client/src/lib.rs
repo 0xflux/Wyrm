@@ -60,6 +60,8 @@ pub fn command_to_string(cmd: &Command) -> String {
         Command::RegQuery => "reg query",
         Command::RegAdd => "reg add",
         Command::RegDelete => "reg del",
+        Command::RmFile => "RmFile",
+        Command::RmDir => "RmDir",
     };
 
     c.into()

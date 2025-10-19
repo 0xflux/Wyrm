@@ -38,6 +38,10 @@ pub enum Command {
     Copy,
     /// Moves a file
     Move,
+    /// Removes a file
+    RmFile,
+    /// Removes a directory
+    RmDir,
     /// Pulls a file from the target machine, downloading to the C2
     Pull,
     RegQuery,
@@ -170,6 +174,8 @@ impl Display for Command {
             Command::RegQuery => "reg query",
             Command::RegAdd => "reg add",
             Command::RegDelete => "reg del",
+            Command::RmFile => "RmFile",
+            Command::RmDir => "RmDir",
         };
 
         write!(f, "{choice}")
@@ -199,6 +205,8 @@ pub enum AdminCommand {
     Drop(FileDropMetadata),
     Copy(FileCopyInner),
     Move(FileCopyInner),
+    RmFile(String),
+    RmDir(String),
     /// Pulls a file from the target machine, downloading to the C2
     Pull(String),
     BuildAllBins(BuildAllBins),

