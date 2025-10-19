@@ -15,9 +15,23 @@ pub fn reg_query(raw_input: &Option<String>) -> Option<impl Serialize> {
     let input_deser = match raw_input {
         Some(s) => match serde_json::from_str::<RegQueryInner>(s) {
             Ok(s) => s,
-            Err(_) => todo!(),
+            Err(e) => {
+                return Some(WyrmResult::Err(format!(
+                    "{} {e}",
+                    sc!("Error deserialising query data.", 19).unwrap(),
+                )));
+            }
         },
-        None => todo!(),
+        None => {
+            return Some(WyrmResult::Err(format!(
+                "{}",
+                sc!(
+                    "No query data received, cannot continue executing task.",
+                    42
+                )
+                .unwrap(),
+            )));
+        }
     };
 
     // Check if we have 2 args
@@ -32,9 +46,19 @@ pub fn reg_del(raw_input: &Option<String>) -> Option<impl Serialize> {
     let input_deser = match raw_input {
         Some(s) => match serde_json::from_str::<RegQueryInner>(s) {
             Ok(s) => s,
-            Err(_) => todo!(),
+            Err(e) => {
+                return Some(WyrmResult::Err(format!(
+                    "{} {e}",
+                    sc!("Error deserialising query data.", 19).unwrap(),
+                )));
+            }
         },
-        None => todo!(),
+        None => {
+            return Some(WyrmResult::Err(format!(
+                "{}",
+                sc!("No data on inner field, cannot continue with task.", 19).unwrap(),
+            )));
+        }
     };
 
     // Check if we have 2 args
@@ -49,9 +73,19 @@ pub fn reg_add(raw_input: &Option<String>) -> Option<impl Serialize> {
     let (path, value, data, reg_type) = match raw_input {
         Some(s) => match serde_json::from_str::<RegAddInner>(s) {
             Ok(s) => s,
-            Err(_) => todo!(),
+            Err(e) => {
+                return Some(WyrmResult::Err(format!(
+                    "{} {e}",
+                    sc!("Error deserialising query data.", 19).unwrap(),
+                )));
+            }
         },
-        None => todo!(),
+        None => {
+            return Some(WyrmResult::Err(format!(
+                "{}",
+                sc!("No query data cannot continue with task.", 19).unwrap(),
+            )));
+        }
     };
 
     let (opened, path_stripped) = match get_key_strip_hive(&path) {
