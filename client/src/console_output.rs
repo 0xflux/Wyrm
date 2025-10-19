@@ -33,7 +33,7 @@ impl FormatOutput for NotificationForAgent {
                 let mut builder = vec![];
 
                 for row in deser.unwrap() {
-                    builder.push(format!("{}: {}", row.pid, row.name));
+                    builder.push(format!("{}: {} ({})", row.pid, row.name, row.user));
                 }
 
                 return builder;

