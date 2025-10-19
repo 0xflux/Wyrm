@@ -17,8 +17,9 @@ use windows_sys::{
         System::{
             ProcessStatus::{EnumProcesses, GetModuleBaseNameW},
             Threading::{
-                OpenProcess, OpenProcessToken, PROCESS_QUERY_INFORMATION, PROCESS_TERMINATE,
-                PROCESS_VM_READ, TerminateProcess,
+                OpenProcess, OpenProcessToken, PROCESS_QUERY_INFORMATION,
+                PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_TERMINATE, PROCESS_VM_READ,
+                TerminateProcess,
             },
         },
     },
@@ -68,8 +69,13 @@ fn pids_to_processes(pids: Vec<u32>) -> Option<Vec<Process>> {
     let mut processes = Vec::new();
 
     for pid in pids {
-        let handle =
-            unsafe { OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid) };
+        let handle = unsafe {
+            OpenProcess(
+                PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ,
+                FALSE,
+                pid,
+            )
+        };
 
         if handle.is_null() {
             continue;
