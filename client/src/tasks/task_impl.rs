@@ -4,7 +4,7 @@ use axum::extract::State;
 use chrono::{DateTime, Utc};
 use shared::{
     pretty_print::{print_failed, print_success},
-    task_types::RegQueryInner,
+    task_types::{RegAddInner, RegQueryInner, RegType},
     tasks::{AdminCommand, DELIM_FILE_DROP_METADATA, FileDropMetadata, WyrmResult},
 };
 use thiserror::Error;
@@ -12,7 +12,7 @@ use thiserror::Error;
 use crate::{
     models::{AppState, TabConsoleMessages},
     net::{ApiError, Credentials, IsTaskingAgent, IsTaskingAgentErr, api_request},
-    tasks::utils::{DiscardFirst, split_string_slices_to_n},
+    tasks::utils::{DiscardFirst, split_string_slices_to_n, validate_reg_type},
 };
 
 #[derive(Debug, Error)]
@@ -556,6 +556,66 @@ pub async fn reg_query(
     };
 
     api_request(AdminCommand::RegQuery(query_data), agent, creds, None).await?;
+
+    Ok(())
+}
+
+/// Queries a registry key
+pub async fn reg_add(
+    inputs: String,
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+
+    if inputs.is_empty() {
+        print_failed(format!("Please specify options."));
+    }
+
+    //
+    // We have a max of 2 values we can get from this task. The first is specifying a key and value,
+    // second is just the key.
+    //
+    // The strategy here is to try resolve 2 strings in the input, if that fails, we try 1 string, then we have
+    // the proper options
+    //
+
+    let reg_add_options = split_string_slices_to_n(4, &inputs, DiscardFirst::ChopTwo);
+    let mut reg_add_options = if reg_add_options.is_none() {
+        return Err(TaskDispatchError::BadTokens(
+            "Could not find options for command".into(),
+        ));
+    } else {
+        reg_add_options.unwrap()
+    };
+
+    let reg_type = match reg_add_options[3].as_str() {
+        "string" | "String" => RegType::String,
+        "u32" | "U32" | "dword" | "DWORD" => RegType::U32,
+        "u64" | "U64" | "qword" | "QWORD" => RegType::U64,
+        _ => {
+            return Err(TaskDispatchError::BadTokens(
+                "Could not extrapolate type, the final param should be either string, dword, or qword depending on the data type".into(),
+            ));
+        }
+    };
+
+    // Validate input before we get to the implant..
+    if validate_reg_type(reg_add_options[2].as_str(), reg_type).is_err() {
+        return Err(TaskDispatchError::BadTokens(format!(
+            "Could not parse value for the type specified. Tried parsing {} as {}",
+            reg_add_options[2], reg_add_options[3],
+        )));
+    };
+
+    let query_data: RegAddInner = (
+        take(&mut reg_add_options[0]),
+        take(&mut reg_add_options[1]),
+        take(&mut reg_add_options[2]),
+        reg_type,
+    );
+
+    api_request(AdminCommand::RegAdd(query_data), agent, creds, None).await?;
 
     Ok(())
 }

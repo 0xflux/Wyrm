@@ -1,12 +1,15 @@
 use std::mem::take;
 
+use shared::task_types::RegType;
+
 /// Splits a string into exactly `n` chunks, treating quoted substrings as single tokens.
 /// Optionally discards the first token, which is useful if the input string begins with a command.
 ///
 /// # Args
 /// * `n` - The expected number of resulting tokens.  
 /// * `strs` - The input string slice to be tokenised.  
-/// * `discard_first` - Whether the first discovered token should be discarded (`Chop`) or kept (`DontChop`).  
+/// * `discard_first` - Whether the first discovered token should be discarded (`Chop`) or kept (`DontChop`). If you
+///  wish to chop the first 2 params, select [`DiscardFirst::ChopTwo`]
 ///
 /// # Returns
 /// Returns `Some(Vec<String>)` if exactly `n` tokens are produced after processing,  
@@ -153,4 +156,24 @@ mod tests {
             None
         )
     }
+}
+
+pub fn validate_reg_type(input: &str, reg_type: RegType) -> Result<(), ()> {
+    match reg_type {
+        RegType::String => (),
+        RegType::U32 => {
+            if let Err(_) = input.parse::<u32>() {
+                return Err(());
+            }
+            ()
+        }
+        RegType::U64 => {
+            if let Err(_) = input.parse::<u64>() {
+                return Err(());
+            }
+            ()
+        }
+    }
+
+    Ok(())
 }

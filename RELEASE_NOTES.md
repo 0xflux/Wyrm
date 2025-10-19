@@ -13,6 +13,7 @@ pulling updates.
 ### Non breaking changes
 
 - OPSEC improvement with removing an artifact from the binary related to a struct name
+- Introduces the registry manipulation features with `reg query`, `reg delete` and `reg add` commands.
 - Improve docker build process for the client through [cargo chef](https://lpalmieri.com/posts/fast-rust-docker-builds/).
 
 ## v 0.3

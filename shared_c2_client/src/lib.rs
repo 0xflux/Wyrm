@@ -58,6 +58,7 @@ pub fn command_to_string(cmd: &Command) -> String {
         Command::Move => "Move",
         Command::Pull => "Pull",
         Command::RegQuery => "reg query",
+        Command::RegAdd => "reg add",
     };
 
     c.into()

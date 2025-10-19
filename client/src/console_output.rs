@@ -270,6 +270,23 @@ impl FormatOutput for NotificationForAgent {
                     return vec!["No data returned, something may have gone wrong.".into()];
                 }
             }
+            Command::RegAdd => {
+                if let Some(response) = &self.result {
+                    match serde_json::from_str::<WyrmResult<String>>(&response) {
+                        Ok(wyrm_result) => match wyrm_result {
+                            WyrmResult::Ok(d) => return vec![d],
+                            WyrmResult::Err(e) => return vec![format!("An error occurred: {e}")],
+                        },
+                        Err(e) => {
+                            return vec![format!(
+                                "Could not deserialise response: {e}. Got: {response:#?}"
+                            )];
+                        }
+                    }
+                } else {
+                    return vec![format!("Unknown error. Got: {:#?}", self.result)];
+                }
+            }
         }
 
         match self.result.as_ref() {
