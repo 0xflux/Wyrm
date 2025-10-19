@@ -9,7 +9,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 2) [x] `reg add`, `reg query`, `reg delete`
 3) [ ] .env migrated to the profile TOML
 4) [ ] Consider deprecating the sleep in `listener` and moving it to the `implant` section instead
-5) [ ] `rm` command
+5) [x] `rm` command
 6) [ ] Improve formatting of output of running `ps`
 7) [ ] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp). The C2 can run this on the binary; maybe build as a separate lib and include, or just a separate module.
 8) [ ] Output data as JSON so it is ingestible into ELK etc perhaps from the C2 or a db export option?
