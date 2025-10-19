@@ -526,11 +526,19 @@ pub async fn file_dropper(
     Ok(())
 }
 
-/// Queries a registry key
-pub async fn reg_query(
+pub enum RegOperationDelQuery {
+    Query,
+    Delete,
+}
+
+/// Queries or deletes a registry key.
+///
+/// Arg for [`RegOperationDelQuery`] specifies the tasking.
+pub async fn reg_query_del(
     inputs: String,
     creds: &Credentials,
     agent: &IsTaskingAgent<'_>,
+    operation: RegOperationDelQuery,
 ) -> Result<(), TaskDispatchError> {
     agent.has_agent_id()?;
 
@@ -569,7 +577,14 @@ pub async fn reg_query(
         (take(&mut reg_query_options[0]), None)
     };
 
-    api_request(AdminCommand::RegQuery(query_data), agent, creds, None).await?;
+    match operation {
+        RegOperationDelQuery::Query => {
+            api_request(AdminCommand::RegQuery(query_data), agent, creds, None).await?;
+        }
+        RegOperationDelQuery::Delete => {
+            api_request(AdminCommand::RegDelete(query_data), agent, creds, None).await?;
+        }
+    }
 
     Ok(())
 }

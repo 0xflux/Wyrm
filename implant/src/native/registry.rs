@@ -20,11 +20,28 @@ pub fn reg_query(raw_input: &Option<String>) -> Option<impl Serialize> {
         None => todo!(),
     };
 
-    // If the 2nd arg is empty, just query the key, otherwise query key + val
+    // Check if we have 2 args
     if let Some(val) = input_deser.1 {
         return query_key_plus_value(input_deser.0, val);
     } else {
         return query_key(input_deser.0);
+    }
+}
+
+pub fn reg_del(raw_input: &Option<String>) -> Option<impl Serialize> {
+    let input_deser = match raw_input {
+        Some(s) => match serde_json::from_str::<RegQueryInner>(s) {
+            Ok(s) => s,
+            Err(_) => todo!(),
+        },
+        None => todo!(),
+    };
+
+    // Check if we have 2 args
+    if let Some(val) = input_deser.1 {
+        return delete_reg_value(input_deser.0, val);
+    } else {
+        return delete_key(input_deser.0);
     }
 }
 
@@ -192,7 +209,8 @@ fn query_key(path: String) -> Option<WyrmResult<String>> {
 
     if let Ok(keys) = open_key.keys() {
         for k in keys {
-            constructed.push(k);
+            let fmt = format!("[subkey] {k}");
+            constructed.push(fmt);
         }
     }
 
@@ -200,7 +218,13 @@ fn query_key(path: String) -> Option<WyrmResult<String>> {
     if let Ok(vals) = open_key.values() {
         for (name, data) in vals {
             let data_as_str = value_to_string(&data);
-            constructed.push(format!("{name} {data_as_str}",));
+            let name = if name.is_empty() {
+                "(default)".to_string()
+            } else {
+                name
+            };
+
+            constructed.push(format!("[value name] {name}, [value data] {data_as_str}",));
         }
     }
 
@@ -295,4 +319,59 @@ fn get_key_strip_hive<'a>(path: &'a str) -> Option<(&'a Key, &'a str)> {
     };
 
     Some((key, path_stripped))
+}
+
+fn delete_key(path: String) -> Option<WyrmResult<String>> {
+    //
+    // Try open the hive, in the event of an error - return
+    //
+    let (key, path_stripped) = match get_key_strip_hive(&path) {
+        Some((k, p)) => (k, p),
+        None => {
+            return Some(WyrmResult::Err::<String>(
+                sc!("Bad data - could not find matching hive.", 162).unwrap(),
+            ));
+        }
+    };
+
+    if let Err(e) = key.remove_tree(path_stripped) {
+        return Some(WyrmResult::Err::<String>(format!(
+            "{} {path}. {e}",
+            sc!("Could not delete key, searching for: ", 162).unwrap(),
+        )));
+    };
+
+    return Some(WyrmResult::Ok::<String>(sc!("Deleted key.", 162).unwrap()));
+}
+
+fn delete_reg_value(path: String, value: String) -> Option<WyrmResult<String>> {
+    //
+    // Try open the hive, in the event of an error - return
+    //
+    let (key, path_stripped) = match get_key_strip_hive(&path) {
+        Some((k, p)) => (k, p),
+        None => {
+            return Some(WyrmResult::Err::<String>(
+                sc!("Bad data - could not find matching hive.", 162).unwrap(),
+            ));
+        }
+    };
+
+    let open_key = match key.options().read().write().open(path_stripped) {
+        Ok(k) => k,
+        Err(e) => {
+            let msg = format!("{} {path} - {e}", sc!("Could not open key.", 19).unwrap());
+
+            return Some(WyrmResult::Err(msg));
+        }
+    };
+
+    if let Err(e) = open_key.remove_value(value) {
+        return Some(WyrmResult::Err::<String>(format!(
+            "{} {e}",
+            sc!("Could not delete key. Error: ", 162).unwrap(),
+        )));
+    };
+
+    return Some(WyrmResult::Ok::<String>(sc!("Deleted key.", 162).unwrap()));
 }

