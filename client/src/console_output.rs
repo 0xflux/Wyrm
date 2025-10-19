@@ -241,6 +241,69 @@ impl FormatOutput for NotificationForAgent {
 
                 return vec!["File exfiltrated successfully and can be found on the C2.".into()];
             }
+            Command::RegQuery => {
+                //
+                // alright this deser is gross ...
+                //
+                if let Some(response) = &self.result {
+                    match serde_json::from_str::<WyrmResult<String>>(&response) {
+                        Ok(data) => match data {
+                            WyrmResult::Ok(inner_string_from_result) => {
+                                match serde_json::from_str::<Vec<String>>(&inner_string_from_result)
+                                {
+                                    Ok(results_as_vec) => return results_as_vec,
+                                    Err(_) => {
+                                        // Try as a single string (in the event it was querying an exact value)
+                                        return vec![inner_string_from_result];
+                                    }
+                                }
+                            }
+                            WyrmResult::Err(e) => {
+                                return vec![format!("Error with operation. {e}")];
+                            }
+                        },
+                        Err(e) => {
+                            return vec![format!("Could not deserialise response data. {e}.")];
+                        }
+                    }
+                } else {
+                    return vec!["No data returned, something may have gone wrong.".into()];
+                }
+            }
+            Command::RegAdd => {
+                if let Some(response) = &self.result {
+                    match serde_json::from_str::<WyrmResult<String>>(&response) {
+                        Ok(wyrm_result) => match wyrm_result {
+                            WyrmResult::Ok(d) => return vec![d],
+                            WyrmResult::Err(e) => return vec![format!("An error occurred: {e}")],
+                        },
+                        Err(e) => {
+                            return vec![format!(
+                                "Could not deserialise response: {e}. Got: {response:#?}"
+                            )];
+                        }
+                    }
+                } else {
+                    return vec![format!("Unknown error. Got: {:#?}", self.result)];
+                }
+            }
+            Command::RegDelete => {
+                if let Some(response) = &self.result {
+                    match serde_json::from_str::<WyrmResult<String>>(&response) {
+                        Ok(wyrm_result) => match wyrm_result {
+                            WyrmResult::Ok(d) => return vec![d],
+                            WyrmResult::Err(e) => return vec![format!("An error occurred: {e}")],
+                        },
+                        Err(e) => {
+                            return vec![format!(
+                                "Could not deserialise response: {e}. Got: {response:#?}"
+                            )];
+                        }
+                    }
+                } else {
+                    return vec![format!("Unknown error. Got: {:#?}", self.result)];
+                }
+            }
         }
 
         match self.result.as_ref() {

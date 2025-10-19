@@ -1,5 +1,5 @@
 use std::{
-    fs::{create_dir, create_dir_all},
+    fs::create_dir_all,
     io,
     path::{Path, PathBuf},
     sync::Arc,
@@ -16,8 +16,9 @@ use chrono::{SecondsFormat, Utc};
 use serde_json::Value;
 use shared::{
     pretty_print::print_failed,
+    task_types::BuildAllBins,
     tasks::{
-        AdminCommand, BuildAllBins, Command, DELIM_FILE_DROP_METADATA, FileDropMetadata,
+        AdminCommand, Command, DELIM_FILE_DROP_METADATA, FileDropMetadata,
         FileUploadStagingFromClient, NewAgentStaging, StageType, WyrmResult,
     },
 };
@@ -109,6 +110,27 @@ pub async fn admin_dispatch(
             task_agent(Command::Pull, Some(file_path), uid.unwrap(), state).await
         }
         AdminCommand::BuildAllBins(_) => None,
+        AdminCommand::RegQuery(data) => match serde_json::to_string(&data) {
+            Ok(s) => task_agent(Command::RegQuery, Some(s), uid.unwrap(), state).await,
+            Err(e) => {
+                log_error_async(&e.to_string()).await;
+                None
+            }
+        },
+        AdminCommand::RegAdd(data) => match serde_json::to_string(&data) {
+            Ok(s) => task_agent(Command::RegAdd, Some(s), uid.unwrap(), state).await,
+            Err(e) => {
+                log_error_async(&e.to_string()).await;
+                None
+            }
+        },
+        AdminCommand::RegDelete(data) => match serde_json::to_string(&data) {
+            Ok(s) => task_agent(Command::RegDelete, Some(s), uid.unwrap(), state).await,
+            Err(e) => {
+                log_error_async(&e.to_string()).await;
+                None
+            }
+        },
     };
 
     serde_json::to_vec(&result).unwrap()

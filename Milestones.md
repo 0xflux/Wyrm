@@ -6,19 +6,14 @@ developed as a premium or otherwise private feature. These will be few and far b
 ### v0.4
 
 1) [ ] BUG: https://github.com/0xflux/Wyrm/issues/3
-2) [ ] `reg add`, `reg query`, `reg delete`
+2) [x] `reg add`, `reg query`, `reg delete`
 3) [ ] .env migrated to the profile TOML
-4) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
-5) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
-6) [ ] Consider deprecating the sleep in `listener` and moving it to the `implant` section instead
-7)  [ ] Multiple URLs / IPs for C2
-8)  [ ] Separate URIs for POST and GET
-9)  [ ] Round robin and different styles for URI & URL rotation
-10) [ ] `rm` command
-11) [ ] Improve formatting of output of running `ps`
-12) [ ] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp). The C2 can run this on the binary; maybe build as a separate lib and include, or just a separate module.
-13) [ ] Re-pin / remove pin for shared libs
-14) [ ] Output data as JSON so it is ingestible into ELK etc perhaps from the C2 or a db export option?
+4) [ ] Consider deprecating the sleep in `listener` and moving it to the `implant` section instead
+5) [ ] `rm` command
+6) [ ] Improve formatting of output of running `ps`
+7) [ ] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp). The C2 can run this on the binary; maybe build as a separate lib and include, or just a separate module.
+8) [ ] Output data as JSON so it is ingestible into ELK etc perhaps from the C2 or a db export option?
+9) [ ] Does the inner enum appear in the strings? Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 
 ### 0.5
 
@@ -32,11 +27,18 @@ developed as a premium or otherwise private feature. These will be few and far b
 5) [ ] Admin URI can be configured specifically in the profile - this will help defeat a little CTI
 6) [ ] Number of downloads for staged resources
 7) [ ] String stomping options on built binary 
+8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 
 ### 0.6
 
 1) [ ] C2 'dockerised' for easier deployment
 2) [ ] Max upload size set on C2
+3) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
+4) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
+5) [ ] Multiple URLs / IPs for C2
+6) [ ] Separate URIs for POST and GET
+7) [ ] Round robin and different styles for URI & URL rotation
+8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
  
 ### v1.0 - Whelpfire
 
@@ -52,6 +54,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 8) [ ] Website docs, maybe gitbook or smth, im liking the look of https://github.com/redimp/otterwiki
 9) [ ] Stop bcrypt'ing on each admin control / auth event, use tokens. It is needlessly inefficient currently.
 10) [ ] Support domain fronting through HTTP headers in malleable profile
+11) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 
 ### v1.1
 

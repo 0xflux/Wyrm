@@ -16,7 +16,7 @@ use axum::{
 use serde::Deserialize;
 use shared::{
     net::{XorEncode, decode_http_response},
-    tasks::{AdminCommand, BuildAllBins, Command, FirstRunData},
+    tasks::{AdminCommand, Command, FirstRunData},
 };
 
 /// Handles the inbound connection, after authentication has validated the agent.

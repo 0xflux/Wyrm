@@ -6,6 +6,8 @@ use std::{
     path::PathBuf,
 };
 
+use crate::task_types::{BuildAllBins, FileCopyInner, RegAddInner, RegQueryInner};
+
 /// Commands supported by the implant and C2.
 ///
 /// To convert an integer `u32` to a [`Command`], use [`Command::from_u32`].
@@ -38,6 +40,9 @@ pub enum Command {
     Move,
     /// Pulls a file from the target machine, downloading to the C2
     Pull,
+    RegQuery,
+    RegAdd,
+    RegDelete,
     // This should be totally unreachable; but keeping to make sure we don't get any weird UB, and
     // make sure it is itemised last in the enum
     Undefined,
@@ -162,21 +167,14 @@ impl Display for Command {
             Command::Copy => "Copy",
             Command::Move => "Move",
             Command::Pull => "Pull",
+            Command::RegQuery => "reg query",
+            Command::RegAdd => "reg add",
+            Command::RegDelete => "reg del",
         };
 
         write!(f, "{choice}")
     }
 }
-
-/// The inner type for the [`AdminCommand::Copy`] and [`AdminCommand::Move`], represented as an tuple with
-/// the format (from, to).
-pub type FileCopyInner = (String, String);
-
-/// Represents inner data for the [`AdminCommand::BuildAllBins`], as a tuple for:
-/// (`profile_disk_name`, `save path`, `listener_profile`, `implant_profile`).
-///
-/// For `listener_profile` & `implant_profile`, a value of `None` will resolve to matching on `default`.
-pub type BuildAllBins = (String, String, Option<String>, Option<String>);
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum AdminCommand {
@@ -204,6 +202,9 @@ pub enum AdminCommand {
     /// Pulls a file from the target machine, downloading to the C2
     Pull(String),
     BuildAllBins(BuildAllBins),
+    RegQuery(RegQueryInner),
+    RegAdd(RegAddInner),
+    RegDelete(RegQueryInner),
     Undefined,
 }
 

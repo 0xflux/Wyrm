@@ -4,9 +4,16 @@ Anything found labelled with a '&#128679;' indicates a possible breaking change 
 the `default.example.profile` found in `/c2/profiles/`. This is done especially as to not overwrite your custom profiles when
 pulling updates.
 
-## v 0.4
+## &#128679; v 0.4
+
+### &#128679; Breaking changes
+
+- Docker build pipeline for client now moved to workspace root rather than from within the `/client` directory. To build the client, now run (from the workspace root): `docker compose up -d --build client`
+
+### Non breaking changes
 
 - OPSEC improvement with removing an artifact from the binary related to a struct name
+- Introduces the registry manipulation features with `reg query`, `reg delete` and `reg add` commands.
 - Improve docker build process for the client through [cargo chef](https://lpalmieri.com/posts/fast-rust-docker-builds/).
 
 ## v 0.3

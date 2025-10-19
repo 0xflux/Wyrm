@@ -1,12 +1,7 @@
-use std::path::{Path, PathBuf};
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use shared::{
-    process::Process,
-    tasks::{Command, PowershellOutput, WyrmResult},
-};
+use shared::tasks::Command;
 use sqlx::FromRow;
 
 pub const ADMIN_AUTH_SEPARATOR: &str = "=authdivider=";
@@ -62,6 +57,9 @@ pub fn command_to_string(cmd: &Command) -> String {
         Command::Copy => "Copy",
         Command::Move => "Move",
         Command::Pull => "Pull",
+        Command::RegQuery => "reg query",
+        Command::RegAdd => "reg add",
+        Command::RegDelete => "reg del",
     };
 
     c.into()
