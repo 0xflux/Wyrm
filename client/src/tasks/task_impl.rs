@@ -376,6 +376,7 @@ pub async fn show_help(
         "reg query <path_to_key>".into(),
         "reg query <path_to_key> <value> (for more info, type help reg)".into(),
         "reg add <path_to_key> <value name> <value data> <data type> (for more info, type help reg)".into(),
+        "reg del <path_to_key> <Optional: value name> (for more info, type help reg)".into(),
     ];
 
     if let IsTaskingAgent::Yes(agent_id) = agent {
@@ -435,6 +436,11 @@ pub async fn show_help_for_command(
             "Modifies the registry by either adding a new key if it did not already exist, or updating an existing key.".into(),
             "For the data type, you should specify either: string, DWORD, or QWORD depending on the data you are writing.".into(),
             "You can then check the addition by running reg query <args>.".into(),
+            "".into(),
+            "".into(),
+            "reg del".into(),
+            "Usage: reg del <path_to_key> <Optional: value name>".into(),
+            "Deletes a registry key, or value, based on above args. Deleting the key will delete all sub-keys under it, so take care.".into(),
         ],
         _ => vec!["No help pages available for this command, or it does not exist.".into()],
     };
