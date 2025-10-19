@@ -8,14 +8,15 @@ pulling updates.
 
 ### &#128679; Breaking changes
 
-- Docker build pipeline for client now moved to workspace root rather than from within the `/client` directory. To build the client, now run (from the workspace root): `docker compose up -d --build client`
+- Docker build pipeline for client now moved to workspace root rather than from within the `/client` directory. To build the client, now run (from the workspace root): `docker compose up -d --build client`.
 
 ### Non breaking changes
 
-- OPSEC improvement with removing an artifact from the binary related to a struct name
+- OPSEC improvement with removing an artifact from the binary related to a struct name.
 - Introduces the registry manipulation features with `reg query`, `reg delete` and `reg add` commands.
 - Improve docker build process for the client through [cargo chef](https://lpalmieri.com/posts/fast-rust-docker-builds/).
-- Implant supports `rm` to remove a file, and `rm_d` to remove a directory (and all its children)
+- Implant supports `rm` to remove a file, and `rm_d` to remove a directory (and all its children).
+- Adds user name who is running processes, as well as the ability to show processes running at a higher privilege (if running with high integrity).
 
 ## v 0.3
 

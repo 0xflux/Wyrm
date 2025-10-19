@@ -10,7 +10,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 3) [ ] .env migrated to the profile TOML
 4) [ ] Consider deprecating the sleep in `listener` and moving it to the `implant` section instead
 5) [x] `rm` command
-6) [ ] Improve formatting of output of running `ps`
+6) [x] Improve formatting of output of running `ps`
 7) [ ] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp). The C2 can run this on the binary; maybe build as a separate lib and include, or just a separate module.
 8) [ ] Output data as JSON so it is ingestible into ELK etc perhaps from the C2 or a db export option?
 9) [ ] Does the inner enum appear in the strings? Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
@@ -39,6 +39,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] Separate URIs for POST and GET
 7) [ ] Round robin and different styles for URI & URL rotation
 8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
+9) [ ] Ps should show parent pids with children in a hierarchy
  
 ### v1.0 - Whelpfire
 
