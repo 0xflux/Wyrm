@@ -131,6 +131,20 @@ pub async fn admin_dispatch(
                 None
             }
         },
+        AdminCommand::RmFile(data) => match serde_json::to_string(&data) {
+            Ok(s) => task_agent(Command::RmFile, Some(s), uid.unwrap(), state).await,
+            Err(e) => {
+                log_error_async(&e.to_string()).await;
+                None
+            }
+        },
+        AdminCommand::RmDir(data) => match serde_json::to_string(&data) {
+            Ok(s) => task_agent(Command::RmDir, Some(s), uid.unwrap(), state).await,
+            Err(e) => {
+                log_error_async(&e.to_string()).await;
+                None
+            }
+        },
     };
 
     serde_json::to_vec(&result).unwrap()

