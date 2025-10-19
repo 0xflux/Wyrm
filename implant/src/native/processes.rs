@@ -18,8 +18,8 @@ use windows_sys::Win32::{
     System::{
         ProcessStatus::EnumProcesses,
         Threading::{
-            OpenProcess, OpenProcessToken, PROCESS_NAME_NATIVE, PROCESS_QUERY_LIMITED_INFORMATION,
-            PROCESS_TERMINATE, QueryFullProcessImageNameW, TerminateProcess,
+            OpenProcess, OpenProcessToken, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_TERMINATE,
+            QueryFullProcessImageNameW, TerminateProcess,
         },
     },
 };
