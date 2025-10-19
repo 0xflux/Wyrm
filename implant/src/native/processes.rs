@@ -1,29 +1,27 @@
 //! Native interactions with Windows Processes
 
 use serde::Serialize;
+#[cfg(debug_assertions)]
+use shared::pretty_print::print_failed;
 use shared::{
     process::Process,
     tasks::{Task, WyrmResult},
 };
 use std::{mem::MaybeUninit, ptr::null_mut};
 use str_crypter::{decrypt_string, sc};
-use windows_sys::{
-    Win32::{
-        Foundation::{CloseHandle, FALSE, GetLastError, HANDLE},
-        Security::{
-            GetTokenInformation, LookupAccountSidW, PSID, SID_NAME_USE, TOKEN_QUERY, TOKEN_USER,
-            TokenUser,
-        },
-        System::{
-            ProcessStatus::{EnumProcesses, GetModuleBaseNameW},
-            Threading::{
-                OpenProcess, OpenProcessToken, PROCESS_QUERY_INFORMATION,
-                PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_TERMINATE, PROCESS_VM_READ,
-                TerminateProcess,
-            },
+use windows_sys::Win32::{
+    Foundation::{CloseHandle, FALSE, GetLastError, HANDLE},
+    Security::{
+        GetTokenInformation, LookupAccountSidW, PSID, SID_NAME_USE, TOKEN_QUERY, TOKEN_USER,
+        TokenUser,
+    },
+    System::{
+        ProcessStatus::EnumProcesses,
+        Threading::{
+            OpenProcess, OpenProcessToken, PROCESS_NAME_NATIVE, PROCESS_QUERY_LIMITED_INFORMATION,
+            PROCESS_TERMINATE, QueryFullProcessImageNameW, TerminateProcess,
         },
     },
-    core::PWSTR,
 };
 
 use crate::utils::strings::utf_16_to_string_lossy;
@@ -69,35 +67,14 @@ fn pids_to_processes(pids: Vec<u32>) -> Option<Vec<Process>> {
     let mut processes = Vec::new();
 
     for pid in pids {
-        let handle = unsafe {
-            OpenProcess(
-                PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ,
-                FALSE,
-                pid,
-            )
-        };
+        let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid) };
 
         if handle.is_null() {
             continue;
         }
 
-        // Zero memset initialise a stack buffer to write the process name to
-        let buf: MaybeUninit<[u16; 260]> = MaybeUninit::uninit();
-        let mut buf = unsafe { buf.assume_init() };
-        // Calculate the size, which is in terms of chars. As we are wide; we need to divide the mem by 2
-        let sz: u32 = buf.len() as u32 / 2;
-
-        // SAFETY: Handle is valid at this point, we check the null status above
-        let name_len = unsafe { GetModuleBaseNameW(handle, null_mut(), buf.as_mut_ptr(), sz) };
-
-        if name_len == 0 {
-            let _ = unsafe { CloseHandle(handle) };
-            continue;
-        }
-
-        let name = String::from_utf16_lossy(&buf[..name_len as usize]);
-
-        let user: String = lookup_process_owner_name(handle, pid);
+        let name = lookup_process_name(handle, pid);
+        let user = lookup_process_owner_name(handle, pid);
 
         processes.push(Process { pid, name, user });
         let _ = unsafe { CloseHandle(handle) };
@@ -108,6 +85,34 @@ fn pids_to_processes(pids: Vec<u32>) -> Option<Vec<Process>> {
     }
 
     Some(processes)
+}
+
+fn lookup_process_name(handle: HANDLE, pid: u32) -> String {
+    const BUF_LEN: u32 = 512;
+    // Zero memset initialise a stack buffer to write the process name to
+    let buf: MaybeUninit<[u16; BUF_LEN as _]> = MaybeUninit::uninit();
+    let mut buf = unsafe { buf.assume_init() };
+
+    let mut sz: u32 = BUF_LEN;
+
+    let result = unsafe { QueryFullProcessImageNameW(handle, 0, buf.as_mut_ptr(), &mut sz) };
+
+    if result == 0 {
+        #[cfg(debug_assertions)]
+        {
+            print_failed(format!(
+                "Failed to look up image name for pid {pid}. Error code: {:#X}",
+                unsafe { GetLastError() }
+            ));
+        }
+
+        return sc!("unknown", 87).unwrap();
+    }
+
+    let full_str = unsafe { utf_16_to_string_lossy(buf.as_ptr(), sz as _) };
+    let parts: Vec<&str> = full_str.split('\\').collect();
+
+    parts[parts.len() - 1].to_string()
 }
 
 fn lookup_process_owner_name(handle: HANDLE, pid: u32) -> String {
@@ -172,10 +177,14 @@ fn lookup_process_owner_name(handle: HANDLE, pid: u32) -> String {
 
         const BUF_LEN: u32 = 256;
         let mut name_tchars = BUF_LEN;
-        let mut wide_name: [u16; 256] = [0; 256];
         let mut domain_tchars = BUF_LEN;
-        let mut wide_domain: [u16; 256] = [0; 256];
         let mut sid_type = SID_NAME_USE::default();
+
+        // Zero memset initialise a stack buffer to write the process name to
+        let wide_name: MaybeUninit<[u16; BUF_LEN as _]> = MaybeUninit::uninit();
+        let mut wide_name = unsafe { wide_name.assume_init() };
+        let wide_domain: MaybeUninit<[u16; BUF_LEN as _]> = MaybeUninit::uninit();
+        let mut wide_domain = unsafe { wide_domain.assume_init() };
 
         let result = unsafe {
             LookupAccountSidW(
