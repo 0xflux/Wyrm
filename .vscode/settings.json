@@ -71,6 +71,7 @@
         "sqlx",
         "strs",
         "subdirs",
+        "tchars",
         "thiserror",
         "TOPT",
         "trustedsec's",
