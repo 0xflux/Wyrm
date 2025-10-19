@@ -375,6 +375,7 @@ pub async fn show_help(
         "drop <server recognised name> <filename to drop on disk (including extension)>".into(),
         "reg query <path_to_key>".into(),
         "reg query <path_to_key> <value>".into(),
+        "reg add <path_to_key> <value name> <value data> <data type> (for more info, type help reg add)".into(),
     ];
 
     if let IsTaskingAgent::Yes(agent_id) = agent {
@@ -421,6 +422,12 @@ pub async fn show_help_for_command(
             "Usage: reg query <path_to_key> <OPTIONAL: value>".into(),
             "Queries the registry by a path to the key, with an optional value if you wish to query only a specific value".into(),
             "If the path contains whitespace, ensure you wrap it in \"quotes\".".into(),
+        ],
+        "reg add" => vec![
+            "Usage: reg add <path_to_key> <value name> <value data> <data type>".into(),
+            "Modifies the registry by either adding a new key if it did not already exist, or updating an existing key.".into(),
+            "For the data type, you should specify either: string, DWORD, or QWORD depending on the data you are writing.".into(),
+            "You can then check the addition by running reg query <args>.".into(),
         ],
         _ => vec!["No help pages available for this command, or it does not exist.".into()],
     };
