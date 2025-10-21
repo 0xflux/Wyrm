@@ -8,7 +8,11 @@ pulling updates.
 
 ### &#128679; Breaking changes
 
+- `.env` migrated from `/c2` to `/` - **THIS MAY AFFECT YOUR ADMIN TOKEN AND OTHER ENVIRONMENT SETTINGS, PLEASE BACK-UP BEFORE UPDATING**.
 - Docker build pipeline for client now moved to workspace root rather than from within the `/client` directory. To build the client, now run (from the workspace root): `docker compose up -d --build client`.
+- No more `install.sh`! You run the C2 via docker, simply with: `docker compose up -d --build  c2` from the root directory. This means you can run both the client and c2 via docker.
+  - Client: `docker compose up -d --build client`
+  - C2: `docker compose up -d --build c2`
 
 ### Non breaking changes
 

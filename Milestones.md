@@ -6,7 +6,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 ### v0.4
 
 1) [x] `reg add`, `reg query`, `reg delete`
-2) [ ] C2 'dockerised' for easier deployment
+2) [x] C2 'dockerised' for easier deployment
 3) [ ] .env migrated to the profile TOML
 4) [x] `rm` command
 5) [x] Improve formatting of output of running `ps`
