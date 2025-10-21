@@ -11,9 +11,15 @@ overwrite your local configs and agent profiles.
 
 Before using the C2, you **SHOULD** change the default admin token and database creds found in the `.env` for security purposes.
 
+Via docker, simply run: `docker compose up -d --build`. The C2 exposes itself on port 8080, which you will likely want to reverse proxy in prod. You
+can access the client on `http://127.0.0.1:4040/`.
+
+Note: The C2 uses a docker volume `/data` to store loot as well as other persistent files.
+
+For more fine grain control over building components:
+
 - To run the C2, from the root directory (`../`) run `docker compose up -d --build c2`. On first run this may take a few minutes.
 - To connect to the C2, you should use the client which can be run via: `docker compose up -d --build client` and is served on port 4040 by default.
-- The C2 uses a docker volume `/data` to store loot as well as other persistent files.
 
 ## Post exploitation Red Team framework
 
