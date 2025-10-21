@@ -1,6 +1,6 @@
-# Wyrm - v0.3 Hatchling
+# Wyrm - v0.4 Hatchling
 
-&#128679; Pre-release version &#128679;. If you want to support this project, please give it a star! I will be releasing updates and
+Pre-release version. If you want to support this project, please give it a star! I will be releasing updates and
 devlogs on my [blog](https://fluxsec.red/) and [YouTube](https://www.youtube.com/@FluxSec) to document progress, so please give me a follow there.
 
 **IMPORTANT**: Before pulling updates, check the [Release Notes](https://github.com/0xflux/Wyrm/blob/master/RELEASE_NOTES.md) for any 
