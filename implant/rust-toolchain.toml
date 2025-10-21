@@ -1,4 +1,4 @@
 [toolchain]
-# Pin nightly such that we dont get any unexpected breaking changes.
-# We can update this as required in the future.
-channel = "nightly-2025-09-28"
+# # Pin nightly such that we dont get any unexpected breaking changes.
+# # We can update this as required in the future.
+channel = "nightly-2025-10-20"

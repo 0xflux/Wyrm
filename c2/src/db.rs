@@ -25,8 +25,6 @@ pub struct Db {
 impl Db {
     /// Establish the connection to the Postgres db
     pub async fn new() -> Self {
-        print_info("Connecting to database...");
-
         let db_string = format!(
             "postgres://{}:{}@{}/{}",
             env::var("POSTGRES_USER").expect("could not find POSTGRES_USER"),
@@ -34,6 +32,8 @@ impl Db {
             env::var("POSTGRES_HOST").expect("could not find POSTGRES_HOST"),
             env::var("POSTGRES_DB").expect("could not find POSTGRES_DB")
         );
+
+        print_info(format!("Connecting to database..."));
 
         let pool = PgPoolOptions::new()
             .max_connections(MAX_DB_CONNECTIONS)

@@ -7,13 +7,40 @@ services:
     ports: 
       - 4040:4040
     environment:
-      # This must match the token on the C2!
-      - ADMIN_TOKEN=fdgiyh%^l!udjfh78364LU7&%df!!
+      - ADMIN_TOKEN=${ADMIN_TOKEN}
 
-  # c2:
-  #   container_name: "c2"
-  #   build: 
-  #     context: .
-  #     dockerfile: # todo
-  #   ports: # todo
-  #   environment: #todo
+  c2_db:
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER}" 
+      POSTGRES_DB: "${POSTGRES_DB}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+    image: postgres:18.0-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+      - c2_pgdata:/var/lib/postgresql/data
+
+  c2:
+    depends_on:
+      - c2_db
+    build:
+      context: .
+      dockerfile: c2/Dockerfile
+    environment:
+      C2_PORT: "${C2_PORT}"
+      C2_HOST: "${C2_HOST}"
+      POSTGRES_USER: "${POSTGRES_USER}" 
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_HOST: "c2_db"
+      POSTGRES_DB: "${POSTGRES_DB}"
+      LEEWAY_IN_SECONDS: "${LEEWAY_IN_SECONDS}"
+      ADMIN_TOKEN: "${ADMIN_TOKEN}"
+      STALE_AGENT_SLEEP_TIME: "${STALE_AGENT_SLEEP_TIME}"
+    ports: 
+      - "${C2_PORT}:${C2_PORT}"
+    volumes:
+      - c2_data:/data
+
+volumes:
+  c2_data:
+  c2_pgdata:

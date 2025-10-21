@@ -61,6 +61,7 @@
         "regq",
         "repr",
         "reqwest",
+        "rustup",
         "rwlock",
         "Serialise",
         "serialised",

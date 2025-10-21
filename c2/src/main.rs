@@ -1,5 +1,7 @@
 use core::panic;
-use std::{fs::create_dir, net::SocketAddr, panic::set_hook, path::PathBuf, sync::Arc};
+use std::{
+    env::current_dir, fs::create_dir, net::SocketAddr, panic::set_hook, path::PathBuf, sync::Arc,
+};
 
 use api::{handle_agent_get, handle_agent_post};
 use axum::{
@@ -9,7 +11,6 @@ use axum::{
     routing::{get, post},
     serve,
 };
-use dotenvy::dotenv;
 use shared::{
     net::{ADMIN_ENDPOINT, NOTIFICATION_CHECK_AGENT_ENDPOINT},
     pretty_print::{print_info, print_success},
@@ -46,9 +47,9 @@ const MAX_POST_BODY_SZ: usize = NUM_GIGS * 1024 * 1024 * 1024;
 
 /// The path to the directory on the server (relative to the working directory of the service [n.b. this
 /// implies the server was 'installed' correctly..])
-const FILE_STORE_PATH: &str = "staged_files";
-const EXFIL_PATH: &str = "loot";
-const LOG_PATH: &str = "logs";
+const FILE_STORE_PATH: &str = "/data/staged_files";
+const EXFIL_PATH: &str = "/data/loot";
+const LOG_PATH: &str = "/data/logs";
 const ACCESS_LOG: &str = "access.log";
 const LOGIN_LOG: &str = "login.log";
 const ERROR_LOG: &str = "error.log";
@@ -65,14 +66,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
+    print_info("Profiles parsed.");
+
     // Set a panic hook for logging unwraps, expects, panics, etc.
     set_panic_hook();
 
-    // Load the .env
-    dotenv().expect("could not load the .env file, ensure it is present");
-
     // Build any paths on disk we need
     ensure_dirs_and_files();
+
+    print_info("Directories and files checked.");
 
     let pool = Db::new().await;
     let state = Arc::new(AppState::from(pool, profile).await);
