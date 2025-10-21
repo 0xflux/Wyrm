@@ -18,7 +18,7 @@ Note: The C2 uses a docker volume `/data` to store loot as well as other persist
 
 For more fine grain control over building components:
 
-- To run the C2, from the root directory (`../`) run `docker compose up -d --build c2`. On first run this may take a few minutes.
+- To run the C2, run `docker compose up -d --build c2`. On first run this may take a few minutes.
 - To connect to the C2, you should use the client which can be run via: `docker compose up -d --build client` and is served on port 4040 by default.
 
 ## Post exploitation Red Team framework
