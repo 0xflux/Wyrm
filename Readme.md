@@ -7,7 +7,15 @@ devlogs on my [blog](https://fluxsec.red/) and [YouTube](https://www.youtube.com
 breaking changes to profiles / configs which you may need to manually adjust or migrate. This is done especially so that updates do not
 overwrite your local configs and agent profiles.
 
-### Post exploitation Red Team framework
+## TLDR for using the C2
+
+Before using the C2, you **SHOULD** change the default admin token and database creds found in the `.env` for security purposes.
+
+- To run the C2, from the root directory (`../`) run `docker compose up -d --build c2`. On first run this may take a few minutes.
+- To connect to the C2, you should use the client which can be run via: `docker compose up -d --build client` and is served on port 4040 by default.
+- The C2 uses a docker volume `/data` to store loot as well as other persistent files.
+
+## Post exploitation Red Team framework
 
 Wyrm (pronounced 'worm', an old English word for 'serpent' or 'dragon') is a post exploitation, open source, Red Team security testing framework framework, written in Rust designed to be used by Red Teams, Purple Teams, 
 Penetration Testers, and general infosec hobbyists. This project is fully built in Rust, with extra effort going into obfuscating artifacts which
@@ -41,8 +49,7 @@ so I will be attentive to anything raised.
 This project is not currently accepting contributions, please **raise issues** or use **GitHub Discussions** and I will look into them, and help
 answer any questions.
 
-**Before deploying the C2**, you should read the C2 readme file, found in the `/c2` directory. Proper docs are coming soon
-in time for v1.0 release, at https://wyrm-c2.com.
+## Model
 
 A mental model for the C2 is as follows:
 
@@ -56,66 +63,15 @@ The below image demonstrates the **Below TLS Encryption** feature and how it is 
 
 **WARNING:** Before pulling an update; please check the [release notes](https://github.com/0xflux/Wyrm/blob/master/RELEASE_NOTES.md) to see whether there are any breaking changes - for example if the
 **configurable C2 profile** changes in a breaking way from a previous profile you have, you will want to make sure you backup and migrate
-your profile. I will be excluding `/c2/profiles/*` from git once the project is published in pre-release to prevent accidentally overwriting
+your profile. I will be excluding `/c2/profiles/*` and `.env` from git once the project is published in pre-release to prevent accidentally overwriting
 your previous profile when running `git pull` to update your software.
 
 As per the roadmap, this project will see significant development over the next 12 months. To pull updates, whether they are new features
-or bug fixes, you simply just do a git pull, re-build the c2 in release mode via:
+or bug fixes, you simply just do a **git pull**, re-build via docker: `docker compose up -d --build c2` and `docker compose up -d --build client`.
 
-- `sudo systemctl stop wyrm`
-- `cd c2`, 
-- `cargo build --release`
-- `sudo systemctl start wyrm`
+# The legal bit
 
-### Setup
-
-The project contains an install shell script, and is designed to be run on `Debian` based Linux flavours.
-The install script will install all required dependencies to the project, as well as making a new user, `wyrm_user`
-that will run the C2 service.
-
-The user account is created as `sudo useradd --system --no-create-home --shell /usr/sbin/nologin wyrm_user`.
-
-**Server Setup**
-
-1) Install your favourite reverse proxy (NGINX / Apache etc). The web app will default to serve on `0.0.0.0` at `:8080`. You can edit this in `/c2/.env` (at step 2), so configure your reverse proxy to use whatever you define in the `.env`.
-2) Clone the repo to your server & mark the install script executable.
-3) **SECURITY**: 
-   1) In `c2/.env` edit:
-      1) `POSTGRES_PASSWORD`
-      2) `ADMIN_TOKEN` - **DO NOT USE THE DEFAULT THAT I PROVIDED**!!!!!! Ensure this is **sufficiently** complex. Explanation can be found below.
-      3) You can also edit other settings, which provide malleability to your C2.
-4) `chmod +x install_server.sh`
-5) Run `./install_server.sh` from the **repo directory**, this will install all required dependencies, configure the database, build the C2 etc.
-   1) **Optionally**, if you are an expert user and want to use less space on the C2, you can manually configure the installation paths by dropping pre-built (by you, I won't provide pre-build binaries) binaries onto the server in the correct places & configuring the service as appropriate.
-
-**Client Setup**
-
-Simply follow the instructions in the `client` directory, using `docker` to run the GUI. You will need to ensure the admin token (instructions found
-within) matches the admin token on the C2 as explained above.
-
-You can run the client from the workspace root with: `docker compose up -d --build client`
-
-**If running locally**
-
-If you are running locally, and want to use the implant in debug mode (for testing) you will need to log into the C2 and stage a new agent, that matches
-the configuration provided in `implant/set_dbg_env.ps1`. You MUST create a new agent staged that accepts the security token defined in that `ps1` file (steps below). The `.ps1` script will just export the build settings to your environment which are compiled into the binary at compile time.
-
-For **SECURITY** I would not recommend doing this on a remote C2 as it would be a 'default bypass' for an adversary. It is fine for your local dev environment
-however.
-
-To do this:
-
-1) Run `implant/set_dbg_env.ps1` to export the environment variables required at compile time for the agent.
-2) Log into the client (after setting the .env data)
-3) Click on the button to stage a new agent.
-4) You now need to ensure the two inputs match these instructions
-   1) When you are asked for an `Agent name`, enter the name found in your `.ps1` script under the key `$Env:AGENT_NAME`.
-   2) When you are asked to `Enter a unique security token for the this payload`, enter the the token you found in your `.ps1` script found in the key: `$Env:SECURITY_TOKEN`.
-5) This will create a relevent entry in the database so that you can build in debug mode and test the agent locally, authorizing the connectivity between C2 and agent.
-
-## The legal bit
-
-### Authorized Use Only
+## Authorized Use Only
 
 **Permitted Users**
 
@@ -123,7 +79,7 @@ The Software is intended **exclusively** for **authorised** penetration testers,
 
 Any use of the Software on systems for which you do not hold such authorisation is **strictly prohibited** and may constitute a criminal offence under the UK Computer Misuse Act 1990 (including sections on Unauthorised access to computer material, Unauthorised access with intent to commit further offences, and Unauthorised acts impairing operation) or equivalent laws elsewhere.
 
-### Prohibited Conduct
+## Prohibited Conduct
 You must not use, distribute, or facilitate use of the Software for:
 
 - Unauthorised Access (CMA 1990, Section 1) — hacking into systems or accounts without permission.
@@ -138,11 +94,11 @@ Or equivalent offenses in other jurisdictions.
 
 The Author expressly **does not condone, support, or encourage** any illegal or malicious activity. This Software is provided purely for legitimate security-testing purposes, in environments where full authorisation has been granted.
 
-### Compliance with Laws & Regulations
+## Compliance with Laws & Regulations
 
 **Local Laws**: You alone are responsible for ensuring your use of the Software complies with all applicable local, national, and international laws, regulations, and corporate policies.
 
-### No Warranty
+## No Warranty
 
 The Software is provided “as is” and “as available”, without warranties of any kind, express or implied.
 
@@ -150,7 +106,7 @@ We make no warranty of merchantability, fitness for a particular purpose, or non
 
 We do not warrant that the Software is error-free, secure, or uninterrupted.
 
-### Limitation of Liability
+## Limitation of Liability
 
 To the fullest extent permitted by law, neither the Author nor contributors shall be liable for any:
 
