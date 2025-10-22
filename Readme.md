@@ -21,6 +21,10 @@ For more fine grain control over building components:
 - To run the C2, run `docker compose up -d --build c2`. On first run this may take a few minutes.
 - To connect to the C2, you should use the client which can be run via: `docker compose up -d --build client` and is served on port 4040 by default.
 
+### Making changes to the profiles
+
+If you make changes to the profiles (`c2/profiles/*`) then you will need to re-run the docker container for the `c2`, ensuring you pass the `--build` flag for the updated profile changes to have effect. After changing updating your profile(s), run: `docker compose up -d --build c2`
+
 ## Post exploitation Red Team framework
 
 Wyrm (pronounced 'worm', an old English word for 'serpent' or 'dragon') is a post exploitation, open source, Red Team security testing framework framework, written in Rust designed to be used by Red Teams, Purple Teams, 
