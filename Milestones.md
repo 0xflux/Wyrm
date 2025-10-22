@@ -12,6 +12,10 @@ developed as a premium or otherwise private feature. These will be few and far b
 5) [ ] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp). The C2 can run this on the binary; maybe build as a separate lib and include, or just a separate module.
 6) [ ] Output data as JSON so it is ingestible into ELK etc perhaps from the C2 or a db export option?
 7) [ ] Does the inner enum appear in the strings? Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
+   1) [ ] Looks like the URIs are not encrypted - /submit.aspx, etc
+   2) [ ] no_serial not encrypted
+   3) [ ] UNKNOWN not encrypted
+   4) [ ] Headers not encrypted, User-Agent, WWW-Authenticate, etc
 
 ### v0.4.1
 
