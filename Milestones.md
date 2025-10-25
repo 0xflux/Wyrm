@@ -20,7 +20,8 @@ developed as a premium or otherwise private feature. These will be few and far b
 ### v0.4.1
 
 1) [ ] BUG: https://github.com/0xflux/Wyrm/issues/3
-2) [ ] Consider GUI rework using Leptos if possible; HTMX is a little janky on the refreshes etc and I have a skill issue with web front end :)
+2) [ ] Consider GUI rework using Leptos
+3) [ ] C2 code could do with a bit of a tidy up..
 
 ### 0.5
 
