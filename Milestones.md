@@ -9,7 +9,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 2) [x] C2 'dockerised' for easier deployment
 3) [x] `rm` command
 4) [x] Improve formatting of output of running `ps`
-5) [ ] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp). The C2 can run this on the binary; maybe build as a separate lib and include, or just a separate module.
+5) [x] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp).
 6) [ ] Output data as JSON so it is ingestible into ELK etc perhaps from the C2 or a db export option?
 7) [ ] Does the inner enum appear in the strings? Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
    1) [ ] Looks like the URIs are not encrypted - /submit.aspx, etc
@@ -129,6 +129,7 @@ These are to be split out further as required for more manageable releases.
 9)  [ ] 'Overwatch' system on the C2
 10) [ ] TOPT
 11) [ ] Add ability to protect staged downloads with a header `key=value`, to try prevent mass downloading of an agent in cases where the operator wants it behind a check
+12) [ ] Post Quantum Encryption for below TLS implant comms
 
 ### Ashen Crown - v3.0
 

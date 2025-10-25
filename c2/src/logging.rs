@@ -1,6 +1,7 @@
 use std::{env, io::Write, path::PathBuf};
 
 use chrono::{SecondsFormat, Utc};
+use shared::pretty_print::print_failed;
 use tokio::io::AsyncWriteExt;
 
 use crate::{ACCESS_LOG, ERROR_LOG, LOG_PATH, LOGIN_LOG};
@@ -102,6 +103,8 @@ pub fn log_error(message: &str) {
 pub async fn log_error_async(message: &str) {
     let mut path = PathBuf::from(LOG_PATH);
     path.push(ERROR_LOG);
+
+    print_failed(message);
 
     log(&path, message, None).await
 }

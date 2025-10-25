@@ -11,6 +11,7 @@ use crate::{
     app_state::{AppState, DownloadEndpointData},
     logging::log_error_async,
     profiles::get_profile,
+    timestomping::timestomp_binary_compile_date,
 };
 use axum::extract::State;
 use chrono::{SecondsFormat, Utc};
@@ -307,11 +308,22 @@ pub async fn build_all_bins(
 
             return Err(msg);
         }
+
+        //
+        // If the user profile specifies to timestomp the binary, then try do that - if it fails we do not want to allow
+        // the bad file to be returned to the user.
+        //
+        if let Some(ts) = data.timestomp.as_ref() {
+            if let Err(e) = timestomp_binary_compile_date(ts, &dest).await {
+                let msg = format!("Could not timestomp binary {}, {e}", dest.display());
+                let _ = stage_new_agent_error_printer(&msg, &data.staging_endpoint, state).await;
+                let _ = remove_dir(&save_path).await?;
+
+                return Err(msg);
+            }
+        }
     }
 
-    // TODO
-    // - delete the temp directory once we have read the 7z into memory
-    // - return the 7z file as a buffer and have the client serve as a download for the user
     const ZIP_OUTPUT_PATH: &str = "./profiles/tmp.7z";
     let mut cmd = tokio::process::Command::new("7z");
     cmd.args([
@@ -548,6 +560,7 @@ async fn stage_file_upload_from_users_disk(
         useragent: "".into(),
         patch_etw: false,
         jitter: None,
+        timestomp: None,
     };
 
     //

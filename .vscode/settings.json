@@ -74,6 +74,8 @@
         "subdirs",
         "tchars",
         "thiserror",
+        "timestomp",
+        "timestomping",
         "TOPT",
         "trustedsec's",
         "turbofish",
