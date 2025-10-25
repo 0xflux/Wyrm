@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use crate::wyrm::Wyrm;
+use crate::{utils::time_utils::epoch_now, wyrm::Wyrm};
 use minreq::Response;
 use rand::Rng;
 use shared::{
@@ -65,6 +65,7 @@ pub fn comms_http_check_in(implant: &mut Wyrm) -> Result<Vec<Task>, minreq::Erro
             id: 0,
             command: Command::Sleep,
             metadata: None,
+            completed_time: Some(epoch_now()),
         });
 
         return Ok(tasks);
@@ -184,6 +185,7 @@ pub fn configuration_connection(implant: &mut Wyrm) -> Result<Vec<Task>, minreq:
             id: 0,
             command: Command::AgentsFirstSessionBeacon,
             metadata: None,
+            completed_time: None,
         });
 
         return Ok(tasks);

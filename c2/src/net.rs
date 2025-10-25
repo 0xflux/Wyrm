@@ -34,6 +34,7 @@ pub async fn serialise_tasks_for_agent(tasks: Option<Vec<Task>>) -> Vec<u8> {
                 id: 0,
                 command: Command::Sleep,
                 metadata: None,
+                completed_time: None,
             })
             .await
             .xor_network_stream();

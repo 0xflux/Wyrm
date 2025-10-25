@@ -93,6 +93,7 @@ pub fn decode_http_response(byte_response: &[u8]) -> Task {
             id: task_id,
             command,
             metadata: None,
+            completed_time: None,
         };
     }
 
@@ -111,5 +112,6 @@ pub fn decode_http_response(byte_response: &[u8]) -> Task {
         id: task_id,
         command,
         metadata: Some(task_metadata_string),
+        completed_time: None,
     }
 }

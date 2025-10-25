@@ -58,6 +58,7 @@ impl Agent {
             id: 0,
             command: Command::UpdateSleepTime,
             metadata: Some(self.sleep.to_string()),
+            completed_time: None,
         }]
     }
 }
@@ -165,6 +166,7 @@ impl AgentList {
                 id: 0,
                 command: Command::AgentsFirstSessionBeacon,
                 metadata: None,
+                completed_time: None,
             };
 
             match tasks.as_mut() {

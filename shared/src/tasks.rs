@@ -216,10 +216,13 @@ pub enum AdminCommand {
     Undefined,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct Task {
     pub id: i32,
     pub command: Command,
     pub metadata: Option<String>,
+    ///
+    pub completed_time: Option<i64>,
 }
 
 impl Task {
@@ -228,6 +231,7 @@ impl Task {
             id,
             command,
             metadata,
+            completed_time: None,
         }
     }
 }
