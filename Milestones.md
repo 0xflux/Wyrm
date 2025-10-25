@@ -48,7 +48,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] Separate URIs for POST and GET
 7) [ ] Round robin and different styles for URI & URL rotation
 8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
-9)  [ ] Ps should show parent pids with children in a hierarchy
+9) [ ] Ps should show parent pids with children in a hierarchy
  
 ### v1.0 - Whelpfire
 
