@@ -39,6 +39,7 @@ pub struct Implant {
     pub anti_sandbox: Option<AntiSandbox>,
     pub debug: Option<bool>,
     pub patch_etw: Option<bool>,
+    pub timestomp: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -155,6 +156,7 @@ impl Profile {
             useragent,
             patch_etw,
             jitter: self.server.jitter,
+            timestomp: implant.timestomp.clone(),
         })
     }
 }

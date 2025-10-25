@@ -21,6 +21,10 @@ For more fine grain control over building components:
 - To run the C2, run `docker compose up -d --build c2`. On first run this may take a few minutes.
 - To connect to the C2, you should use the client which can be run via: `docker compose up -d --build client` and is served on port 4040 by default.
 
+An example profile is provided with all settings highlighted and documented in `c2/profiles/profile.example.toml`, it is recommended you copy this 
+to a new file and edit it there, as any other profile is excluded from git so updates will not affect your profiles **ONLY** if you create a new 
+profile file, `profile.example.toml` will be updated as changes are made for documentation purposes.
+
 ### Making changes to the profiles
 
 If you make changes to the profiles (`c2/profiles/*`) then you will need to re-run the docker container for the `c2`, ensuring you pass the `--build` flag for the updated profile changes to have effect. After changing updating your profile(s), run: `docker compose up -d --build c2`

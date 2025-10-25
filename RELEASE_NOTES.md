@@ -18,6 +18,7 @@ pulling updates.
 ### Non breaking changes
 
 - OPSEC improvement with removing an artifact from the binary related to a struct name.
+- Introduces timestomping for the compile date on built implants - see `profile.example.toml` for full docs, but this optional profile option allows you to select a date in **British format** which is stamped into the binary as the compile date, aiding advanced OPSEC.
 - Introduces the registry manipulation features with `reg query`, `reg delete` and `reg add` commands.
 - Improve docker build process for the client through [cargo chef](https://lpalmieri.com/posts/fast-rust-docker-builds/).
 - Implant supports `rm` to remove a file, and `rm_d` to remove a directory (and all its children).

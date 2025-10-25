@@ -351,6 +351,7 @@ pub struct NewAgentStaging {
     pub useragent: String,
     pub patch_etw: bool,
     pub jitter: Option<u64>,
+    pub timestomp: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]

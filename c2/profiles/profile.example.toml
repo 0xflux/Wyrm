@@ -47,6 +47,10 @@ sleep = 5
 [implants.default]
 debug = false # Optional, true specifies a debug build - note this will also mean strings are not encrypted if set to true
 patch_etw = true # Optional, patches Events Tracing for Windows on the process
+# Timestomping is an optional field; if set it must be in BRITISH format, dd/mm/YYYY hh:mm:ss or the build process will fail.
+# This optional field sets the compile datetime of the binary, which may aid in opsec in terms of making your binary appear to be
+# old. Note: This does not affect the timestamp of the file on disk when it is dropped, that is managed by the OS.
+timestomp = "08/04/2022 19:53:15"
 
 [implants.default.anti_sandbox]
 ram = true # Optional
