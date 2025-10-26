@@ -139,8 +139,10 @@ fn generate_generic_headers(
 /// A vector of [`Task`] ready to be dispatched or otherwise available to work with.
 pub fn decode_tasks_stream(byte_response: &[u8]) -> Vec<Task> {
     // Parse JSON into the inner binary packets
-    let packets: Vec<Vec<u8>> =
-        serde_json::from_slice(byte_response).expect("could not parse tasks JSON");
+    let packets: Vec<Vec<u8>> = match serde_json::from_slice(byte_response) {
+        Ok(p) => p,
+        Err(_) => return vec![],
+    };
 
     // For each packet, undo the XOR and decode header+body
     packets

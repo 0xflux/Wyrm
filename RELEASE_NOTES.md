@@ -19,6 +19,8 @@ pulling updates.
 
 - OPSEC improvement with removing an artifact from the binary related to a struct name.
 - Introduces timestomping for the compile date on built implants - see `profile.example.toml` for full docs, but this optional profile option allows you to select a date in **British format** which is stamped into the binary as the compile date, aiding advanced OPSEC.
+- Introduces the ability to export the completed tasks of the agent to a json file (for ingesting into ELK etc) by running the `export_db` command on an agent.
+- Completed tasks now mapped to MITRE ATT&CK!
 - Introduces the registry manipulation features with `reg query`, `reg delete` and `reg add` commands.
 - Improve docker build process for the client through [cargo chef](https://lpalmieri.com/posts/fast-rust-docker-builds/).
 - Implant supports `rm` to remove a file, and `rm_d` to remove a directory (and all its children).

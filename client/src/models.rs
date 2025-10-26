@@ -1,4 +1,4 @@
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, Utc};
 use shared::tasks::Command;
 use shared_c2_client::{NotificationForAgent, command_to_string};
 use tokio::sync::RwLock;
@@ -74,9 +74,16 @@ impl From<NotificationForAgent> for TabConsoleMessages {
         let cmd_string = command_to_string(&cmd);
         let result = notification_data.format_console_output();
 
+        let time_seconds = if notification_data.time_completed_ms == 0 {
+            let now = Utc::now();
+            now.timestamp()
+        } else {
+            notification_data.time_completed_ms
+        };
+
         // I am happy with the unwrap here, and I would prefer it over a default or half working product; if we make a change
         // to how time is represented then this will crash the client - forcing a bug fix. In any case, this should not be a real problem
-        let time_utc_str = DateTime::from_timestamp(notification_data.time_completed_ms, 0)
+        let time_utc_str = DateTime::from_timestamp(time_seconds, 0)
             .unwrap()
             .format("%d/%m/%Y %H:%M:%S")
             .to_string();

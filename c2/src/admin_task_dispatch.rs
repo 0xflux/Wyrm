@@ -7,9 +7,9 @@ use std::{
 };
 
 use crate::{
-    FILE_STORE_PATH,
+    DB_EXPORT_PATH, FILE_STORE_PATH,
     app_state::{AppState, DownloadEndpointData},
-    logging::log_error_async,
+    logging::{log_error, log_error_async},
     profiles::get_profile,
     timestomping::timestomp_binary_compile_date,
 };
@@ -24,8 +24,11 @@ use shared::{
         FileUploadStagingFromClient, NewAgentStaging, StageType, WyrmResult,
     },
 };
-use shared_c2_client::AgentC2MemoryNotifications;
-use tokio::{fs, io::AsyncReadExt};
+use shared_c2_client::{AgentC2MemoryNotifications, MapToMitre, TaskExport};
+use tokio::{
+    fs,
+    io::{AsyncReadExt, AsyncWriteExt},
+};
 
 /// Main dispatcher for admin commands issued on the server, which may, or may not, include an
 /// implant UID.
@@ -147,6 +150,7 @@ pub async fn admin_dispatch(
                 None
             }
         },
+        AdminCommand::ExportDb => export_db(uid, state).await,
     };
 
     serde_json::to_vec(&result).unwrap()
@@ -939,4 +943,89 @@ async fn drop_file_handler(
     }
 
     task_agent::<String>(Command::Drop, Some(data.into()), uid.unwrap(), state).await
+}
+
+async fn export_db(uid: Option<String>, state: State<Arc<AppState>>) -> Option<Value> {
+    let uid = uid.unwrap();
+
+    //
+    // This whole block here just unwraps explicitly twice safely through matches trying to get the inner
+    // data. If there was an error or there was no data, this is handled and the function will immediately
+    // return. Using thiserror or using maps may be a little nicer...
+    //
+    let results = match state.db_pool.get_agent_export_data(uid.as_str()).await {
+        Ok(r) => match r {
+            Some(r) => {
+                if r.is_empty() {
+                    let msg = format!("Tasks for implant: {uid} were empty");
+                    log_error(&msg);
+                    return Some(serde_json::to_value(msg).unwrap());
+                }
+
+                r
+            }
+            None => {
+                let msg = format!("Tasks for implant: {uid} were empty");
+                log_error(&msg);
+                return Some(serde_json::to_value(msg).unwrap());
+            }
+        },
+        Err(e) => {
+            let msg = format!(
+                "Error encountered for implant: {uid} when trying to fetch completed tasks. {e}"
+            );
+            log_error(&msg);
+            return Some(serde_json::to_value(msg).unwrap());
+        }
+    };
+
+    // Serialise
+    let mut results_with_mitre: Vec<TaskExport> = Vec::with_capacity(results.len());
+
+    for task in &results {
+        results_with_mitre.push(TaskExport::new(task, task.command.map_to_mitre()));
+    }
+
+    let json_export = serde_json::to_string(&results_with_mitre)
+        .map_err(|e| {
+            let msg = format!("Could not serialise db results for agent: {uid}. {e}");
+            log_error(&msg);
+
+            Some(serde_json::to_value(msg).unwrap())
+        })
+        .unwrap();
+
+    //
+    // Try write the data to the fs
+    //
+    let mut path = PathBuf::from(DB_EXPORT_PATH);
+    path.push(&uid);
+    path.add_extension("json");
+
+    let mut file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .read(true)
+        .create(true)
+        .truncate(true)
+        .open(&path)
+        .await
+        .map_err(|e| {
+            let msg = format!(
+                "Could not create db export file on fs for agent: {uid}. Path: {}, {e}",
+                path.display()
+            );
+            log_error(&msg);
+            Some(serde_json::to_value(msg).unwrap())
+        })
+        .unwrap();
+
+    if let Err(e) = file.write(json_export.as_bytes()).await {
+        log_error(&format!(
+            "Could not write to output file {} for agent: {uid}. {e}",
+            path.display()
+        ));
+        return None;
+    };
+
+    Some(serde_json::to_value(format!("File exported as {uid}")).unwrap())
 }

@@ -162,7 +162,12 @@ pub async fn handle_agent_post(
             panic!();
         }
 
-        if let Err(e) = state.db_pool.add_completed_task(&task).await {
+        let (agent, _) = state
+            .connected_agents
+            .get_agent_and_tasks_by_header(&headers, &cl.db_pool, None)
+            .await;
+
+        if let Err(e) = state.db_pool.add_completed_task(&task, &agent.uid).await {
             print_failed(format!(
                 "Failed to add task results to completed table. {e}"
             ));

@@ -128,6 +128,12 @@ impl From<&str> for FileDropMetadata {
     }
 }
 
+impl Into<u32> for Command {
+    fn into(self) -> u32 {
+        self as u32
+    }
+}
+
 impl Command {
     pub fn from_u32(id: u32) -> Self {
         // SAFETY: We have type safe signature ensuring that the input type is a u32 for the conversion
@@ -213,10 +219,13 @@ pub enum AdminCommand {
     RegQuery(RegQueryInner),
     RegAdd(RegAddInner),
     RegDelete(RegQueryInner),
+    /// Exports the completed tasks database for an agent.
+    ExportDb,
     Undefined,
 }
 
 #[repr(C)]
+#[derive(Serialize)]
 pub struct Task {
     pub id: i32,
     pub command: Command,
