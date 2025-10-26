@@ -122,7 +122,7 @@ impl FormatOutput for NotificationForAgent {
                 return builder;
             }
             Command::Run => {
-                let powershell_output: PowershellOutput = match self.result.as_ref() {
+                let powershell_output: PowershellOutput = match &self.result {
                     Some(result) => match serde_json::from_str(result) {
                         Ok(result) => result,
                         Err(e) => {
@@ -300,9 +300,14 @@ impl FormatOutput for NotificationForAgent {
             }
         }
 
+        //
+        // The fallthrough
+        //
         match self.result.as_ref() {
             Some(result) => {
-                vec![format!("{result:?}")]
+                vec![format!(
+                    "[DISPLAY ERROR] Did not match / parse correctly. {result:?}"
+                )]
             }
             None => {
                 vec![format!("Action completed with no data to present.")]
