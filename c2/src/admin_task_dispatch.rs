@@ -150,7 +150,7 @@ pub async fn admin_dispatch(
                 None
             }
         },
-        AdminCommand::ExportDb => export_db(uid, state).await,
+        AdminCommand::ExportDb => export_completed_tasks_to_json(uid.unwrap(), state).await,
     };
 
     serde_json::to_vec(&result).unwrap()
@@ -945,9 +945,8 @@ async fn drop_file_handler(
     task_agent::<String>(Command::Drop, Some(data.into()), uid.unwrap(), state).await
 }
 
-async fn export_db(uid: Option<String>, state: State<Arc<AppState>>) -> Option<Value> {
-    let uid = uid.unwrap();
-
+/// Exports the completed tasks on an agent (by its ID) to a json file in the C2 filesystem
+async fn export_completed_tasks_to_json(uid: String, state: State<Arc<AppState>>) -> Option<Value> {
     //
     // This whole block here just unwraps explicitly twice safely through matches trying to get the inner
     // data. If there was an error or there was no data, this is handled and the function will immediately
