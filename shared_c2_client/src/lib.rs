@@ -1,12 +1,6 @@
-use std::path::{Path, PathBuf};
-
-use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use shared::{
-    process::Process,
-    tasks::{Command, PowershellOutput, WyrmResult},
-};
+use shared::tasks::{Command, Task};
 use sqlx::FromRow;
 
 pub const ADMIN_AUTH_SEPARATOR: &str = "=authdivider=";
@@ -29,258 +23,7 @@ pub struct NotificationForAgent {
     pub command_id: i32,
     pub agent_id: String,
     pub result: Option<String>,
-    pub time_completed: DateTime<Utc>,
-}
-
-impl NotificationForAgent {
-    pub fn format_console_output(&self) -> Vec<String> {
-        match Command::from_u32(self.command_id as _) {
-            Command::Sleep => {
-                return vec!["Agent received task to adjust sleep time.".into()];
-            }
-            Command::Ps => {
-                let listings_serialised = match self.result.as_ref() {
-                    Some(inner) => inner,
-                    None => {
-                        return vec![format!("No data returned from ls command.")];
-                    }
-                };
-
-                let deser: Option<Vec<Process>> =
-                    serde_json::from_str(listings_serialised).unwrap();
-                if deser.is_none() {
-                    return vec![format!("Directory listings empty.")];
-                }
-
-                let mut builder = vec![];
-
-                for row in deser.unwrap() {
-                    builder.push(format!("{}: {}", row.pid, row.name));
-                }
-
-                return builder;
-            }
-            Command::GetUsername => (),
-            Command::Pillage => {
-                let result = match self.result.as_ref() {
-                    Some(r) => r,
-                    None => {
-                        return vec!["No data.".into()];
-                    }
-                };
-
-                let deser: Vec<String> = match serde_json::from_str(result) {
-                    Ok(d) => d,
-                    Err(e) => {
-                        return vec![format!("Failed to deserialise results {e}.")];
-                    }
-                };
-
-                return deser;
-            }
-            Command::UpdateSleepTime => (),
-            Command::Undefined => {
-                return vec!["Congrats, you found a bug. This should never print.".into()];
-            }
-            Command::Pwd => {
-                let result = match self.result.as_ref() {
-                    Some(r) => r,
-                    None => {
-                        return vec!["An error occurred with the data from pwd.".into()];
-                    }
-                };
-                let s: String = match serde_json::from_str(result) {
-                    Ok(s) => s,
-                    Err(e) => format!(
-                        "An error occurred whilst trying to unwrap. {e}. Data: {}",
-                        result
-                    ),
-                };
-                return vec![format!("{s}")];
-            }
-            Command::AgentsFirstSessionBeacon => (),
-            Command::Cd => {
-                let result = match self.result.as_ref() {
-                    Some(r) => r,
-                    None => {
-                        return vec![format!("No data.")];
-                    }
-                };
-
-                let deser: WyrmResult<PathBuf> = match serde_json::from_str(result) {
-                    Ok(d) => d,
-                    Err(e) => {
-                        return vec![print_client_error(&format!(
-                            "Ensure your request was properly formatted: {e}"
-                        ))];
-                    }
-                };
-                match deser {
-                    WyrmResult::Ok(result) => return vec![result.as_path().try_strip_prefix()],
-                    WyrmResult::Err(e) => return vec![print_client_error(&e)],
-                }
-            }
-            Command::KillAgent => (),
-            Command::Ls => {
-                let listings_serialised = match self.result.as_ref() {
-                    Some(inner) => inner,
-                    None => {
-                        return vec![format!("No data returned from ls command.")];
-                    }
-                };
-
-                let deser: Option<Vec<PathBuf>> =
-                    serde_json::from_str(listings_serialised).unwrap();
-                if deser.is_none() {
-                    return vec![format!("Directory listings empty.")];
-                }
-
-                let mut builder = vec![];
-
-                for row in deser.unwrap() {
-                    builder.push(row.as_path().try_strip_prefix());
-                }
-
-                return builder;
-            }
-            Command::Run => {
-                let powershell_output: PowershellOutput = match self.result.as_ref() {
-                    Some(result) => match serde_json::from_str(result) {
-                        Ok(result) => result,
-                        Err(e) => {
-                            return vec![format!("Could not deser PowershellOutput result. {e}")];
-                        }
-                    },
-                    None => {
-                        return vec!["No output returned from PowerShell command.".into()];
-                    }
-                };
-
-                if let Some(out) = powershell_output.stderr
-                    && !out.is_empty()
-                {
-                    return vec![format!("stderr: {out}")];
-                }
-
-                if let Some(out) = powershell_output.stdout
-                    && !out.is_empty()
-                {
-                    return vec![format!("stdout: {out}")];
-                }
-            }
-            Command::KillProcess => match &self.result {
-                Some(s) => {
-                    let result: WyrmResult<String> = match serde_json::from_str(s) {
-                        Ok(r) => r,
-                        Err(e) => {
-                            return vec![format!(
-                                "Could not serialise result for KillProcess. {e}."
-                            )];
-                        }
-                    };
-
-                    match result {
-                        WyrmResult::Ok(s) => {
-                            return vec![format!("Successfully killed process ID {s}.")];
-                        }
-                        WyrmResult::Err(e) => {
-                            return vec![format!(
-                                "An error occurred whilst trying to kill a process. {e}"
-                            )];
-                        }
-                    }
-                }
-                None => {
-                    return vec![
-                        "An unknown error occurred whilst trying to kill a process.".into(),
-                    ];
-                }
-            },
-            Command::Drop => match &self.result {
-                Some(s) => {
-                    let result: WyrmResult<String> = match serde_json::from_str(s) {
-                        Ok(r) => r,
-                        Err(e) => {
-                            return vec![format!(
-                                "Could not serialise result for KillProcess. {e}."
-                            )];
-                        }
-                    };
-
-                    if let WyrmResult::Err(e) = result {
-                        return vec![format!(
-                            "An error occurred whilst trying to drop a file. {e}"
-                        )];
-                    }
-
-                    return vec![format!("File dropped successfully.")];
-                }
-                None => {
-                    return vec!["An unknown error occurred whilst trying to drop a file.".into()];
-                }
-            },
-            Command::Copy => {
-                //
-                // In the result we get back from the agent, Some("null") is representative of the success.
-                // If `Some` != "null", contains a `WyrmError` that we can print.
-                //
-                if let Some(inner) = &self.result {
-                    if inner == "null" {
-                        return vec!["File copied.".into()];
-                    }
-
-                    if let Ok(e) = serde_json::from_str::<WyrmResult<String>>(inner) {
-                        return vec![format!("An error occurred copying the file: {:?}", e)];
-                    }
-                }
-
-                return vec!["Unknown state?.".into()];
-            }
-            Command::Move => {
-                //
-                // In the result we get back from the agent, Some("null") is representative of the success.
-                // If `Some` != "null", contains a `WyrmError` that we can print.
-                //
-                if let Some(inner) = &self.result {
-                    if inner == "null" {
-                        return vec!["File moved.".into()];
-                    }
-
-                    if let Ok(e) = serde_json::from_str::<WyrmResult<String>>(inner) {
-                        return vec![format!("An error occurred moving the file: {:?}", e)];
-                    }
-                }
-
-                return vec!["Unknown state?.".into()];
-            }
-            Command::Pull => {
-                if let Some(response) = &self.result {
-                    if let Ok(msg) = serde_json::from_str::<String>(response) {
-                        // If we had an error message from the implant
-                        return vec![format!("Implant suffered error executing Pull. {msg}")];
-                    } else {
-                        return vec!["Unknown error.".into()];
-                    }
-                }
-
-                return vec!["File exfiltrated successfully and can be found on the C2.".into()];
-            }
-        }
-
-        match self.result.as_ref() {
-            Some(result) => {
-                vec![format!("{result:?}")]
-            }
-            None => {
-                vec![format!("Action completed with no data to present.")]
-            }
-        }
-    }
-}
-
-/// Prints a coloured error message to the console for use in viewing notifications on the agent.
-fn print_client_error(msg: &str) -> String {
-    format!("Error: {msg}")
+    pub time_completed_ms: i64,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, FromRow)]
@@ -313,27 +56,186 @@ pub fn command_to_string(cmd: &Command) -> String {
         Command::Copy => "Copy",
         Command::Move => "Move",
         Command::Pull => "Pull",
+        Command::RegQuery => "reg query",
+        Command::RegAdd => "reg add",
+        Command::RegDelete => "reg del",
+        Command::RmFile => "RmFile",
+        Command::RmDir => "RmDir",
     };
 
     c.into()
 }
 
-trait StripCannon {
-    fn try_strip_prefix(&self) -> String;
+#[derive(Serialize)]
+pub struct MitreTTP<'a> {
+    ttp_major: &'a str,
+    ttp_minor: Option<&'a str>,
+    name: &'a str,
+    link: &'a str,
 }
 
-impl StripCannon for Path {
-    /// Where a path has been canonicalised, try strip the Windows \\?\ prefix for pretty
-    /// printing.
-    //
-    // If this function fails, it will return the original path as a `String`
-    fn try_strip_prefix(&self) -> String {
-        let s = self.to_string_lossy().into_owned();
-        if s.starts_with(r"\\?\") {
-            let stripped = s.strip_prefix(r"\\?\").unwrap_or(&s);
-            stripped.into()
-        } else {
-            s.into()
+impl<'a> MitreTTP<'a> {
+    pub fn from(
+        ttp_major: &'a str,
+        ttp_minor: Option<&'a str>,
+        name: &'a str,
+        link: &'a str,
+    ) -> Self {
+        MitreTTP {
+            ttp_major,
+            ttp_minor,
+            name,
+            link,
         }
+    }
+}
+
+pub trait MapToMitre<'a> {
+    fn map_to_mitre(&'a self) -> MitreTTP<'a>;
+}
+
+impl<'a> MapToMitre<'a> for Command {
+    fn map_to_mitre(&'a self) -> MitreTTP<'a> {
+        match self {
+            Command::Sleep => MitreTTP::from(
+                "TA0011",
+                None,
+                "Command and Control",
+                "https://attack.mitre.org/tactics/TA0011/",
+            ),
+            Command::Ps => MitreTTP::from(
+                "T1057",
+                None,
+                "Process Discovery",
+                "https://attack.mitre.org/techniques/T1057/",
+            ),
+            Command::GetUsername => MitreTTP::from(
+                "T1033",
+                None,
+                "System Owner/User Discovery",
+                "https://attack.mitre.org/techniques/T1033/",
+            ),
+            Command::Pillage => MitreTTP::from(
+                "T1083",
+                None,
+                "File and Directory Discovery",
+                "https://attack.mitre.org/techniques/T1083/",
+            ),
+            Command::UpdateSleepTime => MitreTTP::from(
+                "TA0011",
+                None,
+                "Command and Control",
+                "https://attack.mitre.org/tactics/TA0011/",
+            ),
+            Command::Pwd => MitreTTP::from(
+                "T1083",
+                None,
+                "File and Directory Discovery",
+                "https://attack.mitre.org/techniques/T1083/",
+            ),
+            Command::AgentsFirstSessionBeacon => MitreTTP::from(
+                "TA0011",
+                None,
+                "Command and Control",
+                "https://attack.mitre.org/tactics/TA0011/",
+            ),
+            Command::Cd => MitreTTP::from(
+                "T1083",
+                None,
+                "File and Directory Discovery",
+                "https://attack.mitre.org/techniques/T1083/",
+            ),
+            Command::KillAgent => MitreTTP::from(
+                "T1070",
+                None,
+                "Indicator Removal",
+                "https://attack.mitre.org/techniques/T1070/",
+            ),
+            Command::KillProcess => MitreTTP::from(
+                "T1489",
+                None,
+                " Service Stop",
+                "https://attack.mitre.org/techniques/T1489/",
+            ),
+            Command::Ls => MitreTTP::from(
+                "T1083",
+                None,
+                "File and Directory Discovery",
+                "https://attack.mitre.org/techniques/T1083/",
+            ),
+            Command::Run => MitreTTP::from(
+                "T1059",
+                Some("001"),
+                "Command and Scripting Interpreter: PowerShell",
+                "https://attack.mitre.org/techniques/T1059/001/",
+            ),
+            Command::Drop => MitreTTP::from(
+                "T1105",
+                None,
+                "Ingress Tool Transfer",
+                "https://attack.mitre.org/techniques/T1105/",
+            ),
+            Command::Copy => MitreTTP::from(
+                "T1074",
+                Some("001"),
+                "Data Staged: Local Data Staging",
+                "https://attack.mitre.org/techniques/T1074/001/",
+            ),
+            Command::Move => MitreTTP::from(
+                "T1074",
+                Some("001"),
+                "Data Staged: Local Data Staging",
+                "https://attack.mitre.org/techniques/T1074/001/",
+            ),
+            Command::RmFile => MitreTTP::from(
+                "T1070",
+                Some("004"),
+                "Indicator Removal: File Deletion",
+                "https://attack.mitre.org/techniques/T1070/004/",
+            ),
+            Command::RmDir => MitreTTP::from(
+                "T1070",
+                Some("004"),
+                "Indicator Removal: File Deletion",
+                "https://attack.mitre.org/techniques/T1070/004/",
+            ),
+            Command::Pull => MitreTTP::from(
+                "T1041",
+                None,
+                "Exfiltration Over C2 Channel",
+                "https://attack.mitre.org/techniques/T1041/",
+            ),
+            Command::RegQuery => MitreTTP::from(
+                "T1012",
+                None,
+                "Query Registry",
+                "https://attack.mitre.org/techniques/T1012/",
+            ),
+            Command::RegAdd => MitreTTP::from(
+                "T1112",
+                None,
+                "Modify Registry",
+                "https://attack.mitre.org/techniques/T1112/",
+            ),
+            Command::RegDelete => MitreTTP::from(
+                "T1112",
+                None,
+                "Modify Registry",
+                "https://attack.mitre.org/techniques/T1112/",
+            ),
+            Command::Undefined => MitreTTP::from("UNDEFINED", None, "UNDEFINED", "UNDEFINED"),
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct TaskExport<'a> {
+    task: &'a Task,
+    mitre: MitreTTP<'a>,
+}
+
+impl<'a> TaskExport<'a> {
+    pub fn new(task: &'a Task, mitre: MitreTTP<'a>) -> Self {
+        Self { task, mitre }
     }
 }

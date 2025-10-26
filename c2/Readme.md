@@ -1,11 +1,18 @@
 # C2
 
-Before using the C2, ensure the `.env` file is present, and the **working directory** of the C2 is set to the `/c2` directory.
-The shell install script will set this automatically for you when creating the service, but if running from Windows, or manual
-deployment, the C2's working directory MUST be the `/c2` folder, as it uses relative pathing.
+Before using the C2, you **SHOULD** change the default admin token and database creds found in the `../.env` for security purposes.
+
+## TLDR
+
+- As above, edit the `../.env` file to use your own creds - this is for security purposes.
+- To run the C2, from the root directory (`../`) run `docker compose up -d --build c2`. On first run this may take a few minutes.
+- To connect to the C2, you should use the client which can be run via: `docker compose up -d --build client` and is served on port 4040 by default.
+- The C2 uses a docker volume `/data` to store loot as well as other persistent files.
+
+## Info
 
 The C2 module handles only the command and control server implementation and does not deal with showing a GUI as output.
-That is handled by the `client` crate.
+That is handled by the `client` crate which you can run via docker.
 
 The C2 has logging for API endpoint access attempts, errors, and login's. **Note** there is no in-built log rotation, so you may wish to use
 the linux `logrotate` application to manage these.
@@ -20,16 +27,3 @@ the linux `logrotate` application to manage these.
 - `Error`
   - A simple log file which shows C2 error messages to assist in bug reporting / debugging
   - This log file cannot be disabled
-
-## Some handy notes to self
-
-- Ensure you have sqlx: `cargo install sqlx-cli`
-
-## Postgres stuff
-
-Cos im not a frequent web app / db dev, some helpful reminders for using psql:
-
-- Log in: `sudo -u postgres psql wyrm`
-- Display tables: `\dt`
-- Show data: `SELECT * FROM agents;`
-- Show table schema: `\d+ tasks`

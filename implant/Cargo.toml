@@ -37,7 +37,7 @@ serde = {version = "1.0", features = ["derive"] }
 serde_json = "1"
 str_crypter = "1.0.3"
 cgmath = "0.18.0"
-windows-sys = {version = "0.61.0", features = [
+windows-sys = {version = "0.61", features = [
     "Win32",
     "Win32_Foundation",
     "Win32_NetworkManagement_NetManagement",
@@ -51,4 +51,6 @@ windows-sys = {version = "0.61.0", features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_Diagnostics_Debug",
 ]}
-rand = "0.9.2"
+rand = "0.9"
+windows-registry = "0.6"
+chrono = { version = "0.4", features = ["serde"] }

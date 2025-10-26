@@ -1,0 +1,6 @@
+.git
+.gitignore
+**/target
+**/*.pdb
+**/*.exe
+**/*.dll

@@ -4,13 +4,15 @@ use axum::extract::State;
 use chrono::{DateTime, Utc};
 use shared::{
     pretty_print::{print_failed, print_success},
-    tasks::{AdminCommand, FileDropMetadata},
+    task_types::{RegAddInner, RegQueryInner, RegType},
+    tasks::{AdminCommand, DELIM_FILE_DROP_METADATA, FileDropMetadata, WyrmResult},
 };
 use thiserror::Error;
 
 use crate::{
     models::{AppState, TabConsoleMessages},
     net::{ApiError, Credentials, IsTaskingAgent, IsTaskingAgentErr, api_request},
+    tasks::utils::{DiscardFirst, split_string_slices_to_n, validate_reg_type},
 };
 
 #[derive(Debug, Error)]
@@ -170,6 +172,43 @@ pub async fn move_file(
     Ok(())
 }
 
+#[derive(Copy, Clone)]
+pub enum FileOperationTarget {
+    Dir,
+    File,
+}
+
+pub async fn remove_file(
+    raw_input: String,
+    target: FileOperationTarget,
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+    let target_path = match split_string_slices_to_n(1, &raw_input, DiscardFirst::Chop) {
+        Some(mut inner) => {
+            let target_path = take(&mut inner[0]);
+            target_path
+        }
+        None => {
+            return Err(TaskDispatchError::BadTokens(
+                "Could not get data from tokens in move_file.".into(),
+            ));
+        }
+    };
+
+    match target {
+        FileOperationTarget::Dir => {
+            api_request(AdminCommand::RmDir(target_path), agent, creds, None).await?;
+        }
+        FileOperationTarget::File => {
+            api_request(AdminCommand::RmFile(target_path), agent, creds, None).await?;
+        }
+    }
+
+    Ok(())
+}
+
 /// Pull a single file from the target machine
 pub async fn pull_file(
     target: String,
@@ -295,6 +334,17 @@ pub async fn pwd(creds: &Credentials, agent: &IsTaskingAgent<'_>) -> Result<(), 
     Ok(())
 }
 
+pub async fn export_db(
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+
+    api_request(AdminCommand::ExportDb, agent, creds, None).await?;
+
+    Ok(())
+}
+
 pub async fn dir_listing(
     creds: &Credentials,
     agent: &IsTaskingAgent<'_>,
@@ -351,26 +401,32 @@ pub async fn show_help(
     state: State<Arc<AppState>>,
 ) -> Result<(), TaskDispatchError> {
     let messages: Vec<String> = vec![
-        "help [command]".into(),
+        "help <command>".into(),
         "exit (Exit's the client)".into(),
         "servertime (Shows the local time of the server)".into(),
-        "n (Gets new notifications for the agent)".into(),
-        "kill_agent (terminates the agent on the endpoint)".into(),
-        "remove_agent (removes the agent from the interface; until it reconnects)".into(),
+        "kill_agent | ka (terminates the agent on the endpoint)".into(),
+        "remove_agent | ra (removes the agent from the interface; until it reconnects)".into(),
         "cls | clear (clears the terminal)".into(),
         "".into(),
+        "export_db (will export the database to /data/exports/{agent_id})".into(),
         "set sleep [time SECONDS]".into(),
         "ps".into(),
-        "cd [relative path | absolute path]".into(),
+        "cd <relative path | absolute path>".into(),
         "pwd".into(),
         "ls".into(),
         "cp <from> <to> | copy <from> <to> (accepts relative or absolute paths)".into(),
         "mv <from> <to> | move <from> <to> (accepts relative or absolute paths)".into(),
+        "rm <path to file> (removes file [this command cannot remove a directory] - accepts relative or absolute paths)".into(),
+        "rm_d <path to dir> (removes directory - accepts relative or absolute paths)".into(),
         "pull <path> (Exfiltrates a file to the C2. For more info, type help pull.)".into(),
         "pillage".into(),
         "run".into(),
         "kill <pid>".into(),
         "drop <server recognised name> <filename to drop on disk (including extension)>".into(),
+        "reg query <path_to_key>".into(),
+        "reg query <path_to_key> <value> (for more info, type help reg)".into(),
+        "reg add <path_to_key> <value name> <value data> <data type> (for more info, type help reg)".into(),
+        "reg del <path_to_key> <Optional: value name> (for more info, type help reg)".into(),
     ];
 
     if let IsTaskingAgent::Yes(agent_id) = agent {
@@ -412,6 +468,29 @@ pub async fn show_help_for_command(
             "If a file already exists at that location, it will be overwritten. Note, using `pull` will cause the file to be read into memory".into(),
             "on the target machine in full, thus you should only use this on files which are smaller than the amount of available RAM on the machine.".into(),
             "Streamed `pull` is coming in a future release.".into(),
+        ],
+        "reg query" => vec![
+            "Usage: reg query <path_to_key> <OPTIONAL: value>".into(),
+            "Queries the registry by a path to the key, with an optional value if you wish to query only a specific value".into(),
+            "If the path contains whitespace, ensure you wrap it in \"quotes\".".into(),
+        ],
+        "reg" => vec![
+            "reg query".into(),
+            "Usage: reg query <path_to_key> <OPTIONAL: value>".into(),
+            "Queries the registry by a path to the key, with an optional value if you wish to query only a specific value".into(),
+            "If the path contains whitespace, ensure you wrap it in \"quotes\".".into(),
+            "".into(),
+            "".into(),
+            "reg add".into(),
+            "Usage: reg add <path_to_key> <value name> <value data> <data type>".into(),
+            "Modifies the registry by either adding a new key if it did not already exist, or updating an existing key.".into(),
+            "For the data type, you should specify either: string, DWORD, or QWORD depending on the data you are writing.".into(),
+            "You can then check the addition by running reg query <args>.".into(),
+            "".into(),
+            "".into(),
+            "reg del".into(),
+            "Usage: reg del <path_to_key> <Optional: value name>".into(),
+            "Deletes a registry key, or value, based on above args. Deleting the key will delete all sub-keys under it, so take care.".into(),
         ],
         _ => vec!["No help pages available for this command, or it does not exist.".into()],
     };
@@ -459,6 +538,7 @@ pub async fn file_dropper(
     args: &[&str],
     creds: &Credentials,
     agent: &IsTaskingAgent<'_>,
+    state: State<Arc<AppState>>,
 ) -> Result<(), TaskDispatchError> {
     agent.has_agent_id()?;
 
@@ -468,158 +548,159 @@ pub async fn file_dropper(
         ));
     }
 
-    let file_data = unsafe {
-        FileDropMetadata {
-            internal_name: args.get_unchecked(0).to_string(),
-            download_name: args.get_unchecked(1).to_string(),
-            // This is computed on the C2
-            download_uri: None,
-        }
+    if args[0].contains(DELIM_FILE_DROP_METADATA) || args[1].contains(DELIM_FILE_DROP_METADATA) {
+        return Err(TaskDispatchError::BadTokens(
+            "Input cannot contain a comma.".into(),
+        ));
+    }
+
+    let file_data = FileDropMetadata {
+        internal_name: args[0].to_string(),
+        download_name: args[1].to_string(),
+        // This is computed on the C2
+        download_uri: None,
     };
 
-    api_request(AdminCommand::Drop(file_data), agent, creds, None).await?;
+    let response = api_request(AdminCommand::Drop(file_data), agent, creds, None).await?;
+
+    let result = serde_json::from_slice::<WyrmResult<String>>(&response)
+        .expect("could not deser response from Drop");
+
+    if let WyrmResult::Err(e) = result {
+        if let IsTaskingAgent::Yes(agent_id) = agent {
+            let mut lock = state.connected_agents.write().await;
+            for a in lock.iter_mut() {
+                if a.agent_id == **agent_id {
+                    a.output_messages
+                        .push(TabConsoleMessages::non_agent_message("[Drop]".into(), e));
+                    break;
+                }
+            }
+        }
+    }
 
     Ok(())
 }
 
-/// Determines whether the [`split_string_slices_to_n`] function should discard the first
-/// found substring or not - this would be useful where the command is present in the input
-/// string.
-#[derive(PartialEq, Eq)]
-enum DiscardFirst {
-    Chop,
-    DontChop,
+pub enum RegOperationDelQuery {
+    Query,
+    Delete,
 }
 
-/// Splits a string into exactly `n` chunks, treating quoted substrings as single tokens.
-/// Optionally discards the first token, which is useful if the input string begins with a command.
+/// Queries or deletes a registry key.
 ///
-/// # Args
-/// * `n` - The expected number of resulting tokens.  
-/// * `strs` - The input string slice to be tokenised.  
-/// * `discard_first` - Whether the first discovered token should be discarded (`Chop`) or kept (`DontChop`).  
-///
-/// # Returns
-/// Returns `Some(Vec<String>)` if exactly `n` tokens are produced after processing,  
-/// otherwise returns `None`.
-///
-/// # Example
-/// ```
-/// let s = "a b  \"c d\" e".to_string();
-/// assert_eq!(
-///     split_string_slices_to_n(4, &s, DiscardFirst::DontChop),
-///     Some(vec![
-///         "a".to_string(),
-///         "b".to_string(),
-///         "c d".to_string(),
-///         "e".to_string(),
-///     ])
-/// )
-/// ```
-fn split_string_slices_to_n(
-    n: usize,
-    strs: &str,
-    mut discard_first: DiscardFirst,
-) -> Option<Vec<String>> {
-    // Flatten the slices
-    let mut chunks: Vec<String> = Vec::new();
-    let mut s = String::new();
-    let mut toggle: bool = false;
+/// Arg for [`RegOperationDelQuery`] specifies the tasking.
+pub async fn reg_query_del(
+    inputs: String,
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+    operation: RegOperationDelQuery,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
 
-    for (_, c) in strs.chars().enumerate() {
-        if c == '"' {
-            if toggle {
-                toggle = false;
-                if !s.is_empty() {
-                    chunks.push(take(&mut s));
-                }
-                s.clear();
-            } else {
-                // Start of a quoted string
-                toggle = true;
-            }
-        } else if c == ' ' && !toggle {
-            if discard_first == DiscardFirst::Chop && chunks.is_empty() {
-                discard_first = DiscardFirst::DontChop;
-                s.clear();
-            }
+    if inputs.is_empty() {
+        print_failed(format!("Please specify options."));
+    }
 
-            if !s.is_empty() {
-                chunks.push(take(&mut s));
+    //
+    // We have a max of 2 values we can get from this task. The first is specifying a key and value,
+    // second is just the key.
+    //
+    // The strategy here is to try resolve 2 strings in the input, if that fails, we try 1 string, then we have
+    // the proper options
+    //
+
+    let reg_query_options = split_string_slices_to_n(2, &inputs, DiscardFirst::ChopTwo);
+    let mut reg_query_options = if reg_query_options.is_none() {
+        match split_string_slices_to_n(1, &inputs, DiscardFirst::ChopTwo) {
+            Some(s) => s,
+            None => {
+                return Err(TaskDispatchError::BadTokens(
+                    "Could not find options for command".into(),
+                ));
             }
-            s.clear();
-        } else {
-            s.push(c);
+        }
+    } else {
+        reg_query_options.unwrap()
+    };
+
+    let query_data: RegQueryInner = if reg_query_options.len() == 2 {
+        (
+            take(&mut reg_query_options[0]),
+            Some(take(&mut reg_query_options[1])),
+        )
+    } else {
+        (take(&mut reg_query_options[0]), None)
+    };
+
+    match operation {
+        RegOperationDelQuery::Query => {
+            api_request(AdminCommand::RegQuery(query_data), agent, creds, None).await?;
+        }
+        RegOperationDelQuery::Delete => {
+            api_request(AdminCommand::RegDelete(query_data), agent, creds, None).await?;
         }
     }
 
-    // Handle the very last chunk which didn't get pushed by the loop
-    if !s.is_empty() {
-        chunks.push(s);
-    }
-
-    if chunks.len() != n {
-        return None;
-    }
-
-    Some(chunks)
+    Ok(())
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+/// Queries a registry key
+pub async fn reg_add(
+    inputs: String,
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
 
-    #[test]
-    fn tokens_with_no_quotes() {
-        let s = "a b  c d e f    g    ".to_string();
-        assert_eq!(
-            split_string_slices_to_n(7, &s, DiscardFirst::DontChop),
-            Some(vec![
-                "a".to_string(),
-                "b".to_string(),
-                "c".to_string(),
-                "d".to_string(),
-                "e".to_string(),
-                "f".to_string(),
-                "g".to_string()
-            ])
-        )
+    if inputs.is_empty() {
+        print_failed(format!("Please specify options."));
     }
 
-    #[test]
-    fn tokens_with_quotes_space() {
-        let s = "a b  \"c  d\" e".to_string();
-        assert_eq!(
-            split_string_slices_to_n(4, &s, DiscardFirst::DontChop),
-            Some(vec![
-                "a".to_string(),
-                "b".to_string(),
-                "c  d".to_string(),
-                "e".to_string(),
-            ])
-        )
-    }
+    //
+    // We have a max of 2 values we can get from this task. The first is specifying a key and value,
+    // second is just the key.
+    //
+    // The strategy here is to try resolve 2 strings in the input, if that fails, we try 1 string, then we have
+    // the proper options
+    //
 
-    #[test]
-    fn tokens_with_quotes() {
-        let s = "a b  \"c d\" e".to_string();
-        assert_eq!(
-            split_string_slices_to_n(4, &s, DiscardFirst::DontChop),
-            Some(vec![
-                "a".to_string(),
-                "b".to_string(),
-                "c d".to_string(),
-                "e".to_string(),
-            ])
-        )
-    }
+    let reg_add_options = split_string_slices_to_n(4, &inputs, DiscardFirst::ChopTwo);
+    let mut reg_add_options = if reg_add_options.is_none() {
+        return Err(TaskDispatchError::BadTokens(
+            "Could not find options for command".into(),
+        ));
+    } else {
+        reg_add_options.unwrap()
+    };
 
-    #[test]
-    fn tokens_bad_count() {
-        let s = "a b  \"c d\" e".to_string();
-        assert_eq!(
-            split_string_slices_to_n(5, &s, DiscardFirst::DontChop),
-            None
-        )
-    }
+    let reg_type = match reg_add_options[3].as_str() {
+        "string" | "String" => RegType::String,
+        "u32" | "U32" | "dword" | "DWORD" => RegType::U32,
+        "u64" | "U64" | "qword" | "QWORD" => RegType::U64,
+        _ => {
+            return Err(TaskDispatchError::BadTokens(
+                "Could not extrapolate type, the final param should be either string, dword, or qword depending on the data type".into(),
+            ));
+        }
+    };
+
+    // Validate input before we get to the implant..
+    if validate_reg_type(reg_add_options[2].as_str(), reg_type).is_err() {
+        return Err(TaskDispatchError::BadTokens(format!(
+            "Could not parse value for the type specified. Tried parsing {} as {}",
+            reg_add_options[2], reg_add_options[3],
+        )));
+    };
+
+    let query_data: RegAddInner = (
+        take(&mut reg_add_options[0]),
+        take(&mut reg_add_options[1]),
+        take(&mut reg_add_options[2]),
+        reg_type,
+    );
+
+    api_request(AdminCommand::RegAdd(query_data), agent, creds, None).await?;
+
+    Ok(())
 }
