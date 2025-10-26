@@ -66,6 +66,10 @@ developed as a premium or otherwise private feature. These will be few and far b
 10) [ ] Support domain fronting through HTTP headers in malleable profile
 11) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 
+### v1.0.1
+
+1) [ ] Consider unit tests.
+
 ### v1.1
 
 These are to be split out further as required for more manageable releases.

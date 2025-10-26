@@ -53,13 +53,8 @@ pub async fn timestomp_binary_compile_date(
     let mut buf = Vec::with_capacity(INITIAL_LEN);
     unsafe { buf.set_len(INITIAL_LEN) };
 
-    match file.read_exact(&mut buf).await {
-        Ok(n) => {
-            if n == 0 {
-                return Err(TimestompError::NoRead);
-            }
-        }
-        Err(e) => return Err(TimestompError::FileRead(e.to_string())),
+    if let Err(e) = file.read_exact(&mut buf).await {
+        return Err(TimestompError::FileRead(e.to_string()));
     }
 
     let p_dos_header = buf.as_ptr() as *const IMAGE_DOS_HEADER;

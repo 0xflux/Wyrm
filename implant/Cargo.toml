@@ -53,3 +53,4 @@ windows-sys = {version = "0.61", features = [
 ]}
 rand = "0.9"
 windows-registry = "0.6"
+chrono = { version = "0.4", features = ["serde"] }

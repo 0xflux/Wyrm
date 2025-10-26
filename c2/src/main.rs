@@ -51,6 +51,7 @@ const MAX_POST_BODY_SZ: usize = NUM_GIGS * 1024 * 1024 * 1024;
 const FILE_STORE_PATH: &str = "/data/staged_files";
 const EXFIL_PATH: &str = "/data/loot";
 const LOG_PATH: &str = "/data/logs";
+const DB_EXPORT_PATH: &str = "/data/exports";
 const ACCESS_LOG: &str = "access.log";
 const LOGIN_LOG: &str = "login.log";
 const ERROR_LOG: &str = "error.log";
@@ -181,6 +182,13 @@ fn ensure_dirs_and_files() {
         match e.kind() {
             std::io::ErrorKind::AlreadyExists => (),
             _ => panic!("Could not create dir for FILE_STORE_PATH"),
+        }
+    }
+
+    if let Err(e) = std::fs::create_dir(DB_EXPORT_PATH) {
+        match e.kind() {
+            std::io::ErrorKind::AlreadyExists => (),
+            _ => panic!("Could not create dir for DB_EXPORT_PATH"),
         }
     }
 

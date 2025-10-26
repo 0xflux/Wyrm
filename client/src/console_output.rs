@@ -210,7 +210,7 @@ impl FormatOutput for NotificationForAgent {
                     }
                 }
 
-                return vec!["Unknown state?.".into()];
+                return vec!["File copied".into()];
             }
             Command::Move => {
                 //
@@ -227,7 +227,7 @@ impl FormatOutput for NotificationForAgent {
                     }
                 }
 
-                return vec!["Unknown state?.".into()];
+                return vec!["File moved".into()];
             }
             Command::Pull => {
                 if let Some(response) = &self.result {

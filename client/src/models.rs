@@ -69,14 +69,28 @@ pub struct TabConsoleMessages {
 }
 
 impl From<NotificationForAgent> for TabConsoleMessages {
-    fn from(value: NotificationForAgent) -> Self {
-        let cmd = Command::from_u32(value.command_id as _);
+    fn from(notification_data: NotificationForAgent) -> Self {
+        let cmd = Command::from_u32(notification_data.command_id as _);
         let cmd_string = command_to_string(&cmd);
-        let result = value.format_console_output();
+        let result = notification_data.format_console_output();
+
+        let time_seconds = if notification_data.time_completed_ms == 0 {
+            let now = Utc::now();
+            now.timestamp()
+        } else {
+            notification_data.time_completed_ms
+        };
+
+        // I am happy with the unwrap here, and I would prefer it over a default or half working product; if we make a change
+        // to how time is represented then this will crash the client - forcing a bug fix. In any case, this should not be a real problem
+        let time_utc_str = DateTime::from_timestamp(time_seconds, 0)
+            .unwrap()
+            .format("%d/%m/%Y %H:%M:%S")
+            .to_string();
 
         Self {
             event: cmd_string,
-            time: value.time_completed.to_string(),
+            time: time_utc_str,
             messages: result,
         }
     }

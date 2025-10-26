@@ -7,7 +7,7 @@ use std::{
 
 use chrono::{DateTime, Utc};
 use shared::{
-    pretty_print::{print_info, print_success},
+    pretty_print::{print_failed, print_info, print_success},
     tasks::{Command, FirstRunData, NewAgentStaging, Task},
 };
 use shared_c2_client::{NotificationForAgent, NotificationsForAgents, StagedResourceData};
@@ -39,12 +39,16 @@ impl Db {
             .max_connections(MAX_DB_CONNECTIONS)
             .connect(&db_string)
             .await
-            .expect("could not establish a database connection.");
+            .map_err(|e| {
+                print_failed(format!("Could not establish a database connection. {e}"));
+                panic!();
+            })
+            .unwrap();
 
-        MIGRATOR
-            .run(&pool)
-            .await
-            .expect("could not run db migrations");
+        if let Err(e) = MIGRATOR.run(&pool).await {
+            print_failed(format!("Could not run db migrations. {e}"));
+            panic!()
+        }
 
         print_success("Db connection established");
 
@@ -131,7 +135,7 @@ impl Db {
                 self.mark_task_completed(&task)
                     .await
                     .expect("Could not complete task");
-                self.add_completed_task(&task)
+                self.add_completed_task(&task, uid)
                     .await
                     .expect("Could not add task to completed");
             }
@@ -225,15 +229,20 @@ impl Db {
 
     /// Adds a completed task into the `completed_tasks` table which stores the results
     /// and metadata associated with completed task results, to be used by the client.
-    pub async fn add_completed_task(&self, task: &Task) -> Result<(), sqlx::Error> {
+    pub async fn add_completed_task(&self, task: &Task, agent_id: &str) -> Result<(), sqlx::Error> {
+        let cmd_id: u32 = task.command.into();
+
         let _ = sqlx::query(
             r#"
-            INSERT INTO completed_tasks (task_id, result)
-            VALUES ($1, $2)
+            INSERT INTO completed_tasks (task_id, result, time_completed_ms, agent_id, command_id)
+            VALUES ($1, $2, $3, $4, $5)
         "#,
         )
         .bind(task.id)
         .bind(task.metadata.as_deref())
+        .bind(task.completed_time)
+        .bind(agent_id)
+        .bind(cmd_id as i32)
         .execute(&self.pool)
         .await?;
 
@@ -281,7 +290,7 @@ impl Db {
                 t.command_id,
                 t.agent_id,
                 ct.result,
-                ct.time_completed
+                ct.time_completed_ms
             FROM completed_tasks ct
             JOIN tasks t
                 ON ct.task_id = t.id
@@ -541,5 +550,41 @@ impl Db {
         .await?;
 
         Ok(rows)
+    }
+
+    pub async fn get_agent_export_data(&self, uid: &str) -> Result<Option<Vec<Task>>, sqlx::Error> {
+        let rows = sqlx::query(
+            r#"
+            SELECT task_id, result, time_completed_ms, command_id
+            FROM completed_tasks
+            WHERE agent_id = $1"#,
+        )
+        .bind(uid)
+        .fetch_all(&self.pool)
+        .await?;
+
+        if rows.is_empty() {
+            return Ok(None);
+        }
+
+        let mut results = vec![];
+
+        for row in rows {
+            let task_id: i32 = row.try_get("task_id")?;
+            let metadata: Option<String> = row.try_get("result")?;
+            let completed_time: i64 = row.try_get("time_completed_ms")?;
+            let command_id: i32 = row.try_get("command_id")?;
+
+            let command = Command::from_u32(command_id as _);
+
+            results.push(Task {
+                id: task_id,
+                command,
+                completed_time,
+                metadata,
+            });
+        }
+
+        Ok(Some(results))
     }
 }

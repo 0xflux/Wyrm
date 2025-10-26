@@ -16,6 +16,7 @@ use axum::{
 use serde::Deserialize;
 use shared::{
     net::{XorEncode, decode_http_response},
+    pretty_print::print_failed,
     tasks::{AdminCommand, Command, FirstRunData},
 };
 
@@ -157,11 +158,20 @@ pub async fn handle_agent_post(
         //
 
         if let Err(e) = state.db_pool.mark_task_completed(&task).await {
-            panic!("[-] Failed to complete task in db. {e}");
+            print_failed(format!("Failed to complete task in db. {e}"));
+            panic!();
         }
 
-        if let Err(e) = state.db_pool.add_completed_task(&task).await {
-            panic!("[-] Failed to add task results to completed table. {e}");
+        let (agent, _) = state
+            .connected_agents
+            .get_agent_and_tasks_by_header(&headers, &cl.db_pool, None)
+            .await;
+
+        if let Err(e) = state.db_pool.add_completed_task(&task, &agent.uid).await {
+            print_failed(format!(
+                "Failed to add task results to completed table. {e}"
+            ));
+            panic!();
         }
     }
 
