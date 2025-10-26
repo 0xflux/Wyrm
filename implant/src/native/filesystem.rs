@@ -66,23 +66,23 @@ fn get_file_listings_from_dir_and_subdirs(
                     let ext = path.extension().unwrap_or_default();
                     let ext = ext.to_str().unwrap_or_default();
 
-                    if ext.eq_ignore_ascii_case("pdf") || 
-                        ext.eq_ignore_ascii_case("doc") || 
-                        ext.eq_ignore_ascii_case("docx") || 
+                    if ext.eq_ignore_ascii_case(&sc!("pdf", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("doc", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("docx", 56).unwrap()) || 
                         // ext.eq_ignore_ascii_case("txt") || 
-                        ext.eq_ignore_ascii_case("log") || 
-                        ext.eq_ignore_ascii_case("png") || 
-                        ext.eq_ignore_ascii_case("mov") || 
-                        ext.eq_ignore_ascii_case("kpdb") || 
-                        ext.eq_ignore_ascii_case("xls") || 
-                        ext.eq_ignore_ascii_case("xlsx") || 
-                        ext.eq_ignore_ascii_case("ppt") || 
-                        ext.eq_ignore_ascii_case("pptx") ||
-                        ext.eq_ignore_ascii_case("sql") ||
-                        ext.eq_ignore_ascii_case("sqlite3") ||
-                        ext.eq_ignore_ascii_case("accdb") ||
-                        ext.eq_ignore_ascii_case("csv") ||
-                        ext.eq_ignore_ascii_case("db")
+                        ext.eq_ignore_ascii_case(&sc!("log", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("png", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("mov", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("kpdb", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("xls", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("xlsx", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("ppt", 56).unwrap()) || 
+                        ext.eq_ignore_ascii_case(&sc!("pptx", 56).unwrap()) ||
+                        ext.eq_ignore_ascii_case(&sc!("sql", 56).unwrap()) ||
+                        ext.eq_ignore_ascii_case(&sc!("sqlite3", 56).unwrap()) ||
+                        ext.eq_ignore_ascii_case(&sc!("accdb", 56).unwrap()) ||
+                        ext.eq_ignore_ascii_case(&sc!("csv", 56).unwrap()) ||
+                        ext.eq_ignore_ascii_case(&sc!("db", 56).unwrap())
                     {
                         let s = path.to_string_lossy().to_string();
                         listings.push(s);
