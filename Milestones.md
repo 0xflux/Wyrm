@@ -10,7 +10,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 3) [x] `rm` command
 4) [x] Improve formatting of output of running `ps`
 5) [x] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp).
-6) [ ] Output data as JSON so it is ingestible into ELK etc perhaps from the C2 or a db export option?
+6) [x] Output data as JSON so it is ingestible into ELK etc perhaps from the C2 or a db export option?
 7) [ ] Does the inner enum appear in the strings? Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
    1) [ ] Looks like the URIs are not encrypted - /submit.aspx, etc
    2) [ ] no_serial not encrypted
