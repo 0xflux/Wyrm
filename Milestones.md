@@ -3,20 +3,6 @@
 Any item with a (L) tag is a contribution which will not be live (or requires further decision making) as this is intended to be
 developed as a premium or otherwise private feature. These will be few and far between.
 
-### v0.4
-
-1) [x] `reg add`, `reg query`, `reg delete`
-2) [x] C2 'dockerised' for easier deployment
-3) [x] `rm` command
-4) [x] Improve formatting of output of running `ps`
-5) [x] Add configurable setting to the profile for stomping the compile data of the binary (IMAGE_FILE_HEADER.TimeDateStamp).
-6) [x] Output data as JSON so it is ingestible into ELK etc perhaps from the C2 or a db export option?
-7) [ ] Does the inner enum appear in the strings? Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
-   1) [ ] Looks like the URIs are not encrypted - /submit.aspx, etc
-   2) [ ] no_serial not encrypted
-   3) [ ] UNKNOWN not encrypted
-   4) [ ] Headers not encrypted, User-Agent, WWW-Authenticate, etc
-
 ### v0.4.1
 
 1) [ ] BUG: https://github.com/0xflux/Wyrm/issues/3

