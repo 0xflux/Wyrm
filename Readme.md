@@ -59,7 +59,7 @@ so I will be attentive to anything raised.
 - Supports native Windows API commands, more planned in future updates
 - Easy to use terminal client for the operator to task & inspect agents, and to manage staged resources
 - Implant uses the most common User-Agent for comms to help it blend in covertly with traffic by default, this is also configurable to suit your engagement
-- Easy, automated C2 infrastructure deployment with `install_server.sh`
+- Easy, automated C2 infrastructure deployment with docker
 - Anti-sandbox techniques which are highly configurable by the operator through profiles
 - Backed by a database, fully timestamped to make reporting easier
 
