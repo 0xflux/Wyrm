@@ -12,7 +12,8 @@ overwrite your local configs and agent profiles.
 Before using the C2, you **SHOULD** change the default admin token and database creds found in the `.env` for security purposes.
 
 Via docker, simply run: `docker compose up -d --build`. The C2 exposes itself on port 8080, which you will likely want to reverse proxy in prod. You
-can access the client on `http://127.0.0.1:4040/`.
+can access the client on `http://127.0.0.1:4040/`. Because of the way `docker`, `cargo` and `cargo chef` work, `--build` is required to ensure you 
+have a completely clean build, running without that flag may introduce errors.
 
 Note: The C2 uses a docker volume `/data` to store loot as well as other persistent files.
 
