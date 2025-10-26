@@ -24,7 +24,7 @@ pub struct NotificationForAgent {
     pub command_id: i32,
     pub agent_id: String,
     pub result: Option<String>,
-    pub time_completed: DateTime<Utc>,
+    pub time_completed_ms: i64,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, FromRow)]

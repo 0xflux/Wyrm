@@ -7,7 +7,7 @@ use std::{
 
 use chrono::{DateTime, Utc};
 use shared::{
-    pretty_print::{print_info, print_success},
+    pretty_print::{print_failed, print_info, print_success},
     tasks::{Command, FirstRunData, NewAgentStaging, Task},
 };
 use shared_c2_client::{NotificationForAgent, NotificationsForAgents, StagedResourceData};
@@ -39,12 +39,16 @@ impl Db {
             .max_connections(MAX_DB_CONNECTIONS)
             .connect(&db_string)
             .await
-            .expect("could not establish a database connection.");
+            .map_err(|e| {
+                print_failed(format!("Could not establish a database connection. {e}"));
+                panic!();
+            })
+            .unwrap();
 
-        MIGRATOR
-            .run(&pool)
-            .await
-            .expect("could not run db migrations");
+        if let Err(e) = MIGRATOR.run(&pool).await {
+            print_failed(format!("Could not run db migrations. {e}"));
+            panic!()
+        }
 
         print_success("Db connection established");
 
@@ -228,12 +232,13 @@ impl Db {
     pub async fn add_completed_task(&self, task: &Task) -> Result<(), sqlx::Error> {
         let _ = sqlx::query(
             r#"
-            INSERT INTO completed_tasks (task_id, result)
-            VALUES ($1, $2)
+            INSERT INTO completed_tasks (task_id, result, time_completed_ms)
+            VALUES ($1, $2, $3)
         "#,
         )
         .bind(task.id)
         .bind(task.metadata.as_deref())
+        .bind(task.completed_time)
         .execute(&self.pool)
         .await?;
 
@@ -281,7 +286,7 @@ impl Db {
                 t.command_id,
                 t.agent_id,
                 ct.result,
-                ct.time_completed
+                ct.time_completed_ms
             FROM completed_tasks ct
             JOIN tasks t
                 ON ct.task_id = t.id

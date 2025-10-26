@@ -10,7 +10,7 @@ use axum::{
 };
 use futures::StreamExt;
 use shared::{
-    net::{CommandHeader, TasksNetworkStream, XorEncode, encode_u16buf_to_u8buf},
+    net::{TasksNetworkStream, XorEncode, encode_u16buf_to_u8buf},
     tasks::{Command, Task},
 };
 use std::path::PathBuf;
@@ -34,7 +34,7 @@ pub async fn serialise_tasks_for_agent(tasks: Option<Vec<Task>>) -> Vec<u8> {
                 id: 0,
                 command: Command::Sleep,
                 metadata: None,
-                completed_time: None,
+                completed_time: 0,
             })
             .await
             .xor_network_stream();
@@ -52,10 +52,19 @@ pub async fn serialise_tasks_for_agent(tasks: Option<Vec<Task>>) -> Vec<u8> {
 }
 
 async fn prepare_response_packet(task: Task) -> Vec<u8> {
-    let mut packet: Vec<u16> = Vec::from_command(task.command);
+    let mut packet = from_task_id_bytes(task.id);
+
+    let (low, high) = task.command.to_u16_tuple_le();
+    packet.push(low);
+    packet.push(high);
+
+    // insert sizeof i64 of zeros for the completed time, packet is u16 len so we need 4
+    packet.push(0);
+    packet.push(0);
+    packet.push(0);
+    packet.push(0);
 
     if task.metadata.is_none() {
-        push_task_id_bytes(&mut packet, task.id);
         return encode_u16buf_to_u8buf(&packet);
     }
 
@@ -65,18 +74,15 @@ async fn prepare_response_packet(task: Task) -> Vec<u8> {
 
     packet.append(&mut data_bytes);
 
-    push_task_id_bytes(&mut packet, task.id);
-
     encode_u16buf_to_u8buf(&packet)
 }
 
-fn push_task_id_bytes(buf: &mut Vec<u16>, id: i32) {
+fn from_task_id_bytes(id: i32) -> Vec<u16> {
     let id_bytes = id.to_le_bytes();
     let low = u16::from_le_bytes([id_bytes[0], id_bytes[1]]);
     let high = u16::from_le_bytes([id_bytes[2], id_bytes[3]]);
 
-    buf.push(low);
-    buf.push(high);
+    vec![low, high]
 }
 
 /// Serves a file from the local disk by its file name. The server will look in the

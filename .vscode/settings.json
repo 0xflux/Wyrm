@@ -46,6 +46,7 @@
         "macroise",
         "minreq",
         "msvc",
+        "nanos",
         "NGBP",
         "NGPB",
         "ntdll",

