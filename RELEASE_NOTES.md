@@ -23,6 +23,8 @@ pulling updates.
 - Improve docker build process for the client through [cargo chef](https://lpalmieri.com/posts/fast-rust-docker-builds/).
 - Implant supports `rm` to remove a file, and `rm_d` to remove a directory (and all its children).
 - Adds user name who is running processes, as well as the ability to show processes running at a higher privilege (if running with high integrity).
+- Improved how the system records time an action was completed, now properly represents the time the agent actually did the work, vs what was in place which was when the result was posted to the server and processed by the database.
+- Improved HTTP packet ordering to be more concise and clear, using repr(C) to ensure consistent ordering under the new packet layout.
 
 ## v 0.3
 
