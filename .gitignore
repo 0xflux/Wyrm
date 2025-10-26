@@ -17,3 +17,6 @@ shared_c2_client/target
 c2/profiles/*.toml
 # Track the example profile - 
 !c2/profiles/profile.example.toml
+
+# Now the env file is setup, we want to ignore it for future commits to prevent overwriting.
+.env
