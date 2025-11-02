@@ -1,12 +1,9 @@
-use leptos::logging::log;
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
-use reactive_stores::Store;
 use shared::tasks::AdminCommand;
 
 use crate::{
-    GlobalState,
-    models::{GlobalStateStoreFields, LoginData},
+    models::LoginData,
     net::{ApiError, IsTaskingAgent, api_request},
 };
 
@@ -34,20 +31,8 @@ pub fn Login() -> impl IntoView {
         submit_value.with(|inner| {
             if let Some(response) = inner {
                 match response {
-                    Ok(data) => match serde_json::from_slice::<String>(&data) {
-                        // Todo this Ok branch here is where we can get the JWT
-                        Ok(s) => {
-                            log!("Data: {s}");
-                            let state = expect_context::<Store<GlobalState>>();
-                            let creds = state.credentials();
-
-                            creds.set(Some(login_data.get()));
-
-                            navigate("/dashboard", Default::default());
-                        },
-                        Err(e) => {
-                            login_box_html.set(format!(r#"<div class="mt-3 alert alert-danger" role="alert">Error making request: {}</div>"#, e));
-                        }
+                    Ok(_) => {
+                        navigate("/dashboard", Default::default());
                     }
                     Err(e) => match e {
                         ApiError::Reqwest(e) => {

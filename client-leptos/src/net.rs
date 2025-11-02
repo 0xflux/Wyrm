@@ -1,9 +1,10 @@
 use gloo_net::http::{Headers, Request};
 use shared::{
-    net::{ADMIN_AUTH_SEPARATOR, ADMIN_ENDPOINT},
+    net::{ADMIN_AUTH_SEPARATOR, ADMIN_ENDPOINT, ADMIN_LOGIN_ENDPOINT, AdminLoginPacket},
     tasks::AdminCommand,
 };
 use thiserror::Error;
+use web_sys::RequestCredentials;
 
 use crate::models::LoginData;
 
@@ -46,24 +47,54 @@ pub async fn api_request(
         None
     };
 
-    let c2_url: String = match is_tasking_agent {
-        IsTaskingAgent::Yes(uid) => format!(
-            "{}/{}/{}",
-            creds.c2_addr,
-            custom_uri.unwrap_or(ADMIN_ENDPOINT),
-            uid
-        ),
-        IsTaskingAgent::No => format!("{}/{}", creds.c2_addr, custom_uri.unwrap_or(ADMIN_ENDPOINT)),
+    let c2_url: String = {
+        let s = match command {
+            AdminCommand::Login => format!(
+                "{}/{}",
+                creds.c2_addr,
+                custom_uri.unwrap_or(ADMIN_LOGIN_ENDPOINT)
+            ),
+            _ => "".into(),
+        };
+
+        if !s.is_empty() {
+            s
+        } else {
+            match is_tasking_agent {
+                IsTaskingAgent::Yes(uid) => format!(
+                    "{}/{}/{}",
+                    creds.c2_addr,
+                    custom_uri.unwrap_or(ADMIN_ENDPOINT),
+                    uid
+                ),
+                IsTaskingAgent::No => {
+                    format!("{}/{}", creds.c2_addr, custom_uri.unwrap_or(ADMIN_ENDPOINT))
+                }
+            }
+        }
     };
 
-    let headers = Headers::new();
-    headers.append("authorization", auth_header(&creds).as_str());
+    let resp = match command {
+        AdminCommand::Login => {
+            let admin_creds = AdminLoginPacket {
+                username: creds.username.clone(),
+                password: creds.password.clone(),
+            };
 
-    let resp = Request::post(&c2_url)
-        .headers(headers)
-        .json(&command)?
-        .send()
-        .await?;
+            Request::post(&c2_url)
+                .credentials(RequestCredentials::Include)
+                .json(&admin_creds)?
+                .send()
+                .await?
+        }
+        _ => {
+            Request::post(&c2_url)
+                .credentials(RequestCredentials::Include)
+                .json(&command)?
+                .send()
+                .await?
+        }
+    };
 
     // Note, all admin commands return ACCEPTED (status 202) on successful authentication / completion
     // not the anticipated 200 OK. Dont recall why I went that route, but here we are :)

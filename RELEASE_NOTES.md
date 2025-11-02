@@ -6,6 +6,13 @@ pulling updates.
 
 **IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
 
+## &#128679; v 0.4.1
+
+### &#128679; Breaking changes
+
+- nginx/certs needs creating manually with a cert. Either via mkcert/certbot etc localhost 127.0.0.1 <ip>, or for prod via normal means. Need to be named cert.pem and key.pem.
+- nginx/nginx.conf is included in git tracking, requires some config for hostnames / IP etc.
+
 ## &#128679; v 0.4
 
 ### &#128679; Breaking changes
