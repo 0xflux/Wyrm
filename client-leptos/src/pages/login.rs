@@ -1,12 +1,16 @@
 use leptos::logging::log;
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
+use reactive_stores::Store;
 use serde::Serialize;
 use shared::tasks::AdminCommand;
 
-use crate::net::{ApiError, IsTaskingAgent, api_request};
+use crate::{
+    GlobalState, GlobalStateStoreFields,
+    net::{ApiError, IsTaskingAgent, api_request},
+};
 
-#[derive(Serialize, Clone, Debug)]
+#[derive(Serialize, Clone, Debug, Default)]
 pub struct LoginData {
     pub c2_addr: String,
     pub username: String,
@@ -21,6 +25,7 @@ pub fn Login() -> impl IntoView {
     let c2_addr = RwSignal::new("".to_string());
     let username = RwSignal::new("".to_string());
     let password = RwSignal::new("".to_string());
+    let login_data = RwSignal::new(LoginData::default());
 
     // Inner HTML container for the error box
     let login_box_html = RwSignal::new("".to_string());
@@ -41,6 +46,11 @@ pub fn Login() -> impl IntoView {
                         // Todo this Ok branch here is where we can get the JWT
                         Ok(s) => {
                             log!("Data: {s}");
+                            let state = expect_context::<Store<GlobalState>>();
+                            let creds = state.credentials();
+
+                            creds.set(login_data.get());
+
                             navigate("/dashboard", Default::default());
                         },
                         Err(e) => {
@@ -74,14 +84,14 @@ pub fn Login() -> impl IntoView {
                     // todo
                     let admin_env_token = "fdgiyh%^l!udjfh78364LU7&%df!!".to_string();
 
-                    let data = LoginData {
+                    login_data.set(LoginData {
                         c2_addr: c2_addr.get(),
                         username: username.get(),
                         password: password.get(),
                         admin_env_token,
-                    };
+                    });
 
-                    submit_page.dispatch(data);
+                    submit_page.dispatch(login_data.get());
                 }
                 autocomplete="off"
                 class="form-signin">

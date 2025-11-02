@@ -17,3 +17,4 @@ gloo-net = "0.6.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
 thiserror = "2.0.17"
+reactive_stores = "0.3.0"

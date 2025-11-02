@@ -1,8 +1,12 @@
 use leptos::prelude::*;
 use leptos_meta::{Meta, Title, provide_meta_context};
 use leptos_router::{components::*, path};
+use reactive_stores::Store;
 
-use crate::pages::{dashboard::Dashboard, login::Login};
+use crate::pages::{
+    dashboard::Dashboard,
+    login::{Login, LoginData},
+};
 
 mod net;
 mod pages;
@@ -17,6 +21,7 @@ fn main() {
 #[component]
 fn App() -> impl IntoView {
     provide_meta_context();
+    provide_context(Store::new(GlobalState::default()));
 
     view! {
         <Title text="Login | Wyrm C2 Panel" />
@@ -30,4 +35,9 @@ fn App() -> impl IntoView {
             </Routes>
         </Router>
     }
+}
+
+#[derive(Clone, Debug, Default, Store)]
+pub struct GlobalState {
+    credentials: LoginData,
 }
