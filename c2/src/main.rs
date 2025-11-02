@@ -111,7 +111,7 @@ async fn init_server_state() -> Arc<AppState> {
         }
     };
 
-    print_info("Profiles parsed.");
+    print_success("Profiles parsed.");
 
     set_panic_hook();
     ensure_dirs_and_files();
@@ -269,7 +269,7 @@ fn ensure_dirs_and_files() {
         }
     }
 
-    print_info("Directories and files checked.");
+    print_success("Directories and files are in order..");
 }
 
 fn set_panic_hook() {
