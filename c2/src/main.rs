@@ -22,7 +22,7 @@ use tower_http::cors::{Any, CorsLayer};
 
 use crate::{
     api::{
-        build_all_binaries_handler, handle_admin_commands_on_agent,
+        admin_login, build_all_binaries_handler, handle_admin_commands_on_agent,
         handle_admin_commands_without_agent, handle_agent_get_with_path,
         handle_agent_post_with_path, poll_agent_notifications,
     },
@@ -49,6 +49,8 @@ mod timestomping;
 /// Set at 1 GB.
 const NUM_GIGS: usize = 1;
 const MAX_POST_BODY_SZ: usize = NUM_GIGS * 1024 * 1024 * 1024;
+
+const AUTH_COOKIE_NAME: &str = "session";
 
 /// The path to the directory on the server (relative to the working directory of the service [n.b. this
 /// implies the server was 'installed' correctly..])
@@ -133,6 +135,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             post(build_all_binaries_handler)
                 .layer(from_fn_with_state(state.clone(), authenticate_admin)),
         )
+        .route("/admin_login", post(admin_login))
         // Admin endpoint when operating a command which is not related to a specific agent
         .route(
             &format!("/{ADMIN_ENDPOINT}"),

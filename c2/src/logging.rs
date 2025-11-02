@@ -45,13 +45,7 @@ pub async fn log_page_accessed_auth(uri: &str, addr: &str) {
     log(&path, &msg, Some(addr)).await;
 }
 
-pub async fn log_admin_login_attempt(
-    username: &str,
-    password: &str,
-    token: &str,
-    addr: &str,
-    success: bool,
-) {
+pub async fn log_admin_login_attempt(username: &str, password: &str, addr: &str, success: bool) {
     if let Ok(v) = env::var("DISABLE_LOGIN_LOG")
         && v == "1"
     {
@@ -68,26 +62,20 @@ pub async fn log_admin_login_attempt(
         // Don't log success attempts after the addr has already logged in successfully
         return;
     } else if r.contains(addr) && !success {
-        format!(
-            "[REPEAT ATTEMPT] Login {success}. Username: {username}, Password: REDACTED, Token: {token}"
-        )
+        format!("[REPEAT ATTEMPT] Login {success}. Username: {username}, Password: REDACTED.")
     } else if !success {
         if let Ok(v) = env::var("DISABLE_PLAINTXT_PW_BAD_LOGIN") {
             if v == "1" {
-                format!(
-                    "Login {success}. Username: {username}, Password: [REDACTED], Token: {token}"
-                )
+                format!("Login {success}. Username: {username}, Password: [REDACTED].")
             } else {
-                format!(
-                    "Login {success}. Username: {username}, Password: {password}, Token: {token}"
-                )
+                format!("Login {success}. Username: {username}, Password: {password}.")
             }
         } else {
-            format!("Login {success}. Username: {username}, Password: {password}, Token: {token}")
+            format!("Login {success}. Username: {username}, Password: {password}.")
         }
     } else {
         // Dont log plaintext password in the event of a successful login..
-        format!("Login {success}. Username: {username}, Password: [REDACTED], Token: {token}")
+        format!("Login {success}. Username: {username}, Password: [REDACTED].")
     };
 
     log(&path, &msg, Some(addr)).await;

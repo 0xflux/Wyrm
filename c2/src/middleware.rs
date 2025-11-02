@@ -73,7 +73,7 @@ pub async fn authenticate_admin(
     // where an adversary could register an account on the C2 before the operator has had chance to. This is why
     // it is super important to set the admin token manually.
     if token.ne(&state.admin_token) {
-        log_admin_login_attempt(username, password, token, ip, false).await;
+        log_admin_login_attempt(username, password, ip, false).await;
         return StatusCode::NOT_FOUND.into_response();
     }
 
@@ -87,7 +87,7 @@ pub async fn authenticate_admin(
                     // for us if a user already exists, if so, it will panic as we don't want anybody
                     // and everybody creating accounts! And we aren't yet multiplayer
                     create_new_operator(username, password, state.clone()).await;
-                    log_admin_login_attempt(username, password, token, ip, true).await;
+                    log_admin_login_attempt(username, password, ip, true).await;
                     return next.run(request).await.into_response();
                 }
                 _ => {
@@ -96,7 +96,7 @@ pub async fn authenticate_admin(
                         {username} {password}. {e}",
                     ))
                     .await;
-                    log_admin_login_attempt(username, password, token, ip, false).await;
+                    log_admin_login_attempt(username, password, ip, false).await;
                     return StatusCode::NOT_FOUND.into_response();
                 }
             }
@@ -110,27 +110,27 @@ pub async fn authenticate_admin(
         // complexity.
 
         if username.ne(&db_username) {
-            log_admin_login_attempt(username, password, token, ip, false).await;
+            log_admin_login_attempt(username, password, ip, false).await;
             return StatusCode::NOT_FOUND.into_response();
         }
 
         if verify_password(password, &db_hash, &db_salt).await {
-            log_admin_login_attempt(username, password, token, ip, true).await;
+            log_admin_login_attempt(username, password, ip, true).await;
             return next.run(request).await.into_response();
         } else {
-            log_admin_login_attempt(username, password, token, ip, false).await;
+            log_admin_login_attempt(username, password, ip, false).await;
             return StatusCode::NOT_FOUND.into_response();
         }
     }
 
-    log_admin_login_attempt(username, password, token, ip, false).await;
     // Anything that falls through to this point is invalid
+    log_admin_login_attempt(username, password, ip, false).await;
     StatusCode::NOT_FOUND.into_response()
 }
 
 /// Verify the password passed into the admin route by comparing its calculated hash with the
 /// expected hash from the db.
-async fn verify_password(password: &str, password_hash: &str, salt: &str) -> bool {
+pub async fn verify_password(password: &str, password_hash: &str, salt: &str) -> bool {
     let salt = general_purpose::STANDARD
         .decode(salt)
         .expect("invalid base64");

