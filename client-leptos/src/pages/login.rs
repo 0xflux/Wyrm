@@ -41,7 +41,7 @@ pub fn Login() -> impl IntoView {
                             let state = expect_context::<Store<GlobalState>>();
                             let creds = state.credentials();
 
-                            creds.set(login_data.get());
+                            creds.set(Some(login_data.get()));
 
                             navigate("/dashboard", Default::default());
                         },

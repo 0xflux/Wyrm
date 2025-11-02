@@ -3,7 +3,7 @@ use serde::Serialize;
 
 #[derive(Clone, Debug, Default, Store)]
 pub struct GlobalState {
-    credentials: LoginData,
+    credentials: Option<LoginData>,
 }
 
 #[derive(Serialize, Clone, Debug, Default)]

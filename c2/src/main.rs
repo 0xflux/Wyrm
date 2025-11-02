@@ -13,6 +13,7 @@ use axum::{
     routing::{get, post},
     serve,
 };
+
 use shared::{
     net::{ADMIN_ENDPOINT, NOTIFICATION_CHECK_AGENT_ENDPOINT},
     pretty_print::{print_info, print_success},
@@ -86,7 +87,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let cors = CorsLayer::new()
         .allow_origin(Any)
-        .allow_methods([http::Method::POST, http::Method::OPTIONS])
+        .allow_methods([http::Method::POST, http::Method::GET, http::Method::OPTIONS])
         .allow_headers([AUTHORIZATION, CONTENT_TYPE])
         .expose_headers([AUTHORIZATION]);
 

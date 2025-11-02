@@ -8,6 +8,7 @@ use crate::{
     pages::{dashboard::Dashboard, login::Login},
 };
 
+mod controller;
 mod models;
 mod net;
 mod pages;
