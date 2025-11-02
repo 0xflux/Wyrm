@@ -22,3 +22,4 @@ c2/profiles/*.toml
 
 # Now the env file is setup, we want to ignore it for future commits to prevent overwriting.
 .env
+client-leptos/dist/index.html
