@@ -1,24 +1,23 @@
+#![feature(map_try_insert)]
+
 use core::panic;
-use std::{fs::create_dir, net::SocketAddr, panic::set_hook, path::PathBuf, sync::Arc};
+use std::{
+    fs::create_dir, net::SocketAddr, panic::set_hook, path::PathBuf, sync::Arc, time::Duration,
+};
 
 use api::{handle_agent_get, handle_agent_post};
 use axum::{
     Router,
     extract::DefaultBodyLimit,
-    http::{
-        self,
-        header::{AUTHORIZATION, CONTENT_TYPE},
-    },
     middleware::from_fn_with_state,
     routing::{get, post},
     serve,
 };
 
 use shared::{
-    net::{ADMIN_ENDPOINT, NOTIFICATION_CHECK_AGENT_ENDPOINT},
+    net::{ADMIN_ENDPOINT, ADMIN_LOGIN_ENDPOINT, NOTIFICATION_CHECK_AGENT_ENDPOINT},
     pretty_print::{print_info, print_success},
 };
-use tower_http::cors::{Any, CorsLayer};
 
 use crate::{
     api::{
@@ -51,6 +50,7 @@ const NUM_GIGS: usize = 1;
 const MAX_POST_BODY_SZ: usize = NUM_GIGS * 1024 * 1024 * 1024;
 
 const AUTH_COOKIE_NAME: &str = "session";
+const COOKIE_TTL: Duration = Duration::from_hours(6);
 
 /// The path to the directory on the server (relative to the working directory of the service [n.b. this
 /// implies the server was 'installed' correctly..])
@@ -86,12 +86,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let pool = Db::new().await;
     let state = Arc::new(AppState::from(pool, profile).await);
+    state.track_sessions();
 
-    let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods([http::Method::POST, http::Method::GET, http::Method::OPTIONS])
-        .allow_headers([AUTHORIZATION, CONTENT_TYPE])
-        .expose_headers([AUTHORIZATION]);
+    print_info("Building Router...");
 
     let app = Router::new()
         //
@@ -135,7 +132,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             post(build_all_binaries_handler)
                 .layer(from_fn_with_state(state.clone(), authenticate_admin)),
         )
-        .route("/admin_login", post(admin_login))
+        .route(&format!("/{ADMIN_LOGIN_ENDPOINT}"), post(admin_login))
         // Admin endpoint when operating a command which is not related to a specific agent
         .route(
             &format!("/{ADMIN_ENDPOINT}"),
@@ -158,7 +155,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // 1 GB for POST max ?
         //
         .layer(DefaultBodyLimit::max(MAX_POST_BODY_SZ))
-        .layer(cors)
         .with_state(state.clone());
 
     tokio::task::spawn(async move { detect_stale_agents(state.clone()).await });

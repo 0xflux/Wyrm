@@ -1,7 +1,7 @@
-use std::{net::SocketAddr, sync::Arc, time::Duration};
+use std::{net::SocketAddr, sync::Arc};
 
 use crate::{
-    AUTH_COOKIE_NAME,
+    AUTH_COOKIE_NAME, COOKIE_TTL,
     admin_task_dispatch::{admin_dispatch, build_all_bins},
     agents::handle_kill_command,
     app_state::AppState,
@@ -11,7 +11,7 @@ use crate::{
     net::{serialise_tasks_for_agent, serve_file},
 };
 use axum::{
-    Json, debug_handler,
+    Json,
     extract::{ConnectInfo, Path, Query, Request, State},
     http::{HeaderMap, StatusCode},
     response::{Html, IntoResponse, Response},
@@ -20,10 +20,9 @@ use axum_extra::extract::{
     CookieJar,
     cookie::{Cookie, SameSite},
 };
-use rand::{Rng, distr::Alphanumeric, rng};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use shared::{
-    net::{XorEncode, decode_http_response},
+    net::{AdminLoginPacket, XorEncode, decode_http_response},
     pretty_print::print_failed,
     tasks::{AdminCommand, Command, FirstRunData},
 };
@@ -261,18 +260,12 @@ pub async fn build_all_binaries_handler(
     }
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct LoginDetails {
-    username: String,
-    password: String,
-}
-
 pub async fn admin_login(
     jar: CookieJar,
     addr: ConnectInfo<SocketAddr>,
     state: State<Arc<AppState>>,
-    Json(body): Json<LoginDetails>,
-) -> (CookieJar, StatusCode) {
+    Json(body): Json<AdminLoginPacket>,
+) -> (CookieJar, Response) {
     let ip = &addr.to_string();
     let username = body.username;
     let password = body.password;
@@ -289,7 +282,7 @@ pub async fn admin_login(
                     // create_new_operator(username, password, state.clone()).await;
                     log_admin_login_attempt(&username, &password, ip, true).await;
                     // TODO
-                    return (jar, StatusCode::INTERNAL_SERVER_ERROR);
+                    return (jar, StatusCode::INTERNAL_SERVER_ERROR.into_response());
                 }
                 _ => {
                     log_error_async(&format!(
@@ -298,7 +291,7 @@ pub async fn admin_login(
                     ))
                     .await;
                     log_admin_login_attempt(&username, &password, ip, false).await;
-                    return (jar, StatusCode::INTERNAL_SERVER_ERROR);
+                    return (jar, StatusCode::INTERNAL_SERVER_ERROR.into_response());
                 }
             }
         }
@@ -312,28 +305,29 @@ pub async fn admin_login(
 
         if username.ne(&db_username) {
             log_admin_login_attempt(&username, &password, ip, false).await;
-            return (jar, StatusCode::NOT_FOUND);
+            return (jar, StatusCode::NOT_FOUND.into_response());
         }
 
         if verify_password(&password, &db_hash, &db_salt).await {
             // At this point in here we have successfully authenticated..
             log_admin_login_attempt(&username, &password, ip, true).await;
 
-            let sid = create_session_key();
-            println!("Random SID: {}", sid);
+            let sid = state.create_session().await;
+
             let cookie = Cookie::build((AUTH_COOKIE_NAME, sid))
                 .path("/")
                 .http_only(true)
-                .same_site(SameSite::Lax)
-                .max_age(Duration::from_mins(60).try_into().unwrap())
+                .same_site(SameSite::None)
+                .max_age(COOKIE_TTL.try_into().unwrap())
+                .secure(true)
                 .build();
 
             let jar = jar.add(cookie);
-            return (jar, StatusCode::NOT_FOUND);
+            return (jar, (StatusCode::ACCEPTED).into_response());
         } else {
             // Bad password...
             log_admin_login_attempt(&username, &password, ip, false).await;
-            return (jar, StatusCode::NOT_FOUND);
+            return (jar, StatusCode::NOT_FOUND.into_response());
         }
     }
 
@@ -341,13 +335,5 @@ pub async fn admin_login(
     // Anything that falls through to this point is invalid
     //
     log_admin_login_attempt(&username, &password, ip, false).await;
-    (jar, StatusCode::NOT_FOUND)
-}
-
-fn create_session_key() -> String {
-    let rng = rand::rng();
-    rng.sample_iter(&Alphanumeric)
-        .take(32)
-        .map(char::from)
-        .collect()
+    (jar, StatusCode::NOT_FOUND.into_response())
 }

@@ -2,12 +2,17 @@ use std::{
     collections::{HashMap, HashSet},
     env,
     sync::Arc,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
-use tokio::sync::RwLock;
+use rand::{Rng, distr::Alphanumeric};
+use tokio::{
+    sync::{Mutex, RwLock},
+    time::sleep,
+};
 
 use crate::{
+    COOKIE_TTL,
     agents::AgentList,
     db::Db,
     profiles::{Profile, add_listeners_from_profiles, add_tokens_from_profiles},
@@ -25,6 +30,7 @@ pub struct AppState {
     /// Tokens added during the agent creation wizard in which validate agents who are authorised to talk to the C2
     pub agent_tokens: RwLock<HashSet<String>>,
     pub profile: RwLock<Vec<Profile>>,
+    sessions: Arc<Mutex<HashMap<String, Instant>>>,
 }
 
 #[derive(Debug)]
@@ -73,6 +79,8 @@ impl AppState {
 
         let profile = RwLock::new(profile);
 
+        let sessions = Arc::new(Mutex::new(HashMap::new()));
+
         Self {
             db_pool,
             connected_agents: Arc::new(AgentList::default()),
@@ -80,7 +88,48 @@ impl AppState {
             admin_token,
             agent_tokens: RwLock::new(agent_tokens),
             profile,
+            sessions,
         }
+    }
+
+    pub fn track_sessions(&self) {
+        let sessions: Arc<Mutex<HashMap<String, Instant>>> = self.sessions.clone();
+        tokio::spawn(async move {
+            loop {
+                let now = Instant::now();
+                {
+                    let mut lock = sessions.lock().await;
+                    lock.retain(|_, value| now.duration_since(*value) < COOKIE_TTL);
+                }
+
+                sleep(Duration::from_secs(60)).await;
+            }
+        });
+    }
+
+    pub async fn create_session(&self) -> String {
+        let mut lock = self.sessions.lock().await;
+
+        // Loop until we generate a unique key which is not already in the store
+        let sid = loop {
+            let rng = rand::rng();
+            let key: String = rng
+                .sample_iter(&Alphanumeric)
+                .take(32)
+                .map(char::from)
+                .collect();
+
+            if lock.try_insert(key.clone(), Instant::now()).is_ok() {
+                break key;
+            }
+        };
+
+        sid
+    }
+
+    pub async fn has_session(&self, key: &str) -> bool {
+        let lock = self.sessions.lock().await;
+        lock.contains_key(key)
     }
 }
 
