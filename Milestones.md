@@ -11,6 +11,7 @@ developed as a premium or otherwise private feature. These will be few and far b
    2) [ ] NGINX cors?
    3) [ ] Create db user
 3) [ ] C2 code could do with a bit of a tidy up..
+4) [ ] Remove nginx.conf from git tracking
 
 ### 0.5
 
