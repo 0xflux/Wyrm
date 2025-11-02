@@ -14,6 +14,7 @@ shared_c2_client/target
 *.svc
 /client-leptos/dist
 /client/dist
+*.pem
 
 # Ignore user defined profiles, dont want to overwrite those
 c2/profiles/*.toml
