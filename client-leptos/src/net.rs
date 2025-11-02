@@ -69,14 +69,12 @@ pub async fn api_request(
     // Note, all admin commands return ACCEPTED (status 202) on successful authentication / completion
     // not the anticipated 200 OK. Dont recall why I went that route, but here we are :)
     if resp.status() != 202 {
-        log!("Bad request: {:?}", resp);
         return Err(ApiError::BadStatus(
             resp.status(),
             resp.text().await.unwrap(),
         ));
     }
 
-    log!("Logged in ok: {:?}", resp);
     let bytes = resp.binary().await?;
     Ok(bytes.to_vec())
 }
