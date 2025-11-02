@@ -12,8 +12,8 @@ shared_c2_client/target
 *.exe
 *.dll
 *.svc
-/client-leptos/dist/*
-/client/dist/*
+/client-leptos/dist
+/client/dist
 
 # Ignore user defined profiles, dont want to overwrite those
 c2/profiles/*.toml
