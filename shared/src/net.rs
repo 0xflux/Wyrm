@@ -3,6 +3,7 @@ use crate::tasks::{Command, Task};
 const NET_XOR_KEY: u8 = 0x3d;
 pub const STR_CRYPT_XOR_KEY: u8 = 0x1f;
 
+pub const ADMIN_AUTH_SEPARATOR: &str = "=authdivider=";
 pub const ADMIN_ENDPOINT: &str = "admin";
 /// The API endpoint for whether an unread notification exists for a specific agent
 pub const NOTIFICATION_CHECK_AGENT_ENDPOINT: &str = "check_notifs";

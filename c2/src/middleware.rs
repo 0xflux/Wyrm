@@ -47,7 +47,7 @@ pub async fn authenticate_admin(
 
     let admin_auth_header = request
         .headers()
-        .get("Authorization")
+        .get("authorization")
         .unwrap()
         .to_str()
         .unwrap();
@@ -225,7 +225,7 @@ pub async fn authenticate_agent_by_header_token(
     // That URI wasn't requested, therefore we want to apply our auth check.
     //
 
-    let h = match request.headers().get("Authorization") {
+    let h = match request.headers().get("authorization") {
         Some(h) => h,
         None => {
             log_page_accessed_no_auth(uri, ip).await;

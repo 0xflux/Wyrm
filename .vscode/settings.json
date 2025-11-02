@@ -95,4 +95,12 @@
         "editor.formatOnSave": true,
     },
     "cSpell.language": "en,en-GB",
+    "rust-analyzer.procMacro.ignored": {
+        "leptos_macro": [
+            // optional:
+            // "component",
+            "server"
+        ],
+    },
+    "rust-analyzer.cargo.features": "all",  // Enable all features
 }

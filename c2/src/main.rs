@@ -1,12 +1,14 @@
 use core::panic;
-use std::{
-    env::current_dir, fs::create_dir, net::SocketAddr, panic::set_hook, path::PathBuf, sync::Arc,
-};
+use std::{fs::create_dir, net::SocketAddr, panic::set_hook, path::PathBuf, sync::Arc};
 
 use api::{handle_agent_get, handle_agent_post};
 use axum::{
     Router,
     extract::DefaultBodyLimit,
+    http::{
+        self,
+        header::{AUTHORIZATION, CONTENT_TYPE},
+    },
     middleware::from_fn_with_state,
     routing::{get, post},
     serve,
@@ -15,6 +17,7 @@ use shared::{
     net::{ADMIN_ENDPOINT, NOTIFICATION_CHECK_AGENT_ENDPOINT},
     pretty_print::{print_info, print_success},
 };
+use tower_http::cors::{Any, CorsLayer};
 
 use crate::{
     api::{
@@ -81,6 +84,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let pool = Db::new().await;
     let state = Arc::new(AppState::from(pool, profile).await);
 
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods([http::Method::POST, http::Method::OPTIONS])
+        .allow_headers([AUTHORIZATION, CONTENT_TYPE])
+        .expose_headers([AUTHORIZATION]);
+
     let app = Router::new()
         //
         // PUBLIC ROUTES
@@ -145,6 +154,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // 1 GB for POST max ?
         //
         .layer(DefaultBodyLimit::max(MAX_POST_BODY_SZ))
+        .layer(cors)
         .with_state(state.clone());
 
     tokio::task::spawn(async move { detect_stale_agents(state.clone()).await });
