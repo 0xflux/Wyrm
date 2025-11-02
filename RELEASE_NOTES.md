@@ -14,6 +14,7 @@ pulling updates.
 - As Wyrm now uses nginx via Docker, you need to configure the configuration file in `/nginx/nginx.conf`. This file is provided for you in git tracking. **Note:** when v0.4.1 is pushed, I will not be tracking changes to this file so that it doesn't accidentally break a build.
   - Edit `server_name` as appropriate for both HTTP and HTTPS.
   - Edit other settings as you see fit; note, the CORS stuff is mandatory as the GUI is separate from the server.
+- You now log into the C2 entering the address of: https://localhost into the login panel (at http://localhost:3000)
 
 ## &#128679; v 0.4
 
