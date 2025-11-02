@@ -130,8 +130,6 @@ async fn init_server_state() -> Arc<AppState> {
 }
 
 fn build_routes(state: Arc<AppState>) -> Router {
-    print_info("Building Router...");
-
     Router::new()
         //
         // PUBLIC ROUTES
