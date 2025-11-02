@@ -7,8 +7,9 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 1) [ ] BUG: https://github.com/0xflux/Wyrm/issues/3
 2) [ ] Consider GUI rework using Leptos
-   1) [ ] Remove ADMIN_TOKEN and use JWT
+   1) [ ] Remove ADMIN_TOKEN and use cookies
    2) [ ] NGINX cors?
+   3) [ ] Create db user
 3) [ ] C2 code could do with a bit of a tidy up..
 
 ### 0.5
