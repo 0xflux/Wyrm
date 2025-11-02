@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use leptos_meta::{Meta, Title, provide_meta_context};
 use leptos_router::{components::*, path};
 
-use crate::pages::login::Login;
+use crate::pages::{dashboard::Dashboard, login::Login};
 
 mod net;
 mod pages;
@@ -26,6 +26,7 @@ fn App() -> impl IntoView {
         <Router>
             <Routes fallback=|| view! { NotFound }>
                 <Route path=path!("/") view=Login />
+                <Route path=path!("/dashboard") view=Dashboard />
             </Routes>
         </Router>
     }

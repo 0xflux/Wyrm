@@ -1,5 +1,6 @@
 use leptos::logging::log;
 use leptos::prelude::*;
+use leptos_router::hooks::use_navigate;
 use serde::Serialize;
 use shared::tasks::AdminCommand;
 
@@ -15,6 +16,8 @@ pub struct LoginData {
 
 #[component]
 pub fn Login() -> impl IntoView {
+    let navigate = use_navigate();
+
     let c2_addr = RwSignal::new("".to_string());
     let username = RwSignal::new("".to_string());
     let password = RwSignal::new("".to_string());
@@ -36,7 +39,10 @@ pub fn Login() -> impl IntoView {
                 match response {
                     Ok(data) => match serde_json::from_slice::<String>(&data) {
                         // Todo this Ok branch here is where we can get the JWT
-                        Ok(s) => log!("Data: {s}"),
+                        Ok(s) => {
+                            log!("Data: {s}");
+                            navigate("/dashboard", Default::default());
+                        },
                         Err(e) => {
                             login_box_html.set(format!(r#"<div class="mt-3 alert alert-danger" role="alert">Error making request: {}</div>"#, e));
                         }
@@ -80,7 +86,7 @@ pub fn Login() -> impl IntoView {
                 autocomplete="off"
                 class="form-signin">
 
-                <img class="mb-4 logo" src="./static/wyrm_portrait.png" alt="" />
+                <img class="mb-4 logo" src="/static/wyrm_portrait.png" alt="" />
                 <h1 class="h3 mb-3 font-weight-normal">
                     "Please sign in"
                 </h1>
