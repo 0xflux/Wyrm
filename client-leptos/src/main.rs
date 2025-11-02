@@ -3,11 +3,12 @@ use leptos_meta::{Meta, Title, provide_meta_context};
 use leptos_router::{components::*, path};
 use reactive_stores::Store;
 
-use crate::pages::{
-    dashboard::Dashboard,
-    login::{Login, LoginData},
+use crate::{
+    models::GlobalState,
+    pages::{dashboard::Dashboard, login::Login},
 };
 
+mod models;
 mod net;
 mod pages;
 
@@ -35,9 +36,4 @@ fn App() -> impl IntoView {
             </Routes>
         </Router>
     }
-}
-
-#[derive(Clone, Debug, Default, Store)]
-pub struct GlobalState {
-    credentials: LoginData,
 }

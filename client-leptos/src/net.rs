@@ -1,12 +1,11 @@
 use gloo_net::http::{Headers, Request};
-use leptos::logging::log;
 use shared::{
     net::{ADMIN_AUTH_SEPARATOR, ADMIN_ENDPOINT},
     tasks::AdminCommand,
 };
 use thiserror::Error;
 
-use crate::pages::login::LoginData;
+use crate::models::LoginData;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum IsTaskingAgent<'a> {

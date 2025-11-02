@@ -1,7 +1,7 @@
 use leptos::{IntoView, component, logging::log, prelude::*, view};
 use reactive_stores::Store;
 
-use crate::{GlobalState, GlobalStateStoreFields};
+use crate::{GlobalState, models::GlobalStateStoreFields};
 
 #[component]
 pub fn Dashboard() -> impl IntoView {

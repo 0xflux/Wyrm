@@ -2,21 +2,13 @@ use leptos::logging::log;
 use leptos::prelude::*;
 use leptos_router::hooks::use_navigate;
 use reactive_stores::Store;
-use serde::Serialize;
 use shared::tasks::AdminCommand;
 
 use crate::{
-    GlobalState, GlobalStateStoreFields,
+    GlobalState,
+    models::{GlobalStateStoreFields, LoginData},
     net::{ApiError, IsTaskingAgent, api_request},
 };
-
-#[derive(Serialize, Clone, Debug, Default)]
-pub struct LoginData {
-    pub c2_addr: String,
-    pub username: String,
-    pub password: String,
-    pub admin_env_token: String,
-}
 
 #[component]
 pub fn Login() -> impl IntoView {
