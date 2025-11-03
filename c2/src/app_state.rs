@@ -107,15 +107,15 @@ impl AppState {
         });
     }
 
-    pub async fn create_session(&self) -> String {
+    pub async fn create_session_key(&self) -> String {
         let mut lock = self.sessions.lock().await;
 
-        // Loop until we generate a unique key which is not already in the store
+        // Loop until we generate a unique key (1024 alphanumeric character space) which is not already in the store
         let sid = loop {
             let rng = rand::rng();
             let key: String = rng
                 .sample_iter(&Alphanumeric)
-                .take(32)
+                .take(1024)
                 .map(char::from)
                 .collect();
 
@@ -127,8 +127,15 @@ impl AppState {
         sid
     }
 
+    /// Determines whether the presented `key` is valid in the current sessions on
+    /// the server.
     pub async fn has_session(&self, key: &str) -> bool {
         let lock = self.sessions.lock().await;
+
+        let key = key
+            .strip_prefix("session=")
+            .expect("could not find prefix session=");
+
         lock.contains_key(key)
     }
 }
