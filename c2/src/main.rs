@@ -15,7 +15,10 @@ use axum::{
 };
 
 use shared::{
-    net::{ADMIN_ENDPOINT, ADMIN_LOGIN_ENDPOINT, NOTIFICATION_CHECK_AGENT_ENDPOINT},
+    net::{
+        ADMIN_ENDPOINT, ADMIN_HEALTH_CHECK_ENDPOINT, ADMIN_LOGIN_ENDPOINT,
+        NOTIFICATION_CHECK_AGENT_ENDPOINT,
+    },
     pretty_print::{print_info, print_success},
 };
 
@@ -23,7 +26,7 @@ use crate::{
     api::{
         admin_login, build_all_binaries_handler, handle_admin_commands_on_agent,
         handle_admin_commands_without_agent, handle_agent_get_with_path,
-        handle_agent_post_with_path, poll_agent_notifications,
+        handle_agent_post_with_path, is_adm_logged_in, poll_agent_notifications,
     },
     app_state::{AppState, detect_stale_agents},
     db::Db,
@@ -190,6 +193,11 @@ fn build_routes(state: Arc<AppState>) -> Router {
             &format!("/{NOTIFICATION_CHECK_AGENT_ENDPOINT}/{}", "{id}"),
             get(poll_agent_notifications)
                 .layer(from_fn_with_state(state.clone(), authenticate_admin)),
+        )
+        // A route for admin poll to check if logged in on the GUI
+        .route(
+            ADMIN_HEALTH_CHECK_ENDPOINT,
+            get(is_adm_logged_in).layer(from_fn_with_state(state.clone(), authenticate_admin)),
         )
         //
         // 1 GB for POST max ?

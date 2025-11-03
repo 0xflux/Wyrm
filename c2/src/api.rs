@@ -312,7 +312,7 @@ pub async fn admin_login(
             // At this point in here we have successfully authenticated..
             log_admin_login_attempt(&username, &password, ip, true).await;
 
-            let sid = state.create_session().await;
+            let sid = state.create_session_key().await;
 
             let cookie = Cookie::build((AUTH_COOKIE_NAME, sid))
                 .path("/")
@@ -336,4 +336,11 @@ pub async fn admin_login(
     //
     log_admin_login_attempt(&username, &password, ip, false).await;
     (jar, StatusCode::NOT_FOUND.into_response())
+}
+
+/// Public route that is reachable only by the admin after going through
+/// the middleware, serves as a health check as to whether their token is
+/// valid or not.
+pub async fn is_adm_logged_in() -> Response {
+    StatusCode::OK.into_response()
 }

@@ -10,6 +10,8 @@ pub const ADMIN_ENDPOINT: &str = "admin";
 pub const ADMIN_LOGIN_ENDPOINT: &str = "admin_login";
 /// The API endpoint for whether an unread notification exists for a specific agent
 pub const NOTIFICATION_CHECK_AGENT_ENDPOINT: &str = "check_notifs";
+/// The URI to check to determine if an admin is logged in on the GUI, serves no other purpose
+pub const ADMIN_HEALTH_CHECK_ENDPOINT: &str = "/adm/is_logged_in";
 
 pub type CompletedTasks = Vec<Vec<u16>>;
 pub type TasksNetworkStream = Vec<Vec<u8>>;

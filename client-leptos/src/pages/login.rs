@@ -3,7 +3,8 @@ use leptos_router::hooks::use_navigate;
 use shared::tasks::AdminCommand;
 
 use crate::{
-    models::LoginData,
+    controller::{BodyClass, apply_body_class},
+    models::{C2_STORAGE_KEY, LoginData},
     net::{ApiError, IsTaskingAgent, api_request},
 };
 
@@ -23,7 +24,16 @@ pub fn Login() -> impl IntoView {
 
     let submit_page = Action::new_local(|input: &LoginData| {
         let input = input.clone();
-        async move { api_request(AdminCommand::Login, &IsTaskingAgent::No, &input, None).await }
+        async move {
+            api_request(
+                AdminCommand::Login,
+                &IsTaskingAgent::No,
+                Some((input.username, input.password)),
+                &input.c2_addr,
+                None,
+            )
+            .await
+        }
     });
     let submit_value = submit_page.value();
 
@@ -32,6 +42,16 @@ pub fn Login() -> impl IntoView {
             if let Some(response) = inner {
                 match response {
                     Ok(_) => {
+
+                        // Store the C2 in browser `local_storage`
+                        window()
+                            .local_storage()
+                            .ok()
+                            .flatten()
+                            .and_then(|storage| {
+                                storage.set_item(C2_STORAGE_KEY, c2_addr.get().as_str()).ok()
+                            });
+
                         navigate("/dashboard", Default::default());
                     }
                     Err(e) => match e {
@@ -51,21 +71,20 @@ pub fn Login() -> impl IntoView {
         })
     });
 
+    apply_body_class(BodyClass::Login);
+
     view! {
+        <div class="login-container">
         <div class="grid text-center">
 
             <form
                 on:submit=move |ev| {
                     ev.prevent_default(); // dont reload
 
-                    // todo
-                    let admin_env_token = "fdgiyh%^l!udjfh78364LU7&%df!!".to_string();
-
                     login_data.set(LoginData {
                         c2_addr: c2_addr.get(),
                         username: username.get(),
                         password: password.get(),
-                        admin_env_token,
                     });
 
                     submit_page.dispatch(login_data.get());
@@ -121,6 +140,7 @@ pub fn Login() -> impl IntoView {
                     </a>
                 </p>
             </footer>
+        </div>
         </div>
     }
 }

@@ -35,15 +35,14 @@ pub async fn authenticate_admin(
     next: Next,
 ) -> impl IntoResponse {
     if let Some(session) = jar.get(AUTH_COOKIE_NAME) {
-        println!("Middleware session value: {}", session);
-
         let session = session.to_string();
 
+        //
+        // Determine whether the presented session key is present in the active keys
+        //
         if state.has_session(&session).await {
-            println!("Session found!");
             return next.run(request).await.into_response();
         } else {
-            println!("Session not found!!");
             return StatusCode::NOT_FOUND.into_response();
         }
     }
