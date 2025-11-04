@@ -23,6 +23,7 @@ services:
   c2:
     depends_on:
       - c2_db
+      - nginx
     build:
       context: .
       dockerfile: c2/Dockerfile
@@ -43,8 +44,6 @@ services:
 
   nginx:
     image: nginx:latest
-    depends_on:
-      - c2
     ports: 
       - 443:443
       - 80:80
