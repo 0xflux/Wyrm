@@ -8,7 +8,10 @@ developed as a premium or otherwise private feature. These will be few and far b
 1) [ ] BUG: https://github.com/0xflux/Wyrm/issues/3
 2) [ ] Consider GUI rework using Leptos
    1) [ ] Remove ADMIN_TOKEN and use cookies
-   2) [ ] NGINX cors?
+   2) [ ] Logout
+   3) [ ] All preparation
+   4) [ ] Upload
+   5) [ ] Dashboard
 3) [ ] Create db user on first run
 4) [ ] C2 code could do with a bit of a tidy up..
 5) [ ] Remove nginx.conf from git tracking
