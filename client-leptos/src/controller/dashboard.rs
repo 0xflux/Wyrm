@@ -8,7 +8,7 @@ use crate::models::dashboard::{
 };
 
 pub fn update_connected_agents(
-    set_connected_agents: WriteSignal<HashMap<String, Agent>>,
+    set_connected_agents: WriteSignal<HashMap<String, RwSignal<Agent>>>,
     polled_agents: Vec<AgentC2MemoryNotifications>,
 ) {
     for (agent, is_stale, new_messages) in polled_agents {
@@ -30,7 +30,8 @@ pub fn update_connected_agents(
             //
             // If we have the tracked agent already in the HashMap, update its fields
             //
-            if let Some(tracked_agent) = (*sig).get_mut(&uid) {
+            if let Some(ta) = (*sig).get_mut(&uid) {
+                let mut tracked_agent = ta.write();
                 tracked_agent.last_check_in = last_seen;
                 tracked_agent.pid = pid;
                 tracked_agent.is_stale = is_stale;
@@ -55,20 +56,20 @@ pub fn update_connected_agents(
                     {
                         (*sig).insert(
                             uid.clone(),
-                            Agent::from_messages(
+                            RwSignal::new(Agent::from_messages(
                                 msgs,
                                 uid,
                                 last_seen,
                                 pid,
                                 process_image,
                                 is_stale,
-                            ),
+                            )),
                         );
                     }
                 } else {
                     (*sig).insert(
                         uid.clone(),
-                        Agent::from(uid, last_seen, pid, process_image, is_stale),
+                        RwSignal::new(Agent::from(uid, last_seen, pid, process_image, is_stale)),
                     );
                 }
             }

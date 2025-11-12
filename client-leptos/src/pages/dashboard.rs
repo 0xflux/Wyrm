@@ -13,7 +13,8 @@ use crate::{
 
 #[component]
 pub fn Dashboard() -> impl IntoView {
-    let (connected_agents, set_connected_agents) = signal(HashMap::<String, Agent>::new());
+    let (connected_agents, set_connected_agents) =
+        signal(HashMap::<String, RwSignal<Agent>>::new());
     provide_context(connected_agents);
 
     view! {
@@ -27,7 +28,9 @@ pub fn Dashboard() -> impl IntoView {
 }
 
 #[component]
-fn ConnectedAgents(set_connected_agents: WriteSignal<HashMap<String, Agent>>) -> impl IntoView {
+fn ConnectedAgents(
+    set_connected_agents: WriteSignal<HashMap<String, RwSignal<Agent>>>,
+) -> impl IntoView {
     //
     // Deal with the API request for connected agents
     //
@@ -70,15 +73,8 @@ fn ConnectedAgents(set_connected_agents: WriteSignal<HashMap<String, Agent>>) ->
         });
     });
 
-    Effect::new(move |_| {
-        let agent_map = use_context::<ReadSignal<HashMap<String, Agent>>>()
-            .expect("no agent map found")
-            .read();
-
-        for agent in &*agent_map {
-            leptos::logging::log!("Agent map from fn is: {:#?}", agent);
-        }
-    });
+    let agent_map =
+        use_context::<ReadSignal<HashMap<String, RwSignal<Agent>>>>().expect("no agent map found");
 
     view! {
         <div id="connected-agent-container" class="container-fluid">
@@ -91,7 +87,16 @@ fn ConnectedAgents(set_connected_agents: WriteSignal<HashMap<String, Agent>>) ->
             </div>
 
             <div id="agent-rows">
-
+                <For
+                    each=move || {
+                        let mut vals: Vec<RwSignal<Agent>> = agent_map.get().values().cloned().collect();
+                        vals
+                    }
+                    key=|sig| sig.get_untracked().agent_id.clone()
+                    let:(agent)
+                >
+                <p>{ move || agent.get().agent_id }</p>
+                </For>
             </div>
         </div>
     }
