@@ -95,7 +95,14 @@ fn ConnectedAgents(
                     key=|sig| sig.get_untracked().agent_id.clone()
                     let:(agent)
                 >
-                <p>{ move || agent.get().agent_id }</p>
+                    <a href="#" class=("agent-stale", move || agent.get().is_stale)>
+                        <div class="row agent-row">
+                            <div class="col-4">{ move || agent.get().agent_id }</div>
+                            <div class="col-1">{ move || agent.get().pid }</div>
+                            <div class="col-2">{ move || agent.get().last_check_in.to_string() }</div>
+                            <div class="col-5">{ move || agent.get().process_name }</div>
+                        </div>
+                    </a>
                 </For>
             </div>
         </div>
