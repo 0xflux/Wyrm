@@ -1,5 +1,7 @@
 use serde::Serialize;
 
+pub mod dashboard;
+
 #[derive(Serialize, Clone, Debug, Default)]
 pub struct LoginData {
     pub c2_addr: String,

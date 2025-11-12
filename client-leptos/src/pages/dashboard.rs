@@ -1,11 +1,135 @@
-use leptos::{IntoView, component, prelude::*, view};
+use std::{collections::HashMap, time::Duration};
 
-use crate::pages::logged_in_headers::LoggedInHeaders;
+use gloo_timers::future::sleep;
+use leptos::{IntoView, component, prelude::*, reactive::spawn_local, view};
+use shared::tasks::AdminCommand;
+
+use crate::{
+    controller::{dashboard::update_connected_agents, get_c2_url_from_browser},
+    models::dashboard::{Agent, AgentC2MemoryNotifications},
+    net::{IsTaskingAgent, api_request},
+    pages::logged_in_headers::LoggedInHeaders,
+};
 
 #[component]
 pub fn Dashboard() -> impl IntoView {
+    let (connected_agents, set_connected_agents) = signal(HashMap::<String, Agent>::new());
+    provide_context(connected_agents);
+
     view! {
+        // There's got to be a better way of doing this repeating it everywhere, but I cannot find it
         <LoggedInHeaders />
-        <h1>"Hello world!"</h1>
+
+        <ConnectedAgents set_connected_agents />
+        <MiddleTabBar />
+        <MessagePanel />
+    }
+}
+
+#[component]
+fn ConnectedAgents(set_connected_agents: WriteSignal<HashMap<String, Agent>>) -> impl IntoView {
+    //
+    // Deal with the API request for connected agents
+    //
+    Effect::new(move || {
+        spawn_local(async move {
+            loop {
+                if let Some(c2_url) = get_c2_url_from_browser() {
+                    let result = match api_request(
+                        AdminCommand::ListAgents,
+                        &IsTaskingAgent::No,
+                        None,
+                        &c2_url,
+                        None,
+                    )
+                    .await
+                    {
+                        Ok(r) => r,
+                        Err(e) => {
+                            leptos::logging::log!("Could not make request for ListAgents. {e}");
+                            sleep(Duration::from_secs(1)).await;
+                            continue;
+                        }
+                    };
+
+                    let deser_agents: Vec<AgentC2MemoryNotifications> =
+                        match serde_json::from_slice(&result) {
+                            Ok(r) => r,
+                            Err(e) => {
+                                leptos::logging::log!("Could not deserialise ListAgents. {e}");
+                                sleep(Duration::from_secs(1)).await;
+                                continue;
+                            }
+                        };
+
+                    update_connected_agents(set_connected_agents, deser_agents);
+                }
+
+                sleep(Duration::from_secs(1)).await;
+            }
+        });
+    });
+
+    Effect::new(move |_| {
+        let agent_map = use_context::<ReadSignal<HashMap<String, Agent>>>()
+            .expect("no agent map found")
+            .read();
+
+        for agent in &*agent_map {
+            leptos::logging::log!("Agent map from fn is: {:#?}", agent);
+        }
+    });
+
+    view! {
+        <div id="connected-agent-container" class="container-fluid">
+
+            <div id="agents-header" class="row">
+                <div class="col-4">Agent ID</div>
+                <div class="col-1">Process ID</div>
+                <div class="col-2">Last check-in</div>
+                <div class="col-5">Process name</div>
+            </div>
+
+            <div id="agent-rows">
+
+            </div>
+        </div>
+    }
+}
+
+#[component]
+fn MiddleTabBar() -> impl IntoView {
+    view! {
+
+        <div class="tabbar">
+            <ul id="tab-bar-ul" class="nav nav-tabs flex-nowrap text-nowrap m-0 px-20">
+
+            </ul>
+        </div>
+
+    }
+}
+
+#[component]
+fn MessagePanel() -> impl IntoView {
+    view! {
+        <div id="message-panel" class="container-fluid"
+            hx-get="/api/dashboard/show_messages"
+            hx-trigger="load, every 300ms"
+            hx-target="#message-panel"
+            hx-swap="innerHTML"></div>
+
+
+        <div id="input-strip" class="d-flex align-items-center px-3">
+            <span class="me-2">&gt;&gt;</span>
+            <form hx-post="/api/dashboard/send_command"
+                hx-swap="none"
+                hx-on::after-request="this.querySelector('#cmd_input').value=''"
+                autocomplete="off"
+                class="d-flex flex-grow-1">
+                    <input id="cmd_input" name="cmd_input" type="text" class="flex-grow-1" placeholder="Type a command..." />
+                    <button class="btn btn-sm btn-secondary btn-block">Send</button>
+            </form>
+        </div>
     }
 }
