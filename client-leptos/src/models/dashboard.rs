@@ -12,7 +12,7 @@ use shared::{
     tasks::{Command, PowershellOutput, WyrmResult},
 };
 
-use crate::controller::get_item_from_browser_store;
+use crate::controller::{get_item_from_browser_store, store_item_in_browser_store};
 
 /// A representation of in memory agents on the C2, being a tuple of:
 /// - `String`: Agent display representation
@@ -502,10 +502,23 @@ fn print_wyrm_result_string(encoded_data: &String) -> Vec<String> {
     }
 }
 
+#[derive(Serialize, Deserialize, Default)]
 pub struct ActiveTabs(pub HashSet<String>);
 
 impl ActiveTabs {
-    pub fn from_store() -> Self {
-        get_item_from_browser_store(key)
+    /// Instantiates a new [`ActiveTabs`] from the store. If it did not exist, a new [`ActiveTabs`] will be
+    /// created.
+    pub fn from_store(key: &str) -> Self {
+        match get_item_from_browser_store(key) {
+            Ok(s) => s,
+            Err(_) => Self::default(),
+        }
+    }
+
+    /// Writes the current tab layout to the browser store
+    pub fn save_to_store(&self, key: &str) -> anyhow::Result<()> {
+        store_item_in_browser_store(key, self)?;
+
+        Ok(())
     }
 }
