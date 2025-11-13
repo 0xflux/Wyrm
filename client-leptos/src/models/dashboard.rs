@@ -1,7 +1,6 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     path::{Path, PathBuf},
-    str::FromStr,
 };
 
 use chrono::{DateTime, Utc};
@@ -505,8 +504,11 @@ fn print_wyrm_result_string(encoded_data: &String) -> Vec<String> {
     }
 }
 
-#[derive(Serialize, Deserialize, Default)]
-pub struct ActiveTabs(pub HashSet<String>);
+#[derive(Serialize, Deserialize, Default, Debug)]
+pub struct ActiveTabs {
+    pub tabs: HashSet<String>,
+    pub active_id: Option<String>,
+}
 
 impl ActiveTabs {
     /// Instantiates a new [`ActiveTabs`] from the store. If it did not exist, a new [`ActiveTabs`] will be
@@ -527,13 +529,16 @@ impl ActiveTabs {
 
     /// Adds a tab to the tracked tabs, doing nothing if the value already exists
     pub fn add_tab(&mut self, name: &str) {
-        let _ = self.0.insert(name.to_string());
+        let name = name.to_string();
+        let _ = self.tabs.insert(name.clone());
         let _ = self.save_to_store();
+        self.active_id = Some(name);
     }
 
     /// Removes a tab to the tracked tabs, doing nothing if the value did not exists
     pub fn remove_tab(&mut self, name: &str) {
-        let _ = self.0.remove(name);
+        self.active_id = None;
+        let _ = self.tabs.remove(name);
         let _ = self.save_to_store();
     }
 }
