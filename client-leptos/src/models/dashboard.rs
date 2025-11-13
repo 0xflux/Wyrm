@@ -12,7 +12,10 @@ use shared::{
     tasks::{Command, PowershellOutput, WyrmResult},
 };
 
-use crate::controller::{get_item_from_browser_store, store_item_in_browser_store};
+use crate::{
+    controller::{get_item_from_browser_store, store_item_in_browser_store},
+    models::TAB_STORAGE_KEY,
+};
 
 /// A representation of in memory agents on the C2, being a tuple of:
 /// - `String`: Agent display representation
@@ -508,17 +511,29 @@ pub struct ActiveTabs(pub HashSet<String>);
 impl ActiveTabs {
     /// Instantiates a new [`ActiveTabs`] from the store. If it did not exist, a new [`ActiveTabs`] will be
     /// created.
-    pub fn from_store(key: &str) -> Self {
-        match get_item_from_browser_store(key) {
+    pub fn from_store() -> Self {
+        match get_item_from_browser_store(TAB_STORAGE_KEY) {
             Ok(s) => s,
             Err(_) => Self::default(),
         }
     }
 
     /// Writes the current tab layout to the browser store
-    pub fn save_to_store(&self, key: &str) -> anyhow::Result<()> {
-        store_item_in_browser_store(key, self)?;
+    pub fn save_to_store(&self) -> anyhow::Result<()> {
+        store_item_in_browser_store(TAB_STORAGE_KEY, self)?;
 
         Ok(())
+    }
+
+    /// Adds a tab to the tracked tabs, doing nothing if the value already exists
+    pub fn add_tab(&mut self, name: &str) {
+        let _ = self.0.insert(name.to_string());
+        let _ = self.save_to_store();
+    }
+
+    /// Removes a tab to the tracked tabs, doing nothing if the value did not exists
+    pub fn remove_tab(&mut self, name: &str) {
+        let _ = self.0.remove(name);
+        let _ = self.save_to_store();
     }
 }

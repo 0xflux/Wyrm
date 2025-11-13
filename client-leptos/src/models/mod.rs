@@ -10,3 +10,4 @@ pub struct LoginData {
 }
 
 pub const C2_STORAGE_KEY: &str = "WYRM_C2_ADDR";
+pub const TAB_STORAGE_KEY: &str = "WYRM_C2_TABS";
