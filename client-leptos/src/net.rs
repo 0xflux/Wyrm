@@ -138,7 +138,10 @@ pub async fn admin_health_check() -> bool {
         .and_then(|s| s.get_item(C2_STORAGE_KEY).ok())
         .unwrap_or_default()
     {
-        Some(url) => url,
+        Some(url) => {
+            // Because of serde_json we need to remove " from the stored value
+            url.replace("\"", "")
+        }
         None => return false,
     };
 
