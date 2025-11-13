@@ -1,7 +1,9 @@
+use anyhow::bail;
 use leptos::prelude::{document, window};
+use serde::{Serialize, de::DeserializeOwned};
 use web_sys::HtmlElement;
 
-use crate::{models::C2_STORAGE_KEY, net::admin_health_check};
+use crate::net::admin_health_check;
 
 pub mod dashboard;
 
@@ -30,11 +32,33 @@ pub async fn is_logged_in() -> bool {
 }
 
 /// Retrieves the saved C2 URL entered by the operator as a `String` if located
-pub fn get_c2_url_from_browser() -> Option<String> {
-    window()
+pub fn get_item_from_browser_store<T>(key: &str) -> anyhow::Result<T>
+where
+    T: DeserializeOwned,
+{
+    let x = window()
         .local_storage()
         .ok()
         .flatten()
-        .and_then(|s| s.get_item(C2_STORAGE_KEY).ok())
-        .unwrap_or_default()
+        .and_then(|s| s.get_item(key).ok())
+        .unwrap_or_default();
+
+    if let Some(x_inner) = x {
+        // Inner is stored as a JSON serialised String
+        return Ok(serde_json::from_str(&x_inner)?);
+    }
+
+    bail!("Could not find key: {key}")
+}
+
+pub fn store_item_in_browser_store<T: Serialize>(key: &str, item: &T) -> anyhow::Result<()> {
+    let ser = serde_json::to_string(item)?;
+
+    let _ = window()
+        .local_storage()
+        .ok()
+        .flatten()
+        .and_then(|storage| storage.set_item(key, &ser).ok());
+
+    Ok(())
 }

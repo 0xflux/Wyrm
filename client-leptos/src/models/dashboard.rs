@@ -1,4 +1,8 @@
-use std::path::{Path, PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -7,6 +11,8 @@ use shared::{
     process::Process,
     tasks::{Command, PowershellOutput, WyrmResult},
 };
+
+use crate::controller::get_item_from_browser_store;
 
 /// A representation of in memory agents on the C2, being a tuple of:
 /// - `String`: Agent display representation
@@ -493,5 +499,13 @@ fn print_wyrm_result_string(encoded_data: &String) -> Vec<String> {
                 "Could not deserialise response: {e}. Got: {encoded_data:#?}"
             )];
         }
+    }
+}
+
+pub struct ActiveTabs(pub HashSet<String>);
+
+impl ActiveTabs {
+    pub fn from_store() -> Self {
+        get_item_from_browser_store(key)
     }
 }

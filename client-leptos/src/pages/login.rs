@@ -3,7 +3,7 @@ use leptos_router::hooks::use_navigate;
 use shared::tasks::AdminCommand;
 
 use crate::{
-    controller::{BodyClass, apply_body_class},
+    controller::{BodyClass, apply_body_class, store_item_in_browser_store},
     models::{C2_STORAGE_KEY, LoginData},
     net::{ApiError, IsTaskingAgent, api_request},
 };
@@ -43,20 +43,18 @@ pub fn Login() -> impl IntoView {
                 match response {
                     Ok(_) => {
 
-                        // Store the C2 in browser `local_storage`
-                        window()
-                            .local_storage()
-                            .ok()
-                            .flatten()
-                            .and_then(|storage| {
-                                storage.set_item(C2_STORAGE_KEY, c2_addr.get().as_str()).ok()
-                            });
+                        store_item_in_browser_store(
+                            C2_STORAGE_KEY, 
+                            &c2_addr.get()
+                        ).expect("could not store c2 url");
 
                         navigate("/dashboard", Default::default());
                     }
                     Err(e) => match e {
                         ApiError::Reqwest(e) => {
-                            login_box_html.set(format!(r#"<div class="mt-3 alert alert-danger" role="alert">Error making request: {}</div>"#, e));
+                            login_box_html.set(
+                                format!(r#"<div class="mt-3 alert alert-danger" role="alert">Error making request: {}</div>"#, e)
+                            );
                         },
                         ApiError::BadStatus(code, _) => {
                             if *code == 404 {

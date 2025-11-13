@@ -22,3 +22,4 @@ web-sys = "0.3.82"
 leptos-use = { version = "0.16.3", features = ["storage"] }
 gloo-timers = "0.3.0"
 chrono = "0.4.42"
+anyhow = "1.0.100"

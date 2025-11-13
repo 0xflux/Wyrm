@@ -5,8 +5,11 @@ use leptos::{IntoView, component, prelude::*, reactive::spawn_local, view};
 use shared::tasks::AdminCommand;
 
 use crate::{
-    controller::{dashboard::update_connected_agents, get_c2_url_from_browser},
-    models::dashboard::{Agent, AgentC2MemoryNotifications},
+    controller::{dashboard::update_connected_agents, get_item_from_browser_store},
+    models::{
+        C2_STORAGE_KEY,
+        dashboard::{Agent, AgentC2MemoryNotifications},
+    },
     net::{IsTaskingAgent, api_request},
     pages::logged_in_headers::LoggedInHeaders,
 };
@@ -37,7 +40,7 @@ fn ConnectedAgents(
     Effect::new(move || {
         spawn_local(async move {
             loop {
-                if let Some(c2_url) = get_c2_url_from_browser() {
+                if let Ok(c2_url) = get_item_from_browser_store::<String>(C2_STORAGE_KEY) {
                     let result = match api_request(
                         AdminCommand::ListAgents,
                         &IsTaskingAgent::No,
