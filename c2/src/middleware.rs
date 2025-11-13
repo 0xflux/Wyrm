@@ -47,7 +47,6 @@ pub async fn authenticate_admin(
         }
     }
 
-    println!("No key found at all!!");
     return StatusCode::NOT_FOUND.into_response();
 }
 
