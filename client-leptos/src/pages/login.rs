@@ -20,8 +20,6 @@ pub fn Login() -> impl IntoView {
     // Inner HTML container for the error box
     let login_box_html = RwSignal::new("".to_string());
 
-    // todo JWT token
-
     let submit_page = Action::new_local(|input: &LoginData| {
         let input = input.clone();
         async move {

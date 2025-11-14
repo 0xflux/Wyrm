@@ -78,7 +78,7 @@ impl Agent {
     }
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
 pub struct TabConsoleMessages {
     pub event: String,
     pub time: String,
