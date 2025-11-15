@@ -85,6 +85,21 @@ pub struct TabConsoleMessages {
     pub messages: Vec<String>,
 }
 
+impl TabConsoleMessages {
+    /// Creates a new `TabConsoleMessages` event where the result isn't something that has come about from interacting
+    /// with an agent.
+    ///
+    /// This could be used for commands which just require some form of response back to the user, from the C2 or locally
+    /// within the client itself.
+    pub fn non_agent_message(event: String, message: String) -> Self {
+        Self {
+            event,
+            time: "-".into(),
+            messages: vec![message],
+        }
+    }
+}
+
 /// A representation of the database information pertaining to agent notifications which have not
 /// yet been pulled by the operator.
 #[derive(Debug, Serialize, Deserialize)]

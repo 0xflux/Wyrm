@@ -2,17 +2,15 @@ use std::{collections::HashMap, time::Duration};
 
 use chrono::Utc;
 use gloo_timers::future::sleep;
-use leptos::{IntoView, component, logging::log, prelude::*, reactive::spawn_local, view};
+use leptos::{IntoView, component, prelude::*, reactive::spawn_local, view};
 use shared::tasks::AdminCommand;
 
 use crate::{
-    controller::{dashboard::update_connected_agents, get_item_from_browser_store},
-    models::{
-        C2_STORAGE_KEY,
-        dashboard::{ActiveTabs, Agent, AgentC2MemoryNotifications, TabConsoleMessages},
-    },
-    net::{IsTaskingAgent, api_request},
+    controller::dashboard::update_connected_agents,
+    models::dashboard::{ActiveTabs, Agent, AgentC2MemoryNotifications, TabConsoleMessages},
+    net::{C2Url, IsTaskingAgent, api_request},
     pages::logged_in_headers::LoggedInHeaders,
+    tasks::task_dispatch::dispatch_task,
 };
 
 #[component]
@@ -20,63 +18,63 @@ pub fn Dashboard() -> impl IntoView {
     //
     // Set up signals across the dashboard
     //
-    let (connected_agents, set_connected_agents) =
-        signal(HashMap::<String, RwSignal<Agent>>::new());
+    let connected_agents: RwSignal<HashMap<String, RwSignal<Agent>>> =
+        RwSignal::new(HashMap::<String, RwSignal<Agent>>::new());
     provide_context(connected_agents);
 
     let tabs = RwSignal::new(ActiveTabs::from_store());
+    // Providing this as context so we can grab it in the task dispatcher routines dynamically as required
+    provide_context(tabs);
 
     view! {
         // There's got to be a better way of doing this repeating it everywhere, but I cannot find it
         <LoggedInHeaders />
 
-        <ConnectedAgents set_connected_agents tabs />
-        <MiddleTabBar tabs />
-        <MessagePanel tabs />
+        <ConnectedAgents tabs />
+        <MiddleTabBar />
+        <MessagePanel />
     }
 }
 
 #[component]
-fn ConnectedAgents(
-    set_connected_agents: WriteSignal<HashMap<String, RwSignal<Agent>>>,
-    tabs: RwSignal<ActiveTabs>,
-) -> impl IntoView {
+fn ConnectedAgents(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
+    let connected_agents: RwSignal<HashMap<String, RwSignal<Agent>>> =
+        use_context().expect("could not get RwSig connected_agents");
+
     //
     // Deal with the API request for connected agents
     //
     Effect::new(move || {
         spawn_local(async move {
             loop {
-                if let Ok(c2_url) = get_item_from_browser_store::<String>(C2_STORAGE_KEY) {
-                    let result = match api_request(
-                        AdminCommand::ListAgents,
-                        &IsTaskingAgent::No,
-                        None,
-                        &c2_url,
-                        None,
-                    )
-                    .await
-                    {
+                let result = match api_request(
+                    AdminCommand::ListAgents,
+                    &IsTaskingAgent::No,
+                    None,
+                    C2Url::Standard,
+                    None,
+                )
+                .await
+                {
+                    Ok(r) => r,
+                    Err(e) => {
+                        leptos::logging::log!("Could not make request for ListAgents. {e}");
+                        sleep(Duration::from_secs(1)).await;
+                        continue;
+                    }
+                };
+
+                let deser_agents: Vec<AgentC2MemoryNotifications> =
+                    match serde_json::from_slice(&result) {
                         Ok(r) => r,
                         Err(e) => {
-                            leptos::logging::log!("Could not make request for ListAgents. {e}");
+                            leptos::logging::log!("Could not deserialise ListAgents. {e}");
                             sleep(Duration::from_secs(1)).await;
                             continue;
                         }
                     };
 
-                    let deser_agents: Vec<AgentC2MemoryNotifications> =
-                        match serde_json::from_slice(&result) {
-                            Ok(r) => r,
-                            Err(e) => {
-                                leptos::logging::log!("Could not deserialise ListAgents. {e}");
-                                sleep(Duration::from_secs(1)).await;
-                                continue;
-                            }
-                        };
-
-                    update_connected_agents(set_connected_agents, deser_agents);
-                }
+                update_connected_agents(connected_agents, deser_agents);
 
                 sleep(Duration::from_secs(1)).await;
             }
@@ -84,7 +82,7 @@ fn ConnectedAgents(
     });
 
     let agent_map =
-        use_context::<ReadSignal<HashMap<String, RwSignal<Agent>>>>().expect("no agent map found");
+        use_context::<RwSignal<HashMap<String, RwSignal<Agent>>>>().expect("no agent map found");
 
     view! {
         <div id="connected-agent-container" class="container-fluid">
@@ -126,7 +124,10 @@ fn ConnectedAgents(
 }
 
 #[component]
-fn MiddleTabBar(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
+fn MiddleTabBar() -> impl IntoView {
+    let tabs: RwSignal<ActiveTabs> =
+        use_context().expect("could not get tabs context in CommandInput()");
+
     view! {
         <div class="tabbar">
             <ul id="tab-bar-ul" class="nav nav-tabs flex-nowrap text-nowrap m-0 px-20">
@@ -194,9 +195,12 @@ fn MiddleTabBar(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
 }
 
 #[component]
-fn MessagePanel(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
+fn MessagePanel() -> impl IntoView {
     let agent_map =
-        use_context::<ReadSignal<HashMap<String, RwSignal<Agent>>>>().expect("no agent map found");
+        use_context::<RwSignal<HashMap<String, RwSignal<Agent>>>>().expect("no agent map found");
+
+    let tabs: RwSignal<ActiveTabs> =
+        use_context().expect("could not get tabs context in MessagePanel()");
 
     let messages = Memo::new(move |_| {
         let active_id = tabs.read().active_id.clone();
@@ -242,35 +246,29 @@ fn MessagePanel(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
             />
         </div>
 
-        <CommandInput tabs />
+        <CommandInput />
     }
 }
 
 #[component]
-fn CommandInput(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
+fn CommandInput() -> impl IntoView {
     let input_data = RwSignal::new(String::new());
     let agent_map =
-        use_context::<ReadSignal<HashMap<String, RwSignal<Agent>>>>().expect("no agent map found");
+        use_context::<RwSignal<HashMap<String, RwSignal<Agent>>>>().expect("no agent map found");
+    let tabs: RwSignal<ActiveTabs> =
+        use_context().expect("could not get tabs context in CommandInput()");
 
-    let submit_input = Action::new_local(|input: &String| {
-        let c2_url = get_item_from_browser_store::<String>(C2_STORAGE_KEY)
-            .expect("could not get C2 url from browser");
+    let submit_input = Action::new_local(move |input: &String| {
         let input = input.clone();
 
-        // TODO this needs to be the right dispatch...
-        // I think i need to build that dispatcher here now.. rip. maybe call as an .await
-        async move {
-            api_request(
-                AdminCommand::Login,
-                &IsTaskingAgent::No, // TODO this needs to be the agent ID passed into the event
-                None,
-                &c2_url,
-                None,
-            )
-            .await
-        }
+        let agent_id = tabs
+            .read()
+            .active_id
+            .clone()
+            .expect("could not read agent id from active tab");
+
+        async move { dispatch_task(input, IsTaskingAgent::Yes(agent_id)).await }
     });
-    let submit_value = submit_input.value();
 
     // TODO deal with the return value
 
@@ -280,6 +278,10 @@ fn CommandInput(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
             <form
                 on:submit=move |ev| {
                     ev.prevent_default();
+
+                    if input_data.get().is_empty() {
+                        return;
+                    }
 
                     //
                     // Push the input message by the user into the currently selected
@@ -293,11 +295,13 @@ fn CommandInput(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
                     let time = Utc::now().to_string();
 
                     let msg = TabConsoleMessages {
-                        event: "test".to_string(),
+                        event: "User Input".to_string(),
                         time,
                         messages: vec![input_data.get()],
                     };
                     (*agent_guard).output_messages.push(msg);
+
+                    submit_input.dispatch(input_data.get());
 
                     // Clear the box
                     input_data.set(String::new());
@@ -305,15 +309,22 @@ fn CommandInput(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
                 autocomplete="off"
                 class="d-flex flex-grow-1"
             >
-                <input
-                    id="cmd_input"
-                    name="cmd_input"
-                    type="text"
-                    class="flex-grow-1"
-                    placeholder="Type a command..."
-                    bind:value=input_data
-                />
-                <button class="btn btn-sm btn-secondary btn-block">"Send"</button>
+                <Show
+                    when=move || tabs.read().active_id.is_some()
+                    fallback=|| view! {
+                        "Please select an agent to use the input bar."
+                    }
+                >
+                    <input
+                        id="cmd_input"
+                        name="cmd_input"
+                        type="text"
+                        class="flex-grow-1"
+                        placeholder="Type a command..."
+                        bind:value=input_data
+                    />
+                    <button class="btn btn-sm btn-secondary btn-block">"Send"</button>
+                </Show>
             </form>
         </div>
     }

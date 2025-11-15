@@ -5,7 +5,7 @@ use shared::tasks::AdminCommand;
 use crate::{
     controller::{BodyClass, apply_body_class, store_item_in_browser_store},
     models::{C2_STORAGE_KEY, LoginData},
-    net::{ApiError, IsTaskingAgent, api_request},
+    net::{ApiError, C2Url, IsTaskingAgent, api_request},
 };
 
 #[component]
@@ -27,7 +27,7 @@ pub fn Login() -> impl IntoView {
                 AdminCommand::Login,
                 &IsTaskingAgent::No,
                 Some((input.username, input.password)),
-                &input.c2_addr,
+                C2Url::Custom(input.c2_addr),
                 None,
             )
             .await
@@ -40,7 +40,6 @@ pub fn Login() -> impl IntoView {
             if let Some(response) = inner {
                 match response {
                     Ok(_) => {
-
                         store_item_in_browser_store(
                             C2_STORAGE_KEY, 
                             &c2_addr.get()

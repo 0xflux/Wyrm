@@ -8,6 +8,7 @@ mod controller;
 mod models;
 mod net;
 mod pages;
+mod tasks;
 
 fn main() {
     _ = console_log::init_with_level(log::Level::Debug);

@@ -8,7 +8,7 @@ use crate::models::dashboard::{
 };
 
 pub fn update_connected_agents(
-    set_connected_agents: WriteSignal<HashMap<String, RwSignal<Agent>>>,
+    set_connected_agents: RwSignal<HashMap<String, RwSignal<Agent>>>,
     polled_agents: Vec<AgentC2MemoryNotifications>,
 ) {
     for (agent, is_stale, new_messages) in polled_agents {
