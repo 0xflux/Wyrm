@@ -1,7 +1,7 @@
 use std::{collections::HashMap, process::exit};
 
 use chrono::Utc;
-use leptos::prelude::{RwSignal, Write, use_context};
+use leptos::prelude::{RwSignal, Update, Write, use_context};
 use thiserror::Error;
 
 use crate::{
@@ -48,12 +48,12 @@ pub async fn dispatch_task(input: String, agent: IsTaskingAgent) -> DispatchResu
 
             let mut guard = connected_agents.write();
             if let Some(agent) = (*guard).get_mut(&agent_id) {
-                let mut lock = agent.write();
-
-                (*lock).output_messages.push(TabConsoleMessages {
-                    event: "[Error dispatching task]".to_string(),
-                    time: Utc::now().to_string(),
-                    messages: vec![e.to_string()],
+                agent.update(|lock| {
+                    lock.output_messages.push(TabConsoleMessages {
+                        event: "[Error dispatching task]".to_string(),
+                        time: Utc::now().to_string(),
+                        messages: vec![e.to_string()],
+                    })
                 });
             }
         }

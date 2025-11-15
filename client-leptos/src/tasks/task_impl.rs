@@ -1,7 +1,7 @@
 use std::{collections::HashMap, mem::take};
 
 use chrono::{DateTime, Utc};
-use leptos::prelude::{RwSignal, Write, use_context};
+use leptos::prelude::{RwSignal, Update, Write, use_context};
 use shared::{
     pretty_print::print_failed,
     task_types::{RegAddInner, RegQueryInner, RegType},
@@ -71,8 +71,7 @@ pub async fn kill_agent(agent: &IsTaskingAgent) -> DispatchResult {
 
     // Remove the tab from the GUI - the C2 should take care of removing it from the active panel
     if let IsTaskingAgent::Yes(agent_id) = agent {
-        let mut guard = tabs.write();
-        (*guard).remove_tab(agent_id);
+        tabs.update(|t| t.remove_tab(agent_id));
     }
 
     Ok(None)
@@ -262,8 +261,7 @@ pub async fn remove_agent(agent: &IsTaskingAgent) -> DispatchResult {
         use_context().expect("could not get tabs context in kill_agent()");
 
     if let IsTaskingAgent::Yes(agent_id) = agent {
-        let mut g = tabs.write();
-        (*g).remove_tab(agent_id);
+        tabs.update(|t| t.remove_tab(agent_id));
     }
 
     Ok(None)
@@ -328,8 +326,7 @@ pub async fn clear_terminal(agent: &IsTaskingAgent) -> DispatchResult {
         let mut lock = connected_agents.write();
 
         if let Some(agent) = (*lock).get_mut(agent_id) {
-            let mut guard = agent.write();
-            (*guard).output_messages.clear();
+            agent.update(|a| a.output_messages.clear());
         } else {
             leptos::logging::log!("Agent ID: {agent_id} not found when trying to clear console.");
         }
@@ -379,13 +376,14 @@ pub async fn show_server_time() -> DispatchResult {
     let mut lock = connected_agents.write();
 
     if let Some(agent) = (*lock).get_mut("Server") {
-        let mut guard = agent.write();
-        (*guard)
-            .output_messages
-            .push(TabConsoleMessages::non_agent_message(
-                "ServerTime".into(),
-                deserialised_response.to_string(),
-            ));
+        agent.update(|guard| {
+            guard
+                .output_messages
+                .push(TabConsoleMessages::non_agent_message(
+                    "ServerTime".into(),
+                    deserialised_response.to_string(),
+                ))
+        });
     }
 
     Ok(None)
@@ -443,12 +441,13 @@ pub async fn show_help(agent: &IsTaskingAgent) -> DispatchResult {
         let mut lock = connected_agents.write();
 
         if let Some(agent) = (*lock).get_mut(agent_id) {
-            let mut guard = agent.write();
-            (*guard).output_messages.push(TabConsoleMessages {
-                event: "HelpMenu".into(),
-                time: "-".into(),
-                messages,
-            })
+            agent.update(|guard| {
+                guard.output_messages.push(TabConsoleMessages {
+                    event: "HelpMenu".into(),
+                    time: "-".into(),
+                    messages,
+                })
+            });
         }
     }
 
@@ -505,12 +504,13 @@ pub async fn show_help_for_command(agent: &IsTaskingAgent, command: &str) -> Dis
         let mut lock = connected_agents.write();
 
         if let Some(agent) = (*lock).get_mut(agent_id) {
-            let mut guard = agent.write();
-            (*guard).output_messages.push(TabConsoleMessages {
-                event: "HelpMenu".into(),
-                time: "-".into(),
-                messages,
-            })
+            agent.update(|guard| {
+                guard.output_messages.push(TabConsoleMessages {
+                    event: "HelpMenu".into(),
+                    time: "-".into(),
+                    messages,
+                })
+            });
         }
     }
 
@@ -584,10 +584,10 @@ pub async fn file_dropper(args: &[&str], agent: &IsTaskingAgent) -> DispatchResu
             let mut lock = connected_agents.write();
 
             if let Some(agent) = (*lock).get_mut(agent_id) {
-                let mut guard = agent.write();
-                (*guard)
-                    .output_messages
-                    .push(TabConsoleMessages::non_agent_message("[Drop]".into(), e));
+                agent.update(|a| {
+                    a.output_messages
+                        .push(TabConsoleMessages::non_agent_message("[Drop]".into(), e))
+                });
             }
         }
     }

@@ -223,9 +223,12 @@ fn MessagePanel() -> impl IntoView {
     view! {
         <div id="message-panel" class="container-fluid">
             <For
-                each=move || messages.get()
-                key=|line: &TabConsoleMessages| line.time.clone()
-                children=move |line: TabConsoleMessages| {
+                each=move || {
+                    messages.get().into_iter().enumerate().collect::<Vec<(usize, TabConsoleMessages)>>()
+                }
+                key=|entry: &(usize, TabConsoleMessages)| entry.0.to_string()
+                children=move |entry: (usize, TabConsoleMessages)| {
+                    let (_idx, line) = entry;
                     view! {
                         <div class="console-line">
                             <span class="time">"["{ line.time }"]"</span>
@@ -290,20 +293,22 @@ fn CommandInput() -> impl IntoView {
                     let agent_id = tabs.read().active_id.clone().unwrap();
                     let map = agent_map.get();
                     let agent_sig = map.get(&agent_id).unwrap();
-                    let mut agent_guard = agent_sig.write();
+
+                    // Get a snapshot of the input and work with that
+                    let input_val = input_data.get();
 
                     let time = Utc::now().to_string();
 
                     let msg = TabConsoleMessages {
                         event: "User Input".to_string(),
                         time,
-                        messages: vec![input_data.get()],
+                        messages: vec![input_val.clone()],
                     };
-                    (*agent_guard).output_messages.push(msg);
+                    agent_sig.update(move |agent| agent.output_messages.push(msg.clone()));
 
-                    submit_input.dispatch(input_data.get());
+                    submit_input.dispatch(input_val);
 
-                    // Clear the box
+                    // Clear the input UI box
                     input_data.set(String::new());
                 }
                 autocomplete="off"
