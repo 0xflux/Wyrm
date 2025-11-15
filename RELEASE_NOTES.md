@@ -16,6 +16,10 @@ pulling updates.
   - Edit other settings as you see fit; note, the CORS stuff is mandatory as the GUI is separate from the server.
 - You now log into the C2 entering the address of: https://localhost into the login panel (at http://localhost:3000)
 
+### Non-breaking changes
+
+- We now use a better, more efficient, and more secure authentication method of using actual auth HTTPS only tokens with a lifetime of **12 hrs** before you need to log in again to get a new token.
+
 ## &#128679; v 0.4
 
 ### &#128679; Breaking changes

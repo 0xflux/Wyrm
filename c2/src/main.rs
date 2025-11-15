@@ -53,7 +53,7 @@ const NUM_GIGS: usize = 1;
 const MAX_POST_BODY_SZ: usize = NUM_GIGS * 1024 * 1024 * 1024;
 
 const AUTH_COOKIE_NAME: &str = "session";
-const COOKIE_TTL: Duration = Duration::from_hours(6);
+const COOKIE_TTL: Duration = Duration::from_hours(12);
 
 /// The path to the directory on the server (relative to the working directory of the service [n.b. this
 /// implies the server was 'installed' correctly..])
