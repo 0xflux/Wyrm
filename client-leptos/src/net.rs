@@ -7,11 +7,11 @@ use shared::{
 use thiserror::Error;
 use web_sys::RequestCredentials;
 
-use crate::models::C2_STORAGE_KEY;
+use crate::{controller::get_item_from_browser_store, models::C2_STORAGE_KEY};
 
-#[derive(Debug, PartialEq, Eq)]
-pub enum IsTaskingAgent<'a> {
-    Yes(&'a String),
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub enum IsTaskingAgent {
+    Yes(String),
     No,
 }
 
@@ -21,13 +21,37 @@ pub enum IsTaskingAgentErr {
     NoId,
 }
 
-impl IsTaskingAgent<'_> {
+impl IsTaskingAgent {
     pub fn has_agent_id(&self) -> Result<(), IsTaskingAgentErr> {
         if let IsTaskingAgent::Yes(_) = self {
             return Ok(());
         }
 
         Err(IsTaskingAgentErr::NoId)
+    }
+}
+
+///
+pub enum C2Url {
+    /// Will be obtained from the key `C2_STORAGE_KEY`
+    Standard,
+    /// Whatever is in the inner will be used as the C2 URL
+    Custom(String),
+}
+
+impl C2Url {
+    /// Retrieve the C2 url depending upon the type. The [`C2Url::Standard`] will be pulled from the browser
+    /// store at the key `C2_STORAGE_KEY`.
+    ///
+    /// In the case of [`C2Url::Standard`], the inner `String` will be retrieved.
+    fn get(&self) -> anyhow::Result<String> {
+        match self {
+            C2Url::Standard => {
+                // Get from browser store
+                get_item_from_browser_store::<String>(C2_STORAGE_KEY)
+            }
+            C2Url::Custom(url) => Ok(url.clone()),
+        }
     }
 }
 
@@ -45,9 +69,9 @@ impl IsTaskingAgent<'_> {
 /// - `Err` an [`ApiError`] containing the error kind and information.
 pub async fn api_request(
     command: AdminCommand,
-    is_tasking_agent: &IsTaskingAgent<'_>,
+    is_tasking_agent: &IsTaskingAgent,
     creds: Option<(String, String)>,
-    c2_url: &str,
+    c2_url: C2Url,
     custom_uri: Option<&str>,
 ) -> Result<Vec<u8>, ApiError> {
     // Remove any leading '/' as we want to format correctly in the below builder
@@ -61,30 +85,11 @@ pub async fn api_request(
         None
     };
 
-    let c2_url: String = {
-        let s = match command {
-            AdminCommand::Login => {
-                format!("{}/{}", c2_url, custom_uri.unwrap_or(ADMIN_LOGIN_ENDPOINT))
-            }
-            _ => "".into(),
-        };
+    let c2_url: String = construct_c2_url(c2_url, &command, custom_uri, is_tasking_agent);
 
-        if !s.is_empty() {
-            s
-        } else {
-            match is_tasking_agent {
-                IsTaskingAgent::Yes(uid) => format!(
-                    "{}/{}/{}",
-                    c2_url,
-                    custom_uri.unwrap_or(ADMIN_ENDPOINT),
-                    uid
-                ),
-                IsTaskingAgent::No => {
-                    format!("{}/{}", c2_url, custom_uri.unwrap_or(ADMIN_ENDPOINT))
-                }
-            }
-        }
-    };
+    //
+    // Send the HTTP request to the C2
+    //
 
     let resp = match command {
         AdminCommand::Login => {
@@ -119,6 +124,47 @@ pub async fn api_request(
 
     let bytes = resp.binary().await?;
     Ok(bytes.to_vec())
+}
+
+fn construct_c2_url(
+    c2_url: C2Url,
+    command: &AdminCommand,
+    custom_uri: Option<&str>,
+    is_tasking_agent: &IsTaskingAgent,
+) -> String {
+    // Extrapolate the C2 url from the input enum
+    let c2_url = c2_url.get().expect("could not get C2 url");
+
+    //
+    // If its a login command, we need to explicitly handle building that URI. If the command
+    // was not login, then deal with inputting the UID of the implant being tasked, otherwise, it
+    // can be constructed without.
+    //
+    // This allows for the format url.com/api_endpoint/agent_uid on the C2 to handle those paths.
+    //
+    let s = match command {
+        AdminCommand::Login => {
+            format!("{}/{}", c2_url, custom_uri.unwrap_or(ADMIN_LOGIN_ENDPOINT))
+        }
+        _ => "".into(),
+    };
+
+    if !s.is_empty() {
+        // For the login URL, return this out as the C2 url
+        s
+    } else {
+        match is_tasking_agent {
+            IsTaskingAgent::Yes(uid) => format!(
+                "{}/{}/{}",
+                c2_url,
+                custom_uri.unwrap_or(ADMIN_ENDPOINT),
+                uid
+            ),
+            IsTaskingAgent::No => {
+                format!("{}/{}", c2_url, custom_uri.unwrap_or(ADMIN_ENDPOINT))
+            }
+        }
+    }
 }
 
 #[derive(Error, Debug)]
