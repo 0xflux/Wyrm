@@ -283,6 +283,17 @@ div.center-table {
   color: var(--link-hover) !important;
 }
 
+.tabbar .nav-item:not(:first-child) { position: relative; }
+.tabbar .nav-item:not(:first-child) .btn-close {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
+  padding: 0.15rem 0.35rem;
+  opacity: 0.85;
+}
+.tabbar .nav-item:not(:first-child) .nav-link { padding-right: 2.25rem; }
 .tabbar::-webkit-scrollbar { height:6px; }
 .tabbar::-webkit-scrollbar-thumb { background:#868e96; border-radius:3px; }
 .tabbar { scrollbar-width:thin; scrollbar-color:#868e96 transparent; }
