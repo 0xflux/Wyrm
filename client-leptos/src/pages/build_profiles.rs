@@ -19,8 +19,6 @@ pub fn BuildProfilesPage() -> impl IntoView {
             // Cleanse the input
             let profile_name = input.replace(".toml", "");
 
-            leptos::logging::log!("Profile name: {profile_name}");
-
             let result = api_request(
                 AdminCommand::BuildAllBins((profile_name.clone(), ".".to_string(), None, None)),
                 &IsTaskingAgent::No,
