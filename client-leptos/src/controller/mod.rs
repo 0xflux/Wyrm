@@ -12,6 +12,10 @@ pub enum BodyClass {
     App,
 }
 
+pub fn wyrm_chat_history_browser_key(uid: &str) -> String {
+    format!("WYRM_C2_HISTORY_{}", uid)
+}
+
 pub fn apply_body_class(target: BodyClass) {
     let body: HtmlElement = document().body().expect("no <body>");
 
@@ -61,4 +65,14 @@ pub fn store_item_in_browser_store<T: Serialize>(key: &str, item: &T) -> anyhow:
         .and_then(|storage| storage.set_item(key, &ser).ok());
 
     Ok(())
+}
+
+pub fn delete_item_in_browser_store(key: &str) {
+    let _: Option<()> = window().local_storage().ok().flatten().and_then(|s| {
+        if let Err(e) = s.delete(key) {
+            leptos::logging::log!("Error deleting chat: {e:?}");
+        }
+
+        None
+    });
 }

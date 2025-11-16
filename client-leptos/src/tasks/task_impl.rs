@@ -69,7 +69,7 @@ pub async fn kill_agent(agent: &IsTaskingAgent) -> DispatchResult {
     let tabs: RwSignal<ActiveTabs> =
         use_context().expect("could not get tabs context in kill_agent()");
 
-    // Remove the tab from the GUI - the C2 should take care of removing it from the active panel
+    // Remove the tab from the GUI - doing so will autosave the chat
     if let IsTaskingAgent::Yes(agent_id) = agent {
         tabs.update(|t| t.remove_tab(agent_id));
     }

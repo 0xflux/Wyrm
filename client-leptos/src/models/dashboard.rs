@@ -12,7 +12,10 @@ use shared::{
 };
 
 use crate::{
-    controller::{get_item_from_browser_store, store_item_in_browser_store},
+    controller::{
+        delete_item_in_browser_store, get_item_from_browser_store, store_item_in_browser_store,
+        wyrm_chat_history_browser_key,
+    },
     models::TAB_STORAGE_KEY,
 };
 
@@ -78,7 +81,7 @@ impl Agent {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct TabConsoleMessages {
     pub event: String,
     pub time: String,
@@ -554,6 +557,8 @@ impl ActiveTabs {
     pub fn remove_tab(&mut self, name: &str) {
         self.active_id = None;
         let _ = self.tabs.remove(name);
+        let key = wyrm_chat_history_browser_key(name);
+        delete_item_in_browser_store(&key);
         let _ = self.save_to_store();
     }
 }
