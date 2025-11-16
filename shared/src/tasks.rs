@@ -221,6 +221,8 @@ pub enum AdminCommand {
     RegDelete(RegQueryInner),
     /// Exports the completed tasks database for an agent.
     ExportDb,
+    /// Used for dispatching no admin command, but to be handled via a custom route on the C2
+    None,
     Undefined,
 }
 

@@ -47,6 +47,14 @@ fn ConnectedAgents(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
     Effect::new(move || {
         spawn_local(async move {
             loop {
+                // If server-side health check shows we are logged out, stop polling.
+                if !crate::controller::is_logged_in().await {
+                    leptos::logging::log!(
+                        "Detected logged-out state; stopping ListAgents polling."
+                    );
+                    break;
+                }
+
                 let result = match api_request(
                     AdminCommand::ListAgents,
                     &IsTaskingAgent::No,
