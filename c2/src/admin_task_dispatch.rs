@@ -151,6 +151,7 @@ pub async fn admin_dispatch(
             }
         },
         AdminCommand::ExportDb => export_completed_tasks_to_json(uid.unwrap(), state).await,
+        AdminCommand::None => None,
     };
 
     serde_json::to_vec(&result).unwrap()

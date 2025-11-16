@@ -26,12 +26,12 @@ use crate::{
     api::{
         admin_login, build_all_binaries_handler, handle_admin_commands_on_agent,
         handle_admin_commands_without_agent, handle_agent_get_with_path,
-        handle_agent_post_with_path, is_adm_logged_in, poll_agent_notifications,
+        handle_agent_post_with_path, is_adm_logged_in, logout, poll_agent_notifications,
     },
     app_state::{AppState, detect_stale_agents},
     db::Db,
     logging::log_error,
-    middleware::{authenticate_admin, authenticate_agent_by_header_token},
+    middleware::{authenticate_admin, authenticate_agent_by_header_token, logout_middleware},
     profiles::parse_profiles,
 };
 
@@ -135,7 +135,9 @@ async fn init_server_state() -> Arc<AppState> {
 fn build_routes(state: Arc<AppState>) -> Router {
     Router::new()
         //
+        //
         // PUBLIC ROUTES
+        //
         //
         .route(
             "/",
@@ -167,8 +169,14 @@ fn build_routes(state: Arc<AppState>) -> Router {
             )),
         )
         //
+        //
         // ADMIN ROUTES
         //
+        //
+        .route(
+            "/logout_admin",
+            post(logout).layer(from_fn_with_state(state.clone(), logout_middleware)),
+        )
         // Build all binaries path
         .route(
             "/admin_bab",

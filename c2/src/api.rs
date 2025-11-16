@@ -358,3 +358,7 @@ pub async fn admin_login(
 pub async fn is_adm_logged_in() -> Response {
     StatusCode::OK.into_response()
 }
+
+pub async fn logout() -> Response {
+    StatusCode::ACCEPTED.into_response()
+}

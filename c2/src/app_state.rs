@@ -138,6 +138,16 @@ impl AppState {
 
         lock.contains_key(key)
     }
+
+    pub async fn remove_session(&self, key: &str) {
+        let mut lock = self.sessions.lock().await;
+
+        let key = key
+            .strip_prefix("session=")
+            .expect("could not find prefix session=");
+
+        let _ = lock.remove(key);
+    }
 }
 
 /// Continually monitors for when an agent hasn't checked in after an appropriate period and will automatically remove

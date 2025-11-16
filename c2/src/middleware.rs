@@ -176,3 +176,19 @@ pub async fn authenticate_agent_by_header_token(
     log_page_accessed_auth(uri, ip).await;
     StatusCode::BAD_GATEWAY.into_response()
 }
+
+pub async fn logout_middleware(
+    jar: CookieJar,
+    State(state): State<Arc<AppState>>,
+    request: Request,
+    next: Next,
+) -> impl IntoResponse {
+    if let Some(session) = jar.get(AUTH_COOKIE_NAME) {
+        let session = session.to_string();
+
+        state.remove_session(&session).await;
+        return next.run(request).await.into_response();
+    }
+
+    return StatusCode::NOT_FOUND.into_response();
+}
