@@ -254,7 +254,7 @@ pub async fn build_all_binaries_handler(
             //
             let filename = format!("{}.7z", data.profile_name);
             (
-                StatusCode::OK,
+                StatusCode::ACCEPTED,
                 [
                     (CONTENT_TYPE, "application/x-7z-compressed".to_string()),
                     (
