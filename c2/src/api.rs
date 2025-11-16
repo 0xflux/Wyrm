@@ -39,7 +39,7 @@ pub async fn handle_agent_get(state: State<Arc<AppState>>, request: Request) -> 
         .await;
 
     // Check whether the kill command is present and the agent needs removing from the live list..
-    handle_kill_command(state.connected_agents.clone(), &agent, &tasks);
+    handle_kill_command(state.connected_agents.clone(), &agent, &tasks).await;
 
     serialise_tasks_for_agent(tasks).await
 }
