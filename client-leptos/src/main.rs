@@ -4,7 +4,7 @@ use leptos_router::{components::*, path};
 
 use crate::pages::{
     build_profiles::BuildProfilesPage, dashboard::Dashboard, file_upload::FileUploadPage,
-    login::Login,
+    login::Login, staged_resources::StagedResourcesPage,
 };
 
 mod controller;
@@ -35,6 +35,7 @@ fn App() -> impl IntoView {
                 <Route path=path!("/dashboard") view=Dashboard />
                 <Route path=path!("/build_profiles") view=BuildProfilesPage />
                 <Route path=path!("/file_upload") view=FileUploadPage />
+                <Route path=path!("/staged_resources") view=StagedResourcesPage />
             </Routes>
         </Router>
     }

@@ -6,7 +6,6 @@ use axum::{
     http::StatusCode,
     response::{Html, IntoResponse, Response},
 };
-use serde::Deserialize;
 use shared::tasks::{AdminCommand, WyrmResult};
 use shared_c2_client::StagedResourceData;
 

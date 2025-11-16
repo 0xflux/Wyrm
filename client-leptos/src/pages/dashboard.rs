@@ -273,8 +273,6 @@ fn CommandInput() -> impl IntoView {
         async move { dispatch_task(input, IsTaskingAgent::Yes(agent_id)).await }
     });
 
-    // TODO deal with the return value
-
     view! {
         <div id="input-strip" class="d-flex align-items-center px-3">
             <span class="me-2">>></span>
