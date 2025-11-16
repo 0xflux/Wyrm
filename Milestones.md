@@ -17,6 +17,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 5) [ ] Remove nginx.conf from git tracking
 6) [ ] Readme needs updating with new build instructions from scratch, including the nginx stuff and new user stuff
 7) [ ] Fix C2 logging
+8) [ ] Investigate if the sleep time is being applied when smushed into other commands? Needs a debug build of the implant
 
 ### 0.5
 
