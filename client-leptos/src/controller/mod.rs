@@ -5,6 +5,7 @@ use web_sys::HtmlElement;
 
 use crate::net::admin_health_check;
 
+pub mod build_profiles;
 pub mod dashboard;
 
 pub enum BodyClass {

@@ -1,3 +1,4 @@
+use leptos::wasm_bindgen::JsCast;
 use leptos::{IntoView, component, prelude::*, task::spawn_local, view};
 use leptos_router::hooks::use_navigate;
 
@@ -37,15 +38,9 @@ pub fn LoggedInHeaders() -> impl IntoView {
         }
     });
 
-    let url_path = match extract_path() {
-        Some(p) => RwSignal::new(p),
-        None => {
-            leptos::logging::log!("Could not get path for current URL.");
-            let navigate = use_navigate();
-            navigate("/", Default::default());
-            RwSignal::new("".to_string())
-        }
-    };
+    // Create a reactive signal for the current URL first segment and
+    // initialize history hooks via helper to keep component body clean.
+    let url_path = create_url_path_signal();
 
     //
     // Build the header section of the page
@@ -115,10 +110,59 @@ pub fn LoggedInHeaders() -> impl IntoView {
 }
 
 fn extract_path() -> Option<String> {
-    let uri = document().document_uri().expect("could not get uri");
-    let split = uri.split(':').collect::<Vec<&str>>();
-    let remaining = split.get(2)?;
-    let path = remaining.split_once('/')?.1.to_string();
+    // Use the browser location pathname (e.g. "/dashboard/123") and
+    // return the first non-empty segment (e.g. "dashboard"). This is
+    // more reliable than parsing `document_uri()` and works for
+    // nested paths as well.
+    let window = web_sys::window()?;
+    let pathname = window.location().pathname().ok()?;
 
-    Some(path)
+    let first_segment = pathname
+        .split('/')
+        .find(|s| !s.is_empty())
+        .unwrap_or("")
+        .to_string();
+
+    Some(first_segment)
+}
+
+fn create_url_path_signal() -> RwSignal<String> {
+    let initial = extract_path().unwrap_or_else(|| "".to_string());
+    let url_path = RwSignal::new(initial);
+
+    if let Some(win) = web_sys::window() {
+        if let Some(doc) = win.document() {
+            if let Ok(script) = doc.create_element("script") {
+                script.set_inner_html(r#"
+                    (function(){
+                        if (window.__wyrm_history_hook_installed) return;
+                        const _push = history.pushState;
+                        history.pushState = function(){ _push.apply(this, arguments); window.dispatchEvent(new Event('locationchange')); };
+                        const _replace = history.replaceState;
+                        history.replaceState = function(){ _replace.apply(this, arguments); window.dispatchEvent(new Event('locationchange')); };
+                        window.addEventListener('popstate', function(){ window.dispatchEvent(new Event('locationchange')); });
+                        window.__wyrm_history_hook_installed = true;
+                    })();
+                "#);
+
+                if let Some(head) = doc.head() {
+                    let _ = head.append_child(&script);
+                }
+            }
+        }
+
+        let url_path_clone = url_path.clone();
+        let closure =
+            leptos::wasm_bindgen::closure::Closure::wrap(Box::new(move |_ev: web_sys::Event| {
+                let new = extract_path().unwrap_or_else(|| "".to_string());
+                url_path_clone.set(new);
+            }) as Box<dyn FnMut(_)>);
+
+        let _ = win
+            .add_event_listener_with_callback("locationchange", closure.as_ref().unchecked_ref());
+
+        closure.forget();
+    }
+
+    url_path
 }

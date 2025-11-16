@@ -421,3 +421,14 @@ impl ExfiltratedFile {
         }
     }
 }
+
+#[derive(Serialize, Deserialize)]
+pub struct BaBData {
+    pub profile_name: String,
+}
+
+impl BaBData {
+    pub fn from(profile_name: String) -> Self {
+        Self { profile_name }
+    }
+}

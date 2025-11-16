@@ -12,19 +12,21 @@ use crate::{
 };
 use axum::{
     Json,
-    extract::{ConnectInfo, Path, Query, Request, State},
-    http::{HeaderMap, StatusCode},
+    extract::{ConnectInfo, Path, Request, State},
+    http::{
+        HeaderMap, StatusCode,
+        header::{CONTENT_DISPOSITION, CONTENT_TYPE},
+    },
     response::{Html, IntoResponse, Response},
 };
 use axum_extra::extract::{
     CookieJar,
     cookie::{Cookie, SameSite},
 };
-use serde::Deserialize;
 use shared::{
     net::{AdminLoginPacket, XorEncode, decode_http_response},
     pretty_print::print_failed,
-    tasks::{AdminCommand, Command, FirstRunData},
+    tasks::{AdminCommand, BaBData, Command, FirstRunData},
 };
 
 /// Handles the inbound connection, after authentication has validated the agent.
@@ -193,7 +195,7 @@ pub async fn handle_agent_post(
     //
     // Check whether the kill command is present and the agent needs removing from the live list..
     //
-    handle_kill_command(state.connected_agents.clone(), &agent, &tasks);
+    handle_kill_command(state.connected_agents.clone(), &agent, &tasks).await;
 
     //
     // Serialise the response and return it
@@ -238,20 +240,32 @@ pub async fn poll_agent_notifications(
     }
 }
 
-#[derive(Deserialize)]
-pub struct BaBData {
-    profile_name: String,
-}
-
 pub async fn build_all_binaries_handler(
     state: State<Arc<AppState>>,
-    data: Query<BaBData>,
+    Json(data): Json<BaBData>,
 ) -> Response {
     let bab = (data.profile_name.clone(), "".to_string(), None, None);
     let result = build_all_bins(bab, state).await;
 
     match result {
-        Ok(data) => (StatusCode::ACCEPTED, data).into_response(),
+        Ok(zip_bytes) => {
+            //
+            // Prepare the data response back to the client and send it.
+            //
+            let filename = format!("{}.7z", data.profile_name);
+            (
+                StatusCode::OK,
+                [
+                    (CONTENT_TYPE, "application/x-7z-compressed".to_string()),
+                    (
+                        CONTENT_DISPOSITION,
+                        format!("attachment; filename=\"{}\"", filename),
+                    ),
+                ],
+                zip_bytes,
+            )
+                .into_response()
+        }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Html(format!("Error building binaries: {e}",)),

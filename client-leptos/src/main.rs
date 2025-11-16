@@ -2,7 +2,7 @@ use leptos::prelude::*;
 use leptos_meta::{Meta, Title, provide_meta_context};
 use leptos_router::{components::*, path};
 
-use crate::pages::{dashboard::Dashboard, login::Login};
+use crate::pages::{build_profiles::BuildProfilesPage, dashboard::Dashboard, login::Login};
 
 mod controller;
 mod models;
@@ -22,7 +22,7 @@ fn App() -> impl IntoView {
     provide_meta_context();
 
     view! {
-        <Title text="Login | Wyrm C2 Panel" />
+        <Title text="Wyrm C2 Panel" />
         <Meta charset="UTF-8" />
         <Meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
@@ -30,6 +30,7 @@ fn App() -> impl IntoView {
             <Routes fallback=|| view! { NotFound }>
                 <Route path=path!("/") view=Login />
                 <Route path=path!("/dashboard") view=Dashboard />
+                <Route path=path!("/build_profiles") view=BuildProfilesPage />
             </Routes>
         </Router>
     }
