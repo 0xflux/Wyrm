@@ -5,12 +5,12 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 ### v0.4.1
 
-1) [ ] BUG: https://github.com/0xflux/Wyrm/issues/3
-2) [ ] Consider GUI rework using Leptos
+1) [x] BUG: https://github.com/0xflux/Wyrm/issues/3
+2) [x] Consider GUI rework using Leptos
    1) [x] Remove ADMIN_TOKEN and use cookies
-   2) [ ] Logout
-   3) [ ] All preparation
-   4) [ ] Upload
+   2) [x] Logout
+   3) [x] All preparation
+   4) [x] Upload
    5) [x] Dashboard
 3) [ ] Save chat from browser store to disk on ka & tab close?
 4) [ ] Create db user on first run
