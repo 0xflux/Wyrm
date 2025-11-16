@@ -7,15 +7,16 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 1) [ ] BUG: https://github.com/0xflux/Wyrm/issues/3
 2) [ ] Consider GUI rework using Leptos
-   1) [ ] Remove ADMIN_TOKEN and use cookies
+   1) [x] Remove ADMIN_TOKEN and use cookies
    2) [ ] Logout
    3) [ ] All preparation
    4) [ ] Upload
-   5) [ ] Dashboard
-3) [ ] Create db user on first run
-4) [ ] C2 code could do with a bit of a tidy up..
+   5) [x] Dashboard
+3) [ ] Save chat from browser store to disk on ka & tab close?
+4) [ ] Create db user on first run
 5) [ ] Remove nginx.conf from git tracking
 6) [ ] Readme needs updating with new build instructions from scratch, including the nginx stuff and new user stuff
+7) [ ] Fix C2 logging
 
 ### 0.5
 
