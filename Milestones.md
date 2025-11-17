@@ -60,7 +60,7 @@ developed as a premium or otherwise private feature. These will be few and far b
    1) [ ] First feature to create here is a stage zero shortcut creator for downloading, moving and executing a payload
 8) [ ] Website docs, maybe gitbook or smth, im liking the look of https://github.com/redimp/otterwiki
 9) [ ] Stop bcrypt'ing on each admin control / auth event, use tokens. It is needlessly inefficient currently.
-10) [ ] Support domain fronting through HTTP headers in malleable profile
+10) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
 11) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 
 ### v1.0.1
