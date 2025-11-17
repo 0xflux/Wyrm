@@ -63,8 +63,9 @@ pub fn BuildProfilesPage() -> impl IntoView {
             <div class="row mb-4">
                 <div class="col-12 text-center">
                     <h2 class="mb-2 fw-bold">Build all agents</h2>
-                    <p>Type the name of the profile you wish to build from (do not include the
-                        <code>.toml</code>). For example, to build from the default profile, type <code>default</code>.
+                    <p>
+                        "Type the name of the profile you wish to build from (do not include the "<code>".toml"</code>")."
+                        "For example, to build from the default profile, type "<code>"default"</code>"."
                     </p>
                     <p>This builder will serve you the generated payloads as a 7zip archive for which you can do with as you please.
                         It is recommended after using this, you use the upload function to stage a payload on the C2.

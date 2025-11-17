@@ -29,7 +29,7 @@ patch_etw = []
 
 [dependencies]
 minreq = { version="2.13", features = [
-    "https-rustls",
+    "https-rustls-probe",
     "json-using-serde",
 ]}
 shared ={ path = "../shared" }

