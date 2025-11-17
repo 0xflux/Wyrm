@@ -9,6 +9,10 @@ overwrite your local configs and agent profiles.
 
 ## TLDR for using the C2
 
+If you are planning on running this on localhost only, please check [this guide](https://fluxsec.red/wyrm-c2-localhost-self-signed-certificate-windows) I made for instructions on configuring TLS over
+localhost. If you are running this publicly, create a certificate as normal. Ensure you update `/nginx/nginx.conf` with the correct
+DNS names for prod...
+
 Before using the C2, you **SHOULD** change the default admin token and database creds found in the `.env` for security purposes.
 
 Via docker, simply run: `docker compose up -d --build`. The C2 exposes itself on port 8080, which you will likely want to reverse proxy in prod. You
