@@ -310,7 +310,7 @@ impl Db {
         &self,
         uid: &String,
     ) -> Result<Option<NotificationsForAgents>, sqlx::Error> {
-        let rows: Vec<NotificationForAgent> = sqlx::query_as(
+        let rows: NotificationsForAgents = sqlx::query_as(
             r#"
             SELECT
                 ct.id AS completed_id,
@@ -325,6 +325,7 @@ impl Db {
             WHERE
                 ct.client_pulled_update = FALSE
                 AND t.agent_id = $1
+            ORDER BY ct.task_id ASC
         "#,
         )
         .bind(uid)
@@ -346,7 +347,7 @@ impl Db {
             r#"
             UPDATE completed_tasks
             SET client_pulled_update = TRUE
-            WHERE id = ANY($1)
+            WHERE id = ANY($1::int4[])
             "#,
         )
         .bind(completed_ids)
