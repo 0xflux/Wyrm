@@ -1,5 +1,7 @@
 # Wyrm - v0.4 Hatchling
 
+Read the docs at https://docs.wyrm-c2.com/.
+
 Pre-release version. If you want to support this project, please give it a star! I will be releasing updates and
 devlogs on my [blog](https://fluxsec.red/) and [YouTube](https://www.youtube.com/@FluxSec) to document progress, so please give me a follow there.
 
