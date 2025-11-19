@@ -40,14 +40,12 @@ impl Db {
             .connect(&db_string)
             .await
             .map_err(|e| {
-                print_failed(format!("Could not establish a database connection. {e}"));
-                panic!();
+                panic!("Could not establish a database connection. {e}");
             })
             .unwrap();
 
         if let Err(e) = MIGRATOR.run(&pool).await {
-            print_failed(format!("Could not run db migrations. {e}"));
-            panic!()
+            panic!("Could not run db migrations. {e}");
         }
 
         print_success("Db connection established");

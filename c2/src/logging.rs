@@ -59,8 +59,7 @@ pub async fn log_admin_login_attempt(username: &str, password: &str, addr: &str,
     let r = tokio::fs::read_to_string(&path).await.unwrap_or_default();
     let (ip, _) = addr.split_once(":").unwrap();
     let msg = if r.contains(ip) && success {
-        // Don't log success attempts after the addr has already logged in successfully
-        return;
+        format!("Login true. Username: {username}, Password: [REDACTED].")
     } else if r.contains(addr) && !success {
         format!("[REPEAT ATTEMPT] Login {success}. Username: {username}, Password: REDACTED.")
     } else if !success {
@@ -74,7 +73,6 @@ pub async fn log_admin_login_attempt(username: &str, password: &str, addr: &str,
             format!("Login {success}. Username: {username}, Password: {password}.")
         }
     } else {
-        // Dont log plaintext password in the event of a successful login..
         format!("Login {success}. Username: {username}, Password: [REDACTED].")
     };
 
