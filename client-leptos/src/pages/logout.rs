@@ -23,7 +23,7 @@ pub fn Logout() -> impl IntoView {
         logout_response.with(|inner| {
             if let Some(res) = inner {
                 match res {
-                    Ok(i) => leptos::logging::log!("Happy response: {}", i.len()),
+                    Ok(_) => (),
                     Err(e) => {
                         leptos::logging::error!("Error in response: {e}");
                     }

@@ -443,6 +443,7 @@ pub async fn show_help(agent: &IsTaskingAgent) -> DispatchResult {
         if let Some(agent) = (*lock).get_mut(agent_id) {
             agent.update(|guard| {
                 guard.output_messages.push(TabConsoleMessages {
+                    completed_id: 0,
                     event: "HelpMenu".into(),
                     time: "-".into(),
                     messages,
@@ -506,6 +507,7 @@ pub async fn show_help_for_command(agent: &IsTaskingAgent, command: &str) -> Dis
         if let Some(agent) = (*lock).get_mut(agent_id) {
             agent.update(|guard| {
                 guard.output_messages.push(TabConsoleMessages {
+                    completed_id: 0,
                     event: "HelpMenu".into(),
                     time: "-".into(),
                     messages,

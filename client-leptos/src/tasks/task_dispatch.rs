@@ -50,6 +50,7 @@ pub async fn dispatch_task(input: String, agent: IsTaskingAgent) -> DispatchResu
             if let Some(agent) = (*guard).get_mut(&agent_id) {
                 agent.update(|lock| {
                     lock.output_messages.push(TabConsoleMessages {
+                        completed_id: 0,
                         event: "[Error dispatching task]".to_string(),
                         time: Utc::now().to_string(),
                         messages: vec![e.to_string()],

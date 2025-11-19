@@ -83,6 +83,7 @@ impl Agent {
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct TabConsoleMessages {
+    pub completed_id: i32,
     pub event: String,
     pub time: String,
     pub messages: Vec<String>,
@@ -96,6 +97,7 @@ impl TabConsoleMessages {
     /// within the client itself.
     pub fn non_agent_message(event: String, message: String) -> Self {
         Self {
+            completed_id: 0,
             event,
             time: "-".into(),
             messages: vec![message],
@@ -136,6 +138,7 @@ impl From<NotificationForAgent> for TabConsoleMessages {
             .to_string();
 
         Self {
+            completed_id: notification_data.completed_id,
             event: cmd_string,
             time: time_utc_str,
             messages: result,

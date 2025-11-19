@@ -49,9 +49,6 @@ fn ConnectedAgents(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
             loop {
                 // If server-side health check shows we are logged out, stop polling.
                 if !crate::controller::is_logged_in().await {
-                    leptos::logging::log!(
-                        "Detected logged-out state; stopping ListAgents polling."
-                    );
                     break;
                 }
 
@@ -306,10 +303,12 @@ fn CommandInput() -> impl IntoView {
                     let time = Utc::now().to_string();
 
                     let msg = TabConsoleMessages {
+                        completed_id: 0,
                         event: "User Input".to_string(),
                         time,
                         messages: vec![input_val.clone()],
                     };
+
                     agent_sig.update(move |agent| agent.output_messages.push(msg.clone()));
 
                     submit_input.dispatch(input_val);

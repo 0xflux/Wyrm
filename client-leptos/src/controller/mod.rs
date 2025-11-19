@@ -70,7 +70,7 @@ pub fn store_item_in_browser_store<T: Serialize>(key: &str, item: &T) -> anyhow:
 
 pub fn delete_item_in_browser_store(key: &str) {
     let _: Option<()> = window().local_storage().ok().flatten().and_then(|s| {
-        if let Err(e) = s.delete(key) {
+        if let Err(e) = s.remove_item(key) {
             leptos::logging::log!("Error deleting chat: {e:?}");
         }
 
