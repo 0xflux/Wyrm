@@ -16,8 +16,9 @@ developed as a premium or otherwise private feature. These will be few and far b
 4) [x] Output results in order... I need to store as a Vec not a hashmap i think and just append....
 5) [ ] BUG: Clear needs to clear the store too
 6) [ ] Readme needs updating with new build instructions from scratch, including the nginx stuff and new user stuff
-7) [ ] Fix C2 logging?
-8) [ ] Test absolutely everything from scratch before publishing version.
+7) [ ] Check C2 logging (login & errors)?
+8) [ ] Swap client for client-leptos & migrate.
+9) [ ] Test absolutely everything from scratch before publishing version.
 
 ### 0.5
 
