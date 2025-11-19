@@ -17,7 +17,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 5) [x] Output results in order... I need to store as a Vec not a hashmap i think and just append....
 6) [ ] BUG: Clear needs to clear the store too
 7) [ ] Save chat from browser store to disk on ka & tab close?
-8) [ ] Create db user on first run
+8) [ ] Create db user on first run - pass env vars to docker?
 9) [ ] Remove nginx.conf from git tracking
 10) [ ] Readme needs updating with new build instructions from scratch, including the nginx stuff and new user stuff
 11) [ ] Fix C2 logging?
