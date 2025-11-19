@@ -13,7 +13,7 @@ use shared::{
 use shared_c2_client::{NotificationForAgent, NotificationsForAgents, StagedResourceData};
 use sqlx::{Pool, Postgres, Row, migrate::Migrator, postgres::PgPoolOptions};
 
-use crate::{agents::Agent, app_state::DownloadEndpointData};
+use crate::{agents::Agent, app_state::DownloadEndpointData, logging::log_error_async};
 
 const MAX_DB_CONNECTIONS: u32 = 5;
 static MIGRATOR: Migrator = sqlx::migrate!("./migrations");
@@ -106,7 +106,8 @@ impl Db {
             SELECT id, command_id, data
             FROM tasks
             WHERE agent_id=$1
-                AND completed = FALSE
+                AND fetched = FALSE
+            ORDER BY id ASC
             "#,
         )
         .bind(uid)
@@ -139,6 +140,17 @@ impl Db {
                     .await
                     .expect("Could not add task to completed");
             }
+
+            //
+            // Mark the task as fetched - so we don't double poll
+            //
+            if let Err(e) = self.mark_task_fetched(&task).await {
+                log_error_async(&format!(
+                    "Could not mark task ID {} as fetched. {e}",
+                    task.id
+                ))
+                .await;
+            };
 
             tasks.push(task);
         }
@@ -181,8 +193,8 @@ impl Db {
     ) -> Result<(), sqlx::Error> {
         let _ = sqlx::query(
             r#"
-            INSERT into tasks (command_id, data, agent_id)
-            VALUES ($1, $2, $3)"#,
+            INSERT into tasks (command_id, data, agent_id, fetched)
+            VALUES ($1, $2, $3, FALSE)"#,
         )
         .bind(command as i32)
         .bind(metadata)
@@ -217,6 +229,22 @@ impl Db {
             r#"
             UPDATE tasks
             SET completed = TRUE
+            WHERE id = $1
+        "#,
+        )
+        .bind(task.id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Marks a task as fetched in the db
+    pub async fn mark_task_fetched(&self, task: &Task) -> Result<(), sqlx::Error> {
+        let _ = sqlx::query(
+            r#"
+            UPDATE tasks
+            SET fetched = TRUE
             WHERE id = $1
         "#,
         )

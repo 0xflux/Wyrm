@@ -3,7 +3,7 @@ use std::{net::SocketAddr, sync::Arc};
 use crate::{
     AUTH_COOKIE_NAME, COOKIE_TTL,
     admin_task_dispatch::{admin_dispatch, build_all_bins},
-    agents::handle_kill_command,
+    agents::{extract_agent_id, handle_kill_command},
     app_state::AppState,
     exfil::handle_exfiltrated_file,
     logging::{log_admin_login_attempt, log_error_async},
@@ -166,22 +166,19 @@ pub async fn handle_agent_post(
         // Command::AgentsFirstSessionBeacon was not present, so continue to
         //
 
-        if let Err(e) = state.db_pool.mark_task_completed(&task).await {
-            print_failed(format!("Failed to complete task in db. {e}"));
-            panic!();
-        }
+        state
+            .db_pool
+            .mark_task_completed(&task)
+            .await
+            .expect("Failed to complete task in db.");
 
-        let (agent, _) = state
-            .connected_agents
-            .get_agent_and_tasks_by_header(&headers, &cl.db_pool, None)
-            .await;
-
-        if let Err(e) = state.db_pool.add_completed_task(&task, &agent.uid).await {
-            print_failed(format!(
-                "Failed to add task results to completed table. {e}"
-            ));
-            panic!();
-        }
+        // Get a copy of the agent
+        let agent_id = extract_agent_id(&headers);
+        state
+            .db_pool
+            .add_completed_task(&task, &agent_id)
+            .await
+            .expect("Failed to add task results to completed table");
     }
 
     //
@@ -210,7 +207,6 @@ pub async fn handle_admin_commands_on_agent(
 ) -> (StatusCode, Vec<u8>) {
     let response_body_serialised = admin_dispatch(Some(uid), command.0, state).await;
 
-    // Happy response
     (StatusCode::ACCEPTED, response_body_serialised)
 }
 
@@ -220,7 +216,6 @@ pub async fn handle_admin_commands_without_agent(
 ) -> (StatusCode, Vec<u8>) {
     let response_body_serialised = admin_dispatch(None, command.0, state).await;
 
-    // Happy response
     (StatusCode::ACCEPTED, response_body_serialised)
 }
 
