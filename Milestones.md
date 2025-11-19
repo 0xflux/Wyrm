@@ -14,7 +14,7 @@ developed as a premium or otherwise private feature. These will be few and far b
    5) [x] Dashboard
 3) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
 4) [x] BUG: Are tasks being carried out in order on the agent?
-5) [ ] Output results in order... I need to store as a Vec not a hashmap i think and just append....
+5) [x] Output results in order... I need to store as a Vec not a hashmap i think and just append....
 6) [ ] BUG: Clear needs to clear the store too
 7) [ ] Save chat from browser store to disk on ka & tab close?
 8) [ ] Create db user on first run
