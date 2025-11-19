@@ -19,6 +19,7 @@ pulling updates.
 ### Non-breaking changes
 
 - We now use a better, more efficient, and more secure authentication method of using actual auth HTTPS only tokens with a lifetime of **12 hrs** before you need to log in again to get a new token.
+- Fix bug which caused tasks on implant to be dispatched out of order.
 
 ## &#128679; v 0.4
 
