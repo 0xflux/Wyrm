@@ -12,16 +12,12 @@ developed as a premium or otherwise private feature. These will be few and far b
    3) [x] All preparation
    4) [x] Upload
    5) [x] Dashboard
-3) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
-4) [x] BUG: Are tasks being carried out in order on the agent?
-5) [x] Output results in order... I need to store as a Vec not a hashmap i think and just append....
-6) [ ] BUG: Clear needs to clear the store too
-7) [ ] Save chat from browser store to disk on ka & tab close?
-8) [ ] Create db user on first run - pass env vars to docker?
-9) [ ] Remove nginx.conf from git tracking
-10) [ ] Readme needs updating with new build instructions from scratch, including the nginx stuff and new user stuff
-11) [ ] Fix C2 logging?
-12) [ ] Test absolutely everything from scratch before publishing version.
+3) [x] BUG: Are tasks being carried out in order on the agent?
+4) [x] Output results in order... I need to store as a Vec not a hashmap i think and just append....
+5) [ ] BUG: Clear needs to clear the store too
+6) [ ] Readme needs updating with new build instructions from scratch, including the nginx stuff and new user stuff
+7) [ ] Fix C2 logging?
+8) [ ] Test absolutely everything from scratch before publishing version.
 
 ### 0.5
 
@@ -36,6 +32,12 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] Number of downloads for staged resources
 7) [ ] String stomping options on built binary 
 8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
+
+### 0.5.1
+
+1) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
+2) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
+3) [ ] Create db user on first run - pass env vars to docker?
 
 ### 0.6
 
