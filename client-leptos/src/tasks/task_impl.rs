@@ -1,7 +1,7 @@
 use std::{collections::HashMap, mem::take};
 
 use chrono::{DateTime, Utc};
-use leptos::prelude::{RwSignal, Update, Write, use_context};
+use leptos::prelude::{Read, RwSignal, Update, Write, use_context};
 use shared::{
     pretty_print::print_failed,
     task_types::{RegAddInner, RegQueryInner, RegType},
@@ -10,6 +10,7 @@ use shared::{
 use thiserror::Error;
 
 use crate::{
+    controller::{delete_item_in_browser_store, wyrm_chat_history_browser_key},
     models::dashboard::{ActiveTabs, Agent, TabConsoleMessages},
     net::{ApiError, C2Url, IsTaskingAgent, IsTaskingAgentErr, api_request},
     tasks::{
@@ -326,6 +327,13 @@ pub async fn clear_terminal(agent: &IsTaskingAgent) -> DispatchResult {
         let mut lock = connected_agents.write();
 
         if let Some(agent) = (*lock).get_mut(agent_id) {
+            // Clear the chat from browser store
+            let tabs: RwSignal<ActiveTabs> =
+                use_context().expect("could not get tabs context in CommandInput()");
+            let lock = tabs.read();
+            let name = lock.active_id.as_ref().unwrap();
+            delete_item_in_browser_store(&wyrm_chat_history_browser_key(name));
+            // Clear chat from in memory representation
             agent.update(|a| a.output_messages.clear());
         } else {
             leptos::logging::log!("Agent ID: {agent_id} not found when trying to clear console.");
