@@ -231,7 +231,10 @@ pub async fn poll_agent_notifications(
                 (StatusCode::NOT_FOUND, has_pending.to_string())
             }
         }
-        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "".to_string()),
+        Err(e) => {
+            log_error_async(&format!("Error polling pending notifications. {e}")).await;
+            (StatusCode::INTERNAL_SERVER_ERROR, "".to_string())
+        }
     }
 }
 

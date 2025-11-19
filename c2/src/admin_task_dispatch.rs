@@ -51,7 +51,6 @@ pub async fn admin_dispatch(
         AdminCommand::ListUsersDirs => {
             task_agent::<String>(Command::Pillage, None, uid.unwrap(), state).await
         }
-        AdminCommand::PullNotifications => pull_notifications_for_agent(uid.unwrap(), state).await,
         AdminCommand::Pwd => task_agent::<String>(Command::Pwd, None, uid.unwrap(), state).await,
         AdminCommand::Cd(path_buf) => {
             task_agent(Command::Cd, Some(path_buf), uid.unwrap(), state).await

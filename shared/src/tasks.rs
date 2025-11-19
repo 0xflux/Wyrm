@@ -195,7 +195,6 @@ pub enum AdminCommand {
     ListProcesses,
     GetUsername,
     ListUsersDirs,
-    PullNotifications,
     Pwd,
     KillAgent,
     KillProcessById(String),
