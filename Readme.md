@@ -1,4 +1,4 @@
-# Wyrm - v0.4 Hatchling
+# Wyrm - v0.5 Hatchling
 
 Read the docs at https://docs.wyrm-c2.com/. Read this for quick setup instructions.
 
