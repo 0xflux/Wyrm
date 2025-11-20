@@ -3,23 +3,6 @@
 Any item with a (L) tag is a contribution which will not be live (or requires further decision making) as this is intended to be
 developed as a premium or otherwise private feature. These will be few and far between.
 
-### v0.4.1
-
-1) [x] BUG: https://github.com/0xflux/Wyrm/issues/3
-2) [x] Consider GUI rework using Leptos
-   1) [x] Remove ADMIN_TOKEN and use cookies
-   2) [x] Logout
-   3) [x] All preparation
-   4) [x] Upload
-   5) [x] Dashboard
-3) [x] BUG: Are tasks being carried out in order on the agent?
-4) [x] Output results in order... I need to store as a Vec not a hashmap i think and just append....
-5) [x] BUG: Clear needs to clear the store too
-6) [ ] Readme needs updating with new build instructions from scratch, including the nginx stuff and new user stuff
-7) [x] Check C2 logging (login & errors)?
-8) [ ] Swap client for client-leptos & migrate.
-9) [ ] Test absolutely everything from scratch before publishing version.
-
 ### 0.5
 
 1) [ ] DLL needs thread start in `DLLMain`
