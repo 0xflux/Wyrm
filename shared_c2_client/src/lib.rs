@@ -26,16 +26,6 @@ pub struct NotificationForAgent {
     pub time_completed_ms: i64,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, FromRow)]
-pub struct StagedResourceData {
-    pub agent_name: String,
-    pub c2_endpoint: String,
-    pub staged_endpoint: String,
-    pub pe_name: String,
-    pub sleep_time: i64,
-    pub port: i16,
-}
-
 /// Converts a [`Command`] to a `String`
 pub fn command_to_string(cmd: &Command) -> String {
     let c = match cmd {
@@ -238,4 +228,14 @@ impl<'a> TaskExport<'a> {
     pub fn new(task: &'a Task, mitre: MitreTTP<'a>) -> Self {
         Self { task, mitre }
     }
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, FromRow)]
+pub struct StagedResourceData {
+    pub agent_name: String,
+    pub c2_endpoint: String,
+    pub staged_endpoint: String,
+    pub pe_name: String,
+    pub sleep_time: i64,
+    pub port: i16,
 }

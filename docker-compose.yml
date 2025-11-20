@@ -5,9 +5,7 @@ services:
       context: .
       dockerfile: client/Dockerfile
     ports: 
-      - 4040:4040
-    environment:
-      - ADMIN_TOKEN=${ADMIN_TOKEN}
+      - "3000:3000"
 
   c2_db:
     environment:
@@ -23,6 +21,7 @@ services:
   c2:
     depends_on:
       - c2_db
+      - nginx
     build:
       context: .
       dockerfile: c2/Dockerfile
@@ -34,12 +33,20 @@ services:
       POSTGRES_HOST: "c2_db"
       POSTGRES_DB: "${POSTGRES_DB}"
       LEEWAY_IN_SECONDS: "${LEEWAY_IN_SECONDS}"
-      ADMIN_TOKEN: "${ADMIN_TOKEN}"
       STALE_AGENT_SLEEP_TIME: "${STALE_AGENT_SLEEP_TIME}"
     ports: 
       - "${C2_PORT}:${C2_PORT}"
     volumes:
       - c2_data:/data
+
+  nginx:
+    image: nginx:latest
+    ports: 
+      - 443:443
+      - 80:80
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
 
 volumes:
   c2_data:

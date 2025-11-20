@@ -29,6 +29,7 @@
         "Flink",
         "Ghostscale",
         "gitbook",
+        "gloo",
         "HINSTANCE",
         "HKCR",
         "HKCU",
@@ -39,10 +40,13 @@
         "initialiser",
         "itemised",
         "kdbx",
+        "keygen",
         "KHTML",
         "laxy",
         "ldapsearch",
+        "Leptos",
         "lfanew",
+        "locationchange",
         "macroise",
         "minreq",
         "msvc",
@@ -55,6 +59,7 @@
         "pathing",
         "PCWSTR",
         "PLAINTXT",
+        "popstate",
         "psexec",
         "PWSTR",
         "RDLL",
@@ -62,6 +67,7 @@
         "regq",
         "repr",
         "reqwest",
+        "rustls",
         "rustup",
         "rwlock",
         "Serialise",
@@ -94,4 +100,12 @@
         "editor.formatOnSave": true,
     },
     "cSpell.language": "en,en-GB",
+    "rust-analyzer.procMacro.ignored": {
+        "leptos_macro": [
+            // optional:
+            // "component",
+            "server"
+        ],
+    },
+    "rust-analyzer.cargo.features": "all",  // Enable all features
 }

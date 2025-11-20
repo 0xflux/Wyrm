@@ -3,12 +3,6 @@
 Any item with a (L) tag is a contribution which will not be live (or requires further decision making) as this is intended to be
 developed as a premium or otherwise private feature. These will be few and far between.
 
-### v0.4.1
-
-1) [ ] BUG: https://github.com/0xflux/Wyrm/issues/3
-2) [ ] Consider GUI rework using Leptos
-3) [ ] C2 code could do with a bit of a tidy up..
-
 ### 0.5
 
 1) [ ] DLL needs thread start in `DLLMain`
@@ -23,6 +17,12 @@ developed as a premium or otherwise private feature. These will be few and far b
 7) [ ] String stomping options on built binary 
 8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 
+### 0.5.1
+
+1) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
+2) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
+3) [ ] Create db user on first run - pass env vars to docker?
+
 ### 0.6
 
 1) [ ] Max upload size set on C2
@@ -35,6 +35,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 7) [ ] Round robin and different styles for URI & URL rotation
 8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 9) [ ] Ps should show parent pids with children in a hierarchy
+10) [ ] Logrotate setup
  
 ### v1.0 - Whelpfire
 
@@ -49,7 +50,7 @@ developed as a premium or otherwise private feature. These will be few and far b
    1) [ ] First feature to create here is a stage zero shortcut creator for downloading, moving and executing a payload
 8) [ ] Website docs, maybe gitbook or smth, im liking the look of https://github.com/redimp/otterwiki
 9) [ ] Stop bcrypt'ing on each admin control / auth event, use tokens. It is needlessly inefficient currently.
-10) [ ] Support domain fronting through HTTP headers in malleable profile
+10) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
 11) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 
 ### v1.0.1

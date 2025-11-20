@@ -1,20 +1,27 @@
 [package]
-name = "wyrm_gui"
+name = "client"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-
 shared = { path = "../shared" }
-shared_c2_client = { path = "../shared_c2_client" }
 
-askama = "0.14.0"
-axum = { version = "0.8", features = ["macros", "multipart"]}
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
-serde = { version = "1", features = ["derive"] }
-tokio = { version = "1", features = [ "rt-multi-thread", "macros" ]}
-tower-http = { version = "0.6.6", features = ["fs"] }
+leptos = { version = "0.8.12", features = ["csr"] }
+console_log = "1.0"
+log = "0.4.22"
+console_error_panic_hook = "0.1.7"
+leptos_meta = "0.8.5"
+leptos_router = "0.8.9"
+gloo-net = "0.6"
+serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.145"
-dotenvy = "0.15.7"
-thiserror = "2.0.16"
-chrono = { version = "0.4", features = ["serde"] }
+thiserror = "2.0.17"
+reactive_stores = "0.3.0"
+web-sys = { version =  "0.3.82", features = [
+    "BlobPropertyBag",
+    "HtmlAnchorElement",
+]}
+leptos-use = { version = "0.16.3", features = ["storage"] }
+gloo-timers = "0.3.0"
+chrono = "0.4.42"
+anyhow = "1.0.100"

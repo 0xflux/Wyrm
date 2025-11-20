@@ -1,4 +1,6 @@
-# Wyrm - v0.4 Hatchling
+# Wyrm - v0.4.1 Hatchling
+
+Read the docs at https://docs.wyrm-c2.com/. Read this for quick setup instructions.
 
 Pre-release version. If you want to support this project, please give it a star! I will be releasing updates and
 devlogs on my [blog](https://fluxsec.red/) and [YouTube](https://www.youtube.com/@FluxSec) to document progress, so please give me a follow there.
@@ -7,40 +9,15 @@ devlogs on my [blog](https://fluxsec.red/) and [YouTube](https://www.youtube.com
 breaking changes to profiles / configs which you may need to manually adjust or migrate. This is done especially so that updates do not
 overwrite your local configs and agent profiles.
 
-## TLDR for using the C2
-
-Before using the C2, you **SHOULD** change the default admin token and database creds found in the `.env` for security purposes.
-
-Via docker, simply run: `docker compose up -d --build`. The C2 exposes itself on port 8080, which you will likely want to reverse proxy in prod. You
-can access the client on `http://127.0.0.1:4040/`. Because of the way `docker`, `cargo` and `cargo chef` work, `--build` is required to ensure you 
-have a completely clean build, running without that flag may introduce errors.
-
-Note: The C2 uses a docker volume `/data` to store loot as well as other persistent files.
-
-For more fine grain control over building components:
-
-- To run the C2, run `docker compose up -d --build c2`. On first run this may take a few minutes.
-- To connect to the C2, you should use the client which can be run via: `docker compose up -d --build client` and is served on port 4040 by default.
-
-An example profile is provided with all settings highlighted and documented in `c2/profiles/profile.example.toml`, it is recommended you copy this 
-to a new file and edit it there, as any other profile is excluded from git so updates will not affect your profiles **ONLY** if you create a new 
-profile file, `profile.example.toml` will be updated as changes are made for documentation purposes.
-
-**IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
-
-### Making changes to the profiles
-
-If you make changes to the profiles (`c2/profiles/*`) then you will need to re-run the docker container for the `c2`, ensuring you pass the `--build` flag for the updated profile changes to have effect. After changing updating your profile(s), run: `docker compose up -d --build c2`
-
 ## Post exploitation Red Team framework
 
 Wyrm (pronounced 'worm', an old English word for 'serpent' or 'dragon') is a post exploitation, open source, Red Team security testing framework framework, written in Rust designed to be used by Red Teams, Purple Teams, 
 Penetration Testers, and general infosec hobbyists. This project is fully built in Rust, with extra effort going into obfuscating artifacts which
 could be present in memory. Project created and maintained by [flux](https://github.com/0xflux/), for **legal authorised security testing only**.
 
-![Wyrm Malware Post Exploitation Implant Red Team](resources/wyrm_landscape.png)
+<!-- ![Wyrm Malware Post Exploitation Implant Red Team](resources/wyrm_landscape.png) -->
 
-Wyrm currently supports only HTTP(S) agents using a custom encryption scheme for encrypting traffic below TLS, with a unique packet design so that
+Wyrm currently supports only HTTPS agents using a custom encryption scheme for encrypting traffic below TLS, with a unique packet design so that
 the packets cannot be realistically decrypted even under firewall level TLS inspection.
 
 This project is a work in progress, currently released at v0.2 (Hatchling). Updates are planned through versions 1,0, 2.0, 3.0, and 4.0. You can view
@@ -65,16 +42,6 @@ so I will be attentive to anything raised.
 
 This project is not currently accepting contributions, please **raise issues** or use **GitHub Discussions** and I will look into them, and help
 answer any questions.
-
-## Model
-
-A mental model for the C2 is as follows:
-
-![Wyrm C2](resources/c2_model.png)
-
-The below image demonstrates the **Below TLS Encryption** feature and how it is implemented:
-
-![Wyrm Below TLS Encryption](resources/wyrm_post_diag.png)
 
 ### Updates
 

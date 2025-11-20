@@ -1,23 +1,32 @@
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 
 use crate::{
+    AUTH_COOKIE_NAME, COOKIE_TTL,
     admin_task_dispatch::{admin_dispatch, build_all_bins},
-    agents::handle_kill_command,
+    agents::{extract_agent_id, handle_kill_command},
     app_state::AppState,
     exfil::handle_exfiltrated_file,
+    logging::{log_admin_login_attempt, log_error_async},
+    middleware::verify_password,
     net::{serialise_tasks_for_agent, serve_file},
 };
 use axum::{
     Json,
-    extract::{Path, Query, Request, State},
-    http::{HeaderMap, StatusCode},
+    extract::{ConnectInfo, Path, Request, State},
+    http::{
+        HeaderMap, StatusCode,
+        header::{CONTENT_DISPOSITION, CONTENT_TYPE},
+    },
     response::{Html, IntoResponse, Response},
 };
-use serde::Deserialize;
+use axum_extra::extract::{
+    CookieJar,
+    cookie::{Cookie, SameSite},
+};
 use shared::{
-    net::{XorEncode, decode_http_response},
+    net::{AdminLoginPacket, XorEncode, decode_http_response},
     pretty_print::print_failed,
-    tasks::{AdminCommand, Command, FirstRunData},
+    tasks::{AdminCommand, BaBData, Command, FirstRunData},
 };
 
 /// Handles the inbound connection, after authentication has validated the agent.
@@ -32,7 +41,7 @@ pub async fn handle_agent_get(state: State<Arc<AppState>>, request: Request) -> 
         .await;
 
     // Check whether the kill command is present and the agent needs removing from the live list..
-    handle_kill_command(state.connected_agents.clone(), &agent, &tasks);
+    handle_kill_command(state.connected_agents.clone(), &agent, &tasks).await;
 
     serialise_tasks_for_agent(tasks).await
 }
@@ -157,22 +166,19 @@ pub async fn handle_agent_post(
         // Command::AgentsFirstSessionBeacon was not present, so continue to
         //
 
-        if let Err(e) = state.db_pool.mark_task_completed(&task).await {
-            print_failed(format!("Failed to complete task in db. {e}"));
-            panic!();
-        }
+        state
+            .db_pool
+            .mark_task_completed(&task)
+            .await
+            .expect("Failed to complete task in db.");
 
-        let (agent, _) = state
-            .connected_agents
-            .get_agent_and_tasks_by_header(&headers, &cl.db_pool, None)
-            .await;
-
-        if let Err(e) = state.db_pool.add_completed_task(&task, &agent.uid).await {
-            print_failed(format!(
-                "Failed to add task results to completed table. {e}"
-            ));
-            panic!();
-        }
+        // Get a copy of the agent
+        let agent_id = extract_agent_id(&headers);
+        state
+            .db_pool
+            .add_completed_task(&task, &agent_id)
+            .await
+            .expect("Failed to add task results to completed table");
     }
 
     //
@@ -186,7 +192,7 @@ pub async fn handle_agent_post(
     //
     // Check whether the kill command is present and the agent needs removing from the live list..
     //
-    handle_kill_command(state.connected_agents.clone(), &agent, &tasks);
+    handle_kill_command(state.connected_agents.clone(), &agent, &tasks).await;
 
     //
     // Serialise the response and return it
@@ -201,7 +207,6 @@ pub async fn handle_admin_commands_on_agent(
 ) -> (StatusCode, Vec<u8>) {
     let response_body_serialised = admin_dispatch(Some(uid), command.0, state).await;
 
-    // Happy response
     (StatusCode::ACCEPTED, response_body_serialised)
 }
 
@@ -211,7 +216,6 @@ pub async fn handle_admin_commands_without_agent(
 ) -> (StatusCode, Vec<u8>) {
     let response_body_serialised = admin_dispatch(None, command.0, state).await;
 
-    // Happy response
     (StatusCode::ACCEPTED, response_body_serialised)
 }
 
@@ -227,28 +231,132 @@ pub async fn poll_agent_notifications(
                 (StatusCode::NOT_FOUND, has_pending.to_string())
             }
         }
-        Err(_) => (StatusCode::INTERNAL_SERVER_ERROR, "".to_string()),
+        Err(e) => {
+            log_error_async(&format!("Error polling pending notifications. {e}")).await;
+            (StatusCode::INTERNAL_SERVER_ERROR, "".to_string())
+        }
     }
-}
-
-#[derive(Deserialize)]
-pub struct BaBData {
-    profile_name: String,
 }
 
 pub async fn build_all_binaries_handler(
     state: State<Arc<AppState>>,
-    data: Query<BaBData>,
+    Json(data): Json<BaBData>,
 ) -> Response {
     let bab = (data.profile_name.clone(), "".to_string(), None, None);
     let result = build_all_bins(bab, state).await;
 
     match result {
-        Ok(data) => (StatusCode::ACCEPTED, data).into_response(),
+        Ok(zip_bytes) => {
+            //
+            // Prepare the data response back to the client and send it.
+            //
+            let filename = format!("{}.7z", data.profile_name);
+            (
+                StatusCode::ACCEPTED,
+                [
+                    (CONTENT_TYPE, "application/x-7z-compressed".to_string()),
+                    (
+                        CONTENT_DISPOSITION,
+                        format!("attachment; filename=\"{}\"", filename),
+                    ),
+                ],
+                zip_bytes,
+            )
+                .into_response()
+        }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Html(format!("Error building binaries: {e}",)),
         )
             .into_response(),
     }
+}
+
+pub async fn admin_login(
+    jar: CookieJar,
+    addr: ConnectInfo<SocketAddr>,
+    state: State<Arc<AppState>>,
+    Json(body): Json<AdminLoginPacket>,
+) -> (CookieJar, Response) {
+    let ip = &addr.to_string();
+    let username = body.username;
+    let password = body.password;
+
+    // Lookup the operator from the db, if its empty we will create the user in the inner match here.
+    let operator = match state.db_pool.lookup_operator(&username).await {
+        Ok(o) => o,
+        Err(e) => {
+            match e {
+                sqlx::Error::RowNotFound => {
+                    // The db is empty so create the user. The db insert function checks
+                    // for us if a user already exists, if so, it will panic as we don't want anybody
+                    // and everybody creating accounts! And we aren't yet multiplayer
+                    // create_new_operator(username, password, state.clone()).await;
+                    log_admin_login_attempt(&username, &password, ip, true).await;
+                    // TODO
+                    return (jar, StatusCode::INTERNAL_SERVER_ERROR.into_response());
+                }
+                _ => {
+                    log_error_async(&format!(
+                        "There was an error with the db whilst trying to log in with creds: \
+                        {username} {password}. {e}",
+                    ))
+                    .await;
+                    log_admin_login_attempt(&username, &password, ip, false).await;
+                    return (jar, StatusCode::INTERNAL_SERVER_ERROR.into_response());
+                }
+            }
+        }
+    };
+
+    // We got a result.. lets check the password
+    if let Some((db_username, db_hash, db_salt)) = operator {
+        // Check the username is the same as the db username, as we are doing single operator ops right now
+        // we dont want to allow for easier password spraying, at least username is one additional step of
+        // complexity.
+
+        if username.ne(&db_username) {
+            log_admin_login_attempt(&username, &password, ip, false).await;
+            return (jar, StatusCode::NOT_FOUND.into_response());
+        }
+
+        if verify_password(&password, &db_hash, &db_salt).await {
+            // At this point in here we have successfully authenticated..
+            log_admin_login_attempt(&username, &password, ip, true).await;
+
+            let sid = state.create_session_key().await;
+
+            let cookie = Cookie::build((AUTH_COOKIE_NAME, sid))
+                .path("/")
+                .http_only(true)
+                .same_site(SameSite::None)
+                .max_age(COOKIE_TTL.try_into().unwrap())
+                .secure(true)
+                .build();
+
+            let jar = jar.add(cookie);
+            return (jar, (StatusCode::ACCEPTED).into_response());
+        } else {
+            // Bad password...
+            log_admin_login_attempt(&username, &password, ip, false).await;
+            return (jar, StatusCode::NOT_FOUND.into_response());
+        }
+    }
+
+    //
+    // Anything that falls through to this point is invalid
+    //
+    log_admin_login_attempt(&username, &password, ip, false).await;
+    (jar, StatusCode::NOT_FOUND.into_response())
+}
+
+/// Public route that is reachable only by the admin after going through
+/// the middleware, serves as a health check as to whether their token is
+/// valid or not.
+pub async fn is_adm_logged_in() -> Response {
+    StatusCode::OK.into_response()
+}
+
+pub async fn logout() -> Response {
+    StatusCode::ACCEPTED.into_response()
 }

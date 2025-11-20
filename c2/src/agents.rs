@@ -210,12 +210,16 @@ pub fn extract_agent_id(headers: &HeaderMap) -> String {
 /// Checks whether the agent has the kill command as part of its tasks.
 ///
 /// If the command is present, the agent will be removed from the list of active agents.
-pub fn handle_kill_command(agent_list: Arc<AgentList>, agent: &Agent, tasks: &Option<Vec<Task>>) {
+pub async fn handle_kill_command(
+    agent_list: Arc<AgentList>,
+    agent: &Agent,
+    tasks: &Option<Vec<Task>>,
+) {
     if tasks.is_none() {
         return;
     }
 
     if tasks_contains_kill_agent(tasks.as_ref().unwrap()) {
-        agent_list.agents.remove(&agent.uid);
+        agent_list.remove_agent(&agent.uid).await;
     }
 }

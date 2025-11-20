@@ -1,25 +1,31 @@
-FROM lukemathwalker/cargo-chef:latest-rust-1.90 AS chef
-WORKDIR /app
+FROM lukemathwalker/cargo-chef:latest-rust-1.90-bookworm AS chef
 
 FROM chef AS planner
-WORKDIR /app
-COPY . .
+COPY Cargo.toml Cargo.lock ./
+COPY c2 /c2
+COPY client /client
+COPY shared /shared
+COPY shared_c2_client /shared_c2_client
+COPY implant /implant
 RUN cargo chef prepare --recipe-path recipe.json
 
-FROM chef AS builder 
-WORKDIR /app
-COPY --from=planner /app/recipe.json ./recipe.json
-RUN cargo chef cook --release -p wyrm_gui --recipe-path recipe.json
-COPY . .
-RUN cargo build -p wyrm_gui --release
+FROM chef AS builder
+WORKDIR /client
 
-FROM debian:bookworm-slim AS runtime
-EXPOSE 4040
+COPY --from=planner /recipe.json ./recipe.json
+RUN cargo chef cook --release --recipe-path recipe.json
 
-WORKDIR /app
+COPY client/ . 
+COPY ../shared /shared
+COPY ../shared_c2_client /shared_c2_client
 
-COPY --from=builder /app/target/release/wyrm_gui .
-COPY --from=builder /app/client/static ./static
-COPY --from=builder /app/client/templates ./templates
+RUN cargo install trunk wasm-bindgen-cli
+RUN rustup target add wasm32-unknown-unknown
+RUN trunk build --release
 
-ENTRYPOINT ["/app/wyrm_gui"]
+FROM caddy:alpine AS runtime
+WORKDIR /usr/share/caddy
+COPY --from=builder /client/dist .
+COPY client/Caddyfile /etc/caddy/Caddyfile
+EXPOSE 3000
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]

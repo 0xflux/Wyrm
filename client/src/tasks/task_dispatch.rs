@@ -1,10 +1,12 @@
-use std::{process::exit, sync::Arc};
+use std::{collections::HashMap, process::exit};
 
-use axum::extract::State;
+use chrono::Utc;
+use leptos::prelude::{RwSignal, Update, Write, use_context};
+use thiserror::Error;
 
 use crate::{
-    models::AppState,
-    net::{Credentials, IsTaskingAgent},
+    models::dashboard::{Agent, TabConsoleMessages},
+    net::{ApiError, IsTaskingAgent, IsTaskingAgentErr},
     tasks::task_impl::{
         FileOperationTarget, RegOperationDelQuery, TaskDispatchError, change_directory,
         clear_terminal, copy_file, dir_listing, export_db, file_dropper, kill_agent, kill_process,
@@ -14,30 +16,56 @@ use crate::{
     },
 };
 
+#[derive(Error, Debug)]
+pub enum TaskingError {
+    #[error("Error deserialising data {0}.")]
+    SerdeError(#[from] serde_json::Error),
+
+    #[error("API error {0}.")]
+    ApiError(#[from] ApiError),
+
+    #[error("Error trying to get agent to task.")]
+    IsTaskingAgentErr(#[from] IsTaskingAgentErr),
+
+    #[error("Dispatch error: {0}")]
+    TaskDispatchError(#[from] TaskDispatchError),
+}
+
+pub type DispatchResult = Result<Option<Vec<u8>>, TaskingError>;
+
 /// Entry point into dispatching tasks on the C2
-pub async fn dispatch_task(
-    input: String,
-    creds: &Credentials,
-    agent: IsTaskingAgent<'_>,
-    state: State<Arc<AppState>>,
-) -> Result<(), TaskDispatchError> {
+pub async fn dispatch_task(input: String, agent: IsTaskingAgent) -> DispatchResult {
     // Collect each token individually
     let input_cl = input.clone();
     let tokens: Vec<&str> = input_cl.split_whitespace().collect();
-    dispatcher(tokens, input, creds, agent, state).await
+    let result = dispatcher(tokens, input, agent.clone()).await;
+
+    // Handle the error output for the user
+    if let Err(ref e) = result {
+        if let IsTaskingAgent::Yes(agent_id) = agent {
+            let connected_agents: RwSignal<HashMap<String, RwSignal<Agent>>> =
+                use_context().expect("could not get RwSig connected_agents");
+
+            let mut guard = connected_agents.write();
+            if let Some(agent) = (*guard).get_mut(&agent_id) {
+                agent.update(|lock| {
+                    lock.output_messages.push(TabConsoleMessages {
+                        completed_id: 0,
+                        event: "[Error dispatching task]".to_string(),
+                        time: Utc::now().to_string(),
+                        messages: vec![e.to_string()],
+                    })
+                });
+            }
+        }
+    }
+
+    result
 }
 
-async fn dispatcher(
-    tokens: Vec<&str>,
-    raw_input: String,
-    creds: &Credentials,
-    agent: IsTaskingAgent<'_>,
-    state: State<Arc<AppState>>,
-) -> Result<(), TaskDispatchError> {
+async fn dispatcher(tokens: Vec<&str>, raw_input: String, agent: IsTaskingAgent) -> DispatchResult {
     if tokens.is_empty() {
-        return Err(TaskDispatchError::BadTokens(
-            "No tokens found in input stream".into(),
-        ));
+        return Ok(None);
     }
 
     //
@@ -50,38 +78,38 @@ async fn dispatcher(
     //
 
     match tokens.as_slice() {
-        [""] | [" "] => Ok(()),
+        [""] | [" "] => Ok(None),
         // generic
         ["exit"] | ["quit"] => exit(0),
-        ["clear"] | ["cls"] => clear_terminal(&agent, state).await,
-        ["servertime"] => show_server_time(creds, state).await,
-        ["help"] => show_help(&agent, state).await,
-        ["help", arg] => show_help_for_command(&agent, state, arg).await,
+        ["clear"] | ["cls"] => clear_terminal(&agent).await,
+        ["servertime"] => show_server_time().await,
+        ["help"] => show_help(&agent).await,
+        ["help", arg] => show_help_for_command(&agent, arg).await,
 
         // on &agent
-        ["export_db"] => export_db(creds, &agent).await,
-        ["set", "sleep", time] => set_sleep(time, creds, &agent).await,
-        ["ps"] => list_processes(creds, &agent).await,
-        ["cd", pat @ ..] => change_directory(pat, creds, &agent).await,
-        ["pwd"] => pwd(creds, &agent).await,
-        ["kill_agent" | "ka"] => kill_agent(creds, &agent, state).await,
-        ["kill", pid] => kill_process(creds, &agent, pid).await,
-        ["remove_agent" | "ra"] => remove_agent(creds, &agent, state).await,
-        ["ls"] => dir_listing(creds, &agent).await,
-        ["pillage"] => pillage(creds, &agent).await,
-        ["run", args @ ..] => run_powershell_command(args, creds, &agent).await,
-        ["drop", args @ ..] => file_dropper(args, creds, &agent, state).await,
-        ["cp", _p @ ..] | ["copy", _p @ ..] => copy_file(raw_input, creds, &agent).await,
-        ["mv", _p @ ..] | ["move", _p @ ..] => move_file(raw_input, creds, &agent).await,
-        ["rm", _p @ ..] => remove_file(raw_input, FileOperationTarget::File, creds, &agent).await,
-        ["rm_d", _p @ ..] => remove_file(raw_input, FileOperationTarget::Dir, creds, &agent).await,
-        ["pull", _p @ ..] => pull_file(raw_input, creds, &agent).await,
+        ["export_db"] => export_db(&agent).await,
+        ["set", "sleep", time] => set_sleep(time, &agent).await,
+        ["ps"] => list_processes(&agent).await,
+        ["cd", pat @ ..] => change_directory(pat, &agent).await,
+        ["pwd"] => pwd(&agent).await,
+        ["kill_agent" | "ka"] => kill_agent(&agent).await,
+        ["kill", pid] => kill_process(&agent, pid).await,
+        ["remove_agent" | "ra"] => remove_agent(&agent).await,
+        ["ls"] => dir_listing(&agent).await,
+        ["pillage"] => pillage(&agent).await,
+        ["run", args @ ..] => run_powershell_command(args, &agent).await,
+        ["drop", args @ ..] => file_dropper(args, &agent).await,
+        ["cp", _p @ ..] | ["copy", _p @ ..] => copy_file(raw_input, &agent).await,
+        ["mv", _p @ ..] | ["move", _p @ ..] => move_file(raw_input, &agent).await,
+        ["rm", _p @ ..] => remove_file(raw_input, FileOperationTarget::File, &agent).await,
+        ["rm_d", _p @ ..] => remove_file(raw_input, FileOperationTarget::Dir, &agent).await,
+        ["pull", _p @ ..] => pull_file(raw_input, &agent).await,
         ["reg", "query", _pat @ ..] => {
-            reg_query_del(raw_input, creds, &agent, RegOperationDelQuery::Query).await
+            reg_query_del(raw_input, &agent, RegOperationDelQuery::Query).await
         }
-        ["reg", "add", _p @ ..] => reg_add(raw_input, creds, &agent).await,
+        ["reg", "add", _p @ ..] => reg_add(raw_input, &agent).await,
         ["reg", "del", _p @ ..] => {
-            reg_query_del(raw_input, creds, &agent, RegOperationDelQuery::Delete).await
+            reg_query_del(raw_input, &agent, RegOperationDelQuery::Delete).await
         }
         _ => unknown_command(),
     }

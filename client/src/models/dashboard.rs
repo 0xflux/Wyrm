@@ -1,10 +1,180 @@
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use shared::{
     process::Process,
     tasks::{Command, PowershellOutput, WyrmResult},
 };
-use shared_c2_client::NotificationForAgent;
+
+use crate::{
+    controller::{
+        delete_item_in_browser_store, get_item_from_browser_store, store_item_in_browser_store,
+        wyrm_chat_history_browser_key,
+    },
+    models::TAB_STORAGE_KEY,
+};
+
+/// A representation of in memory agents on the C2, being a tuple of:
+/// - `String`: Agent display representation
+/// - `bool`: Is stale
+/// - `Option<Value>`: Any new notifications
+pub type AgentC2MemoryNotifications = (String, bool, Option<Value>);
+
+/// A local client representation of an agent with a definition not shared across the
+/// `Wyrm` ecosystem.
+#[derive(Debug, Clone, Default)]
+pub struct Agent {
+    pub agent_id: String,
+    pub last_check_in: DateTime<Utc>,
+    pub pid: u32,
+    pub process_name: String,
+    // TODO
+    // pub notification_status: NotificationStatus,
+    pub is_stale: bool,
+    /// Messages to be shown in the message box in the GUI
+    pub output_messages: Vec<TabConsoleMessages>,
+}
+
+impl Agent {
+    pub fn from(
+        agent_id: String,
+        last_check_in: DateTime<Utc>,
+        pid: u32,
+        process_name: String,
+        is_stale: bool,
+    ) -> Self {
+        Self {
+            agent_id,
+            // notification_status: NotificationStatus::None,
+            last_check_in,
+            pid,
+            process_name,
+            is_stale,
+            ..Default::default()
+        }
+    }
+
+    pub fn from_messages(
+        messages: Vec<NotificationForAgent>,
+        agent_id: String,
+        last_check_in: DateTime<Utc>,
+        pid: u32,
+        process_name: String,
+        is_stale: bool,
+    ) -> Self {
+        let mut agent = Self::from(agent_id, last_check_in, pid, process_name, is_stale);
+
+        let mut new_messages = vec![];
+
+        for msg in messages {
+            new_messages.push(TabConsoleMessages::from(msg));
+        }
+
+        agent.output_messages.append(&mut new_messages);
+
+        agent
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub struct TabConsoleMessages {
+    pub completed_id: i32,
+    pub event: String,
+    pub time: String,
+    pub messages: Vec<String>,
+}
+
+impl TabConsoleMessages {
+    /// Creates a new `TabConsoleMessages` event where the result isn't something that has come about from interacting
+    /// with an agent.
+    ///
+    /// This could be used for commands which just require some form of response back to the user, from the C2 or locally
+    /// within the client itself.
+    pub fn non_agent_message(event: String, message: String) -> Self {
+        Self {
+            completed_id: 0,
+            event,
+            time: "-".into(),
+            messages: vec![message],
+        }
+    }
+}
+
+/// A representation of the database information pertaining to agent notifications which have not
+/// yet been pulled by the operator.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct NotificationForAgent {
+    pub completed_id: i32,
+    pub task_id: i32,
+    pub command_id: i32,
+    pub agent_id: String,
+    pub result: Option<String>,
+    pub time_completed_ms: i64,
+}
+
+impl From<NotificationForAgent> for TabConsoleMessages {
+    fn from(notification_data: NotificationForAgent) -> Self {
+        let cmd = Command::from_u32(notification_data.command_id as _);
+        let cmd_string = command_to_string(&cmd);
+        let result = notification_data.format_console_output();
+
+        let time_seconds = if notification_data.time_completed_ms == 0 {
+            let now = Utc::now();
+            now.timestamp()
+        } else {
+            notification_data.time_completed_ms
+        };
+
+        // I am happy with the unwrap here, and I would prefer it over a default or half working product; if we make a change
+        // to how time is represented then this will crash the client - forcing a bug fix. In any case, this should not be a real problem
+        let time_utc_str = DateTime::from_timestamp(time_seconds, 0)
+            .unwrap()
+            .format("%d/%m/%Y %H:%M:%S")
+            .to_string();
+
+        Self {
+            completed_id: notification_data.completed_id,
+            event: cmd_string,
+            time: time_utc_str,
+            messages: result,
+        }
+    }
+}
+
+/// Converts a [`Command`] to a `String`
+fn command_to_string(cmd: &Command) -> String {
+    let c = match cmd {
+        Command::Sleep => "Sleep",
+        Command::Ps => "ListProcesses",
+        Command::GetUsername => "GetUsername",
+        Command::Pillage => "Pillage",
+        Command::UpdateSleepTime => "UpdateSleepTime",
+        Command::Pwd => "Pwd",
+        Command::AgentsFirstSessionBeacon => "AgentsFirstSessionBeacon",
+        Command::Cd => "Cd",
+        Command::KillAgent => "KillAgent",
+        Command::Ls => "Ls",
+        Command::Run => "Run",
+        Command::KillProcess => "KillProcess",
+        Command::Drop => "Drop",
+        Command::Undefined => "Undefined",
+        Command::Copy => "Copy",
+        Command::Move => "Move",
+        Command::Pull => "Pull",
+        Command::RegQuery => "reg query",
+        Command::RegAdd => "reg add",
+        Command::RegDelete => "reg del",
+        Command::RmFile => "RmFile",
+        Command::RmDir => "RmDir",
+    };
+
+    c.into()
+}
 
 pub trait FormatOutput {
     fn format_console_output(&self) -> Vec<String>;
@@ -316,22 +486,6 @@ impl FormatOutput for NotificationForAgent {
     }
 }
 
-/// A helper function to print values when it is just a WyrmResult<String>
-fn print_wyrm_result_string(encoded_data: &String) -> Vec<String> {
-    match serde_json::from_str::<WyrmResult<String>>(&encoded_data) {
-        Ok(wyrm_result) => match wyrm_result {
-            WyrmResult::Ok(d) => return vec![d],
-            WyrmResult::Err(e) => return vec![format!("An error occurred: {e}")],
-        },
-        Err(e) => {
-            return vec![format!(
-                "Could not deserialise response: {e}. Got: {encoded_data:#?}"
-            )];
-        }
-    }
-}
-
-/// Prints a coloured error message to the console for use in viewing notifications on the agent.
 fn print_client_error(msg: &str) -> String {
     format!("Error: {msg}")
 }
@@ -353,5 +507,61 @@ impl StripCannon for Path {
         } else {
             s.into()
         }
+    }
+}
+
+/// A helper function to print values when it is just a WyrmResult<String>
+fn print_wyrm_result_string(encoded_data: &String) -> Vec<String> {
+    match serde_json::from_str::<WyrmResult<String>>(&encoded_data) {
+        Ok(wyrm_result) => match wyrm_result {
+            WyrmResult::Ok(d) => return vec![d],
+            WyrmResult::Err(e) => return vec![format!("An error occurred: {e}")],
+        },
+        Err(e) => {
+            return vec![format!(
+                "Could not deserialise response: {e}. Got: {encoded_data:#?}"
+            )];
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Default, Debug)]
+pub struct ActiveTabs {
+    pub tabs: HashSet<String>,
+    pub active_id: Option<String>,
+}
+
+impl ActiveTabs {
+    /// Instantiates a new [`ActiveTabs`] from the store. If it did not exist, a new [`ActiveTabs`] will be
+    /// created.
+    pub fn from_store() -> Self {
+        match get_item_from_browser_store(TAB_STORAGE_KEY) {
+            Ok(s) => s,
+            Err(_) => Self::default(),
+        }
+    }
+
+    /// Writes the current tab layout to the browser store
+    pub fn save_to_store(&self) -> anyhow::Result<()> {
+        store_item_in_browser_store(TAB_STORAGE_KEY, self)?;
+
+        Ok(())
+    }
+
+    /// Adds a tab to the tracked tabs, doing nothing if the value already exists
+    pub fn add_tab(&mut self, name: &str) {
+        let name = name.to_string();
+        let _ = self.tabs.insert(name.clone());
+        let _ = self.save_to_store();
+        self.active_id = Some(name);
+    }
+
+    /// Removes a tab to the tracked tabs, doing nothing if the value did not exists
+    pub fn remove_tab(&mut self, name: &str) {
+        self.active_id = None;
+        let _ = self.tabs.remove(name);
+        let key = wyrm_chat_history_browser_key(name);
+        delete_item_in_browser_store(&key);
+        let _ = self.save_to_store();
     }
 }

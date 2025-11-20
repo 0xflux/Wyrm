@@ -21,4 +21,6 @@ rust-crypto = "0.2.36"
 scc = { version = "2.3.4" }
 futures = "0.3"
 toml = "0.9.6"
-thiserror = "2.0.16"
+thiserror = "2.0"
+tower-http = { version = "0.6", features = ["cors"]}
+axum-extra = { version = "0.12.0", features = ["cookie"] }
