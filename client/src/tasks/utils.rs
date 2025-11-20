@@ -29,7 +29,7 @@ use shared::task_types::RegType;
 /// )
 /// ```
 pub fn split_string_slices_to_n(
-    mut n: usize,
+    n: usize,
     strs: &str,
     mut discard_first: DiscardFirst,
 ) -> Option<Vec<String>> {
