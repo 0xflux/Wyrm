@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: client/Dockerfile
     ports: 
-      - 4040:4040
+      - "3000:3000"
 
   c2_db:
     environment:
