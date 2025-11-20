@@ -24,9 +24,6 @@ pub struct AppState {
     /// Database pool
     pub db_pool: Db,
     pub endpoints: RwLock<Endpoints>,
-    /// The admin token env variable found in .env, should be changed from default and needs
-    /// to match the one on the client.
-    pub admin_token: String,
     /// Tokens added during the agent creation wizard in which validate agents who are authorised to talk to the C2
     pub agent_tokens: RwLock<HashSet<String>>,
     pub profile: RwLock<Vec<Profile>>,
@@ -75,8 +72,6 @@ impl AppState {
             download_endpoints,
         };
 
-        let admin_token = env::var("ADMIN_TOKEN").expect("could not find env variable ADMIN_TOKEN");
-
         let profile = RwLock::new(profile);
 
         let sessions = Arc::new(Mutex::new(HashMap::new()));
@@ -85,7 +80,6 @@ impl AppState {
             db_pool,
             connected_agents: Arc::new(AgentList::default()),
             endpoints: RwLock::new(endpoints),
-            admin_token,
             agent_tokens: RwLock::new(agent_tokens),
             profile,
             sessions,

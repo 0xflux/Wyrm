@@ -29,8 +29,6 @@ pub async fn try_login(
     let creds = Credentials {
         username: login.username.clone(),
         password: login.password.clone(),
-        admin_env_token: env::var("ADMIN_TOKEN")
-            .expect("could not find environment variable ADMIN_TOKEN"),
         c2_url: login.c2.clone(),
     };
 

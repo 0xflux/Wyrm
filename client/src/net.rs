@@ -29,18 +29,13 @@ impl IsTaskingAgent<'_> {
 pub struct Credentials {
     pub username: String,
     pub password: String,
-    pub admin_env_token: String,
     pub c2_url: String,
 }
 
 fn auth_header(creds: &Credentials) -> String {
     format!(
         "{}{}{}{}{}",
-        creds.username,
-        ADMIN_AUTH_SEPARATOR,
-        creds.password,
-        ADMIN_AUTH_SEPARATOR,
-        creds.admin_env_token,
+        creds.username, ADMIN_AUTH_SEPARATOR, creds.password,
     )
 }
 

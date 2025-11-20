@@ -6,8 +6,6 @@ services:
       dockerfile: client/Dockerfile
     ports: 
       - 4040:4040
-    environment:
-      - ADMIN_TOKEN=${ADMIN_TOKEN}
 
   c2_db:
     environment:
@@ -35,7 +33,6 @@ services:
       POSTGRES_HOST: "c2_db"
       POSTGRES_DB: "${POSTGRES_DB}"
       LEEWAY_IN_SECONDS: "${LEEWAY_IN_SECONDS}"
-      ADMIN_TOKEN: "${ADMIN_TOKEN}"
       STALE_AGENT_SLEEP_TIME: "${STALE_AGENT_SLEEP_TIME}"
     ports: 
       - "${C2_PORT}:${C2_PORT}"
