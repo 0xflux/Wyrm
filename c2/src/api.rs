@@ -7,7 +7,7 @@ use crate::{
     app_state::AppState,
     exfil::handle_exfiltrated_file,
     logging::{log_admin_login_attempt, log_error_async},
-    middleware::verify_password,
+    middleware::{create_new_operator, verify_password},
     net::{serialise_tasks_for_agent, serve_file},
 };
 use axum::{
@@ -292,9 +292,10 @@ pub async fn admin_login(
                     // for us if a user already exists, if so, it will panic as we don't want anybody
                     // and everybody creating accounts! And we aren't yet multiplayer
                     // create_new_operator(username, password, state.clone()).await;
+                    create_new_operator(&username, &password, state.0.clone()).await;
                     log_admin_login_attempt(&username, &password, ip, true).await;
-                    // TODO
-                    return (jar, StatusCode::INTERNAL_SERVER_ERROR.into_response());
+                    // Now try get the user again, and continue execution
+                    state.db_pool.lookup_operator(&username).await.unwrap()
                 }
                 _ => {
                     log_error_async(&format!(
