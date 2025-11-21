@@ -40,11 +40,14 @@ impl Db {
             .connect(&db_string)
             .await
             .map_err(|e| {
+                let msg = format!("Could not establish a database connection. {e}");
+                print_failed(&msg);
                 panic!("Could not establish a database connection. {e}");
             })
-            .unwrap();
+            .expect("could not setup PgPoolOptions");
 
         if let Err(e) = MIGRATOR.run(&pool).await {
+            print_failed(&format!("Could not run db migrations. {e}"));
             panic!("Could not run db migrations. {e}");
         }
 
