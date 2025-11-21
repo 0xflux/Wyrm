@@ -115,19 +115,6 @@ Removing `minreq` results in a ~350 kb binary, which is much more in line with e
 
 Output of running `cargo bloat`:
 
-```PowerShell
-# set env
-$env:AGENT_NAME="foo"; `
-$env:PE_NAME="bar"; `
-$env:DEF_SLEEP_TIME="20"; `
-$env:C2_HOST="http://127.0.0.1"; `
-$env:C2_URIS="test"; `
-$env:C2_PORT="8080"; `
-$env:USERAGENT="me"; `
-$env:STAGING_URI="f"; `
-$env:SECURITY_TOKEN="f"; `
-```
-
 ```shell
 # Note turn off debug symbol stripping, etc
 cargo bloat --release --features sandbox_mem,sandbox_trig,patch_etw -n 50

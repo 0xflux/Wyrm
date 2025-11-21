@@ -79,7 +79,7 @@ pub async fn verify_password(password: &str, password_hash: &str, salt: &str) ->
 /// and a random salt.
 ///
 /// The hashed password will be stored in the database, **not** the plaintext version.
-async fn create_new_operator(username: &str, password: &str, state: Arc<AppState>) {
+pub async fn create_new_operator(username: &str, password: &str, state: Arc<AppState>) {
     let mut salt = [0u8; SALT_BYTES];
     rng().fill_bytes(&mut salt);
 
