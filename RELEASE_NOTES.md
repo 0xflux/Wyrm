@@ -6,6 +6,10 @@ pulling updates.
 
 **IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
 
+## &#128679; v 0.4.2
+
+- Fixes bug which prevented user logging into C2 for the first time if no user is created.
+
 ## &#128679; v 0.4.1
 
 ### &#128679; Breaking changes
