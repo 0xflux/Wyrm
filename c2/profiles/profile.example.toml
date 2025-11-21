@@ -34,9 +34,9 @@ jitter = 50
 # Right now you can only specify one listener, under the name 'default'
 # Multiple listener profiles are coming for v1.0
 [listeners.default]
-protocol = "http" # required
-address = "http://127.0.0.1" # required
-port = 8080 # required
+protocol = "https" # required
+address = "https://localhost" # required
+port = 443 # required
 token = "my_unique_token"
 sleep = 5
 
