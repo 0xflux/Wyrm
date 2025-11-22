@@ -3,18 +3,6 @@
 Any item with a (L) tag is a contribution which will not be live (or requires further decision making) as this is intended to be
 developed as a premium or otherwise private feature. These will be few and far between.
 
-### 0.4.3
-
-1) [x] Is the error.log working and the panic hook?
-2) [ ] Remove the `.env`, and put instructions in the docs, makes it easier over time.
-   1) [x] Actually I think I want to migrate to 1 profile which effectively becomes the .env? Except for db creds, those should be done over an env file. 
-      1) [x] On boot check only 1 profile.
-      2) [x] The user selects which **implant name** to build in the builder.
-      3) [x] `All/all` should be a special name to build all profiles present.
-3) [x] Test pull
-4) [x] Test upload via gui
-5) [x] Test upload via agent
-
 ### 0.5
 
 1) [ ] DLL needs thread start in `DLLMain`
