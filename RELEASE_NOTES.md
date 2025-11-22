@@ -6,6 +6,10 @@ pulling updates.
 
 **IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
 
+## &#128679; v 0.4.3
+
+- Investigated whether error logging was happening (the C2 hasn't generated an error in a long time) - confirmed error handling works as expected. This is good.
+
 ## &#128679; v 0.4.2
 
 - Fixes bug which prevented user logging into C2 for the first time if no user is created.
