@@ -61,6 +61,10 @@ where
     bail!("Could not find key: {key}")
 }
 
+/// Serialises and stores an item in the browser's local storage.
+///
+/// # Error
+/// Returns an error if JSON serialisation fails.
 pub fn store_item_in_browser_store<T: Serialize>(key: &str, item: &T) -> anyhow::Result<()> {
     let ser = serde_json::to_string(item)?;
 
@@ -73,6 +77,10 @@ pub fn store_item_in_browser_store<T: Serialize>(key: &str, item: &T) -> anyhow:
     Ok(())
 }
 
+/// Removes an item from the browser's local storage.
+///
+/// Silently handles cases where local storage is unavailable or the deletion fails,
+/// logging errors for debugging purposes.
 pub fn delete_item_in_browser_store(key: &str) {
     let _: Option<()> = window().local_storage().ok().flatten().and_then(|s| {
         if let Err(e) = s.remove_item(key) {
