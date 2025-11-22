@@ -49,7 +49,7 @@ mod timestomping;
 
 /// The maximum POST body request size that can be received by the C2.
 /// Set at 1 GB.
-const NUM_GIGS: usize = 1;
+const NUM_GIGS: usize = 100;
 const MAX_POST_BODY_SZ: usize = NUM_GIGS * 1024 * 1024 * 1024;
 
 const AUTH_COOKIE_NAME: &str = "session";
