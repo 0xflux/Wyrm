@@ -4,8 +4,12 @@ use web_sys::{
     js_sys::{self, Uint8Array},
     window,
 };
-
-/// Trigger a local download given an input file name and byte body.
+/// Initiates a client-side file download in the browser by creating a temporary blob URL.
+///
+/// # Arguments
+///
+/// * `filename` - The name that will be suggested for the downloaded file
+/// * `bytes` - The raw byte content to be downloaded
 pub fn trigger_download(filename: &str, bytes: &[u8]) {
     let window = window().expect("no global `window` exists");
     let document = window.document().expect("should have a document");
