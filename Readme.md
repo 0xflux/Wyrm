@@ -1,6 +1,8 @@
 # Wyrm - v0.4.3 Hatchling
 
-Read the docs at https://docs.wyrm-c2.com/. Read this for quick setup instructions.
+Read the docs at https://docs.wyrm-c2.com/ for quick setup instructions. Or jump in to read about [customisable profiles](https://docs.wyrm-c2.com/implant/profiles/), 
+[evasion](https://docs.wyrm-c2.com/implant/profiles/evasion.html), and [obfuscation](https://docs.wyrm-c2.com/implant/profiles/obfuscation.html). The docs
+will be updated as the project grows and gains more capabilities.
 
 Pre-release version. If you want to support this project, please give it a star! I will be releasing updates and
 devlogs on my [blog](https://fluxsec.red/) and [YouTube](https://www.youtube.com/@FluxSec) to document progress, so please give me a follow there.
