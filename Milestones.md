@@ -8,9 +8,9 @@ developed as a premium or otherwise private feature. These will be few and far b
 1) [x] Is the error.log working and the panic hook?
 2) [ ] Remove the `.env`, and put instructions in the docs, makes it easier over time.
    1) [x] Actually I think I want to migrate to 1 profile which effectively becomes the .env? Except for db creds, those should be done over an env file. 
-      1) [ ] On boot check only 1 profile.
+      1) [x] On boot check only 1 profile.
       2) [x] The user selects which **implant name** to build in the builder.
-      3) [ ] `All/all` should be a special name to build all profiles present.
+      3) [x] `All/all` should be a special name to build all profiles present.
 
 ### 0.5
 

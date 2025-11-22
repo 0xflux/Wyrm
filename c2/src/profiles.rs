@@ -177,8 +177,8 @@ pub async fn parse_profile() -> io::Result<Profile> {
     // We now only support 1 profile toml in the profile directory. If more than one is detected,
     // then return an error, logging the error internally.
     //
-    if profile_paths.len() > 1 {
-        let msg = "You can only have one `profile.toml` in /c2/profiles. Please consolidate \
+    if profile_paths.len() != 1 {
+        let msg = "You must have only have one `profile.toml` in /c2/profiles. Please consolidate \
             into one profile. You may specify multiple implant configurations to build, but you must \
             have one, and only one, `profile.toml`.";
         return Err(io::Error::other(msg));
