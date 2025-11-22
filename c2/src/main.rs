@@ -286,6 +286,7 @@ fn ensure_dirs_and_files() {
     print_success("Directories and files are in order..");
 }
 
+/// Installs a custom panic handler that logs panics to the a log file in `/data/logs/error.log`.
 fn set_panic_hook() {
     set_hook(Box::new(|panic_info| {
         let payload = panic_info
