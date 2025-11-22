@@ -1,5 +1,9 @@
 # Wyrm - v0.4.3 Hatchling
 
+Wyrm (pronounced 'worm', an old English word for 'serpent' or 'dragon') is a post exploitation, open source, Red Team security testing framework framework, written in Rust designed to be used by Red Teams, Purple Teams, 
+Penetration Testers, and general infosec hobbyists. This project is fully built in Rust, with extra effort going into obfuscating artifacts which
+could be present in memory. Project created and maintained by [flux](https://github.com/0xflux/), for **legal authorised security testing only**.
+
 Read the docs at https://docs.wyrm-c2.com/ for quick setup instructions. Or jump in to read about [customisable profiles](https://docs.wyrm-c2.com/implant/profiles/), 
 [evasion](https://docs.wyrm-c2.com/implant/profiles/evasion.html), and [obfuscation](https://docs.wyrm-c2.com/implant/profiles/obfuscation.html). The docs
 will be updated as the project grows and gains more capabilities.
@@ -16,12 +20,6 @@ breaking changes to profiles / configs which you may need to manually adjust or 
 overwrite your local configs and agent profiles.
 
 ## Post exploitation Red Team framework
-
-Wyrm (pronounced 'worm', an old English word for 'serpent' or 'dragon') is a post exploitation, open source, Red Team security testing framework framework, written in Rust designed to be used by Red Teams, Purple Teams, 
-Penetration Testers, and general infosec hobbyists. This project is fully built in Rust, with extra effort going into obfuscating artifacts which
-could be present in memory. Project created and maintained by [flux](https://github.com/0xflux/), for **legal authorised security testing only**.
-
-<!-- ![Wyrm Malware Post Exploitation Implant Red Team](resources/wyrm_landscape.png) -->
 
 Wyrm currently supports only HTTPS agents using a custom encryption scheme for encrypting traffic below TLS, with a unique packet design so that
 the packets cannot be realistically decrypted even under firewall level TLS inspection.
