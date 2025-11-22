@@ -10,7 +10,11 @@ pulling updates.
 
 - Investigated whether error logging was happening (the C2 hasn't generated an error in a long time) - confirmed error handling works as expected. This is good.
 
-## &#128679; v 0.4.2
+### &#128679; Breaking changes
+
+- Removed most of the environment variable requirements and consolidated the layout I think I will stick with for the profile `toml`. See the [docs](https://docs.wyrm-c2.com/) for how to set the profile up, example is provided.
+
+## v 0.4.2
 
 - Fixes bug which prevented user logging into C2 for the first time if no user is created.
 
