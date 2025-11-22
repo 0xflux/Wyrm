@@ -79,25 +79,30 @@ pub fn update_connected_agents(
                 }
 
                 if let Some(msgs) = new_messages {
-                    if let Ok(Some(msgs)) =
-                        serde_json::from_value::<Option<Vec<NotificationForAgent>>>(msgs)
-                    {
-                        let new_msgs = msgs
-                            .into_iter()
-                            .map(TabConsoleMessages::from)
-                            .collect::<Vec<_>>();
-                        tracked_agent.output_messages.extend(new_msgs);
-                        // persist updated history
-                        let _ = store_item_in_browser_store(
-                            &wyrm_chat_history_browser_key(&uid),
-                            &tracked_agent.output_messages,
-                        );
+                    match serde_json::from_value::<Option<Vec<NotificationForAgent>>>(msgs) {
+                        Ok(Some(msgs)) => {
+                            let new_msgs = msgs
+                                .into_iter()
+                                .map(TabConsoleMessages::from)
+                                .collect::<Vec<_>>();
+                            tracked_agent.output_messages.extend(new_msgs);
+                            let _ = store_item_in_browser_store(
+                                &wyrm_chat_history_browser_key(&uid),
+                                &tracked_agent.output_messages,
+                            );
+                        }
+                        Ok(None) => {
+                            // There were no messages
+                            ()
+                        }
+                        Err(e) => {
+                            leptos::logging::error!(
+                                "Failed to deserialize messages for agent {}: {:?}",
+                                uid,
+                                e
+                            );
+                        }
                     }
-                } else {
-                    let _ = store_item_in_browser_store(
-                        &wyrm_chat_history_browser_key(&uid),
-                        &tracked_agent.output_messages,
-                    );
                 }
             } else {
                 // Insert new tracked agent.
