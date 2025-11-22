@@ -3,27 +3,30 @@
 Any item with a (L) tag is a contribution which will not be live (or requires further decision making) as this is intended to be
 developed as a premium or otherwise private feature. These will be few and far between.
 
-### 0.5
+### 0.4.3
 
 1) [ ] Is the error.log working and the panic hook?
 2) [ ] Remove the `.env`, and put instructions in the docs, makes it easier over time..
-3) [ ] DLL needs thread start in `DLLMain`
-4) [ ] Create custom DLL exports when staging a DLL, which would make it useful for DLL SOH/side loading
+
+### 0.5
+
+1) [ ] DLL needs thread start in `DLLMain`
+2) [ ] Create custom DLL exports when staging a DLL, which would make it useful for DLL SOH/side loading
    1) [ ] Maybe this should be configurable by the TOML, so each payload can have its own name can can be built individually (or all payloads can be built at once)
    2) [ ] Can use a macro to write the function exporting the function name
       1) [ ] Option per function for it to run Wyrm, or alternatively it is a junk function (not sure how to macroise that for random things? Maybe thats a bad idea)
-5) [ ] Build implant as svc
-6) [ ] Multiple profiles for listener and implant
-7) [ ] Admin URI can be configured specifically in the profile - this will help defeat a little CTI
-8) [ ] Number of downloads for staged resources
-9) [ ] String stomping options on built binary 
-10) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
+3) [ ] Build implant as svc
+4) [ ] Multiple profiles for listener and implant
+5) [ ] Admin URI can be configured specifically in the profile - this will help defeat a little CTI
+6) [ ] Number of downloads for staged resources
+7) [ ] String stomping options on built binary 
+8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 
 ### 0.5.1
 
 1) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
 2) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
-3) [ ] Create db user on first run - pass env vars to docker?
+3) [ ] Create multiple users
 
 ### 0.6
 
