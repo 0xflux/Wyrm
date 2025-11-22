@@ -14,152 +14,83 @@ use crate::models::dashboard::{
     Agent, AgentC2MemoryNotifications, NotificationForAgent, TabConsoleMessages,
 };
 
+/// Updates the local representation of agents that are connected to the C2. As this is a client only app
+/// and not a SSR app, it is slightly more messy - we poll the update from the server; store temporarily in the
+/// browser store (to persist between refreshes and navigation), and display to the user.
 pub fn update_connected_agents(
     set_connected_agents: RwSignal<HashMap<String, RwSignal<Agent>>>,
     polled_agents: Vec<AgentC2MemoryNotifications>,
 ) {
-    // Parse the incoming polled agents into a local vec so we can
-    // determine which UIDs are present and perform updates/inserts.
-    let mut parsed: Vec<(
-        String,
-        DateTime<Utc>,
-        u32,
-        String,
-        bool,
-        Option<serde_json::Value>,
-    )> = Vec::new();
-
-    for (agent, is_stale, new_messages) in polled_agents {
-        let split: Vec<&str> = agent.split('\t').collect();
-
-        // Because we sent the string over separated by \t, we can use this to explode the
-        // params we sent in order to split it out correctly.
-        // todo we should in the future send a struct over, it will be better semantics.. than a string split by tabs
-        let uid = split[1].to_string();
-        let last_seen: DateTime<Utc> = DateTime::from_str(split[3]).unwrap();
-        let pid: u32 = split[4].to_string().parse().unwrap();
-
-        let process_image: String = CStr::from_bytes_until_nul(split[5].as_bytes())
-            .unwrap_or_default()
-            .to_string_lossy()
-            .into_owned();
-
-        parsed.push((uid, last_seen, pid, process_image, is_stale, new_messages));
-    }
-
-    // Build a set of UIDs returned by the server.
-    let new_uids: HashSet<String> = parsed
-        .iter()
-        .map(|(uid, _, _, _, _, _)| uid.clone())
+    // Split out the incoming agents in the poll and do a manual deserialisation based on the presence of
+    // \t chars which was sent as the connection string.
+    let parsed: Vec<_> = polled_agents
+        .into_iter()
+        .map(|(agent, is_stale, new_messages)| {
+            let split: Vec<&str> = agent.split('\t').collect();
+            let uid = split[1].to_string();
+            let last_seen = DateTime::from_str(split[3]).unwrap();
+            let pid = split[4].parse().unwrap();
+            let process_image = split[5].to_string();
+            (uid, last_seen, pid, process_image, is_stale, new_messages)
+        })
         .collect();
 
-    // Remove any agents from the tracked map that are no longer present in the latest poll.
-    if let Some(_) = set_connected_agents.try_update(|map| {
-        map.retain(|k, _| new_uids.contains(k));
-    }) {
-        ()
-    };
+    let new_uids: HashSet<_> = parsed.iter().map(|(uid, ..)| uid.clone()).collect();
 
-    // Update existing agents or insert new ones from the parsed list.
-    if let Some(_) = set_connected_agents.try_update(|sig| {
+    //
+    // Retain only agents still present
+    //
+    set_connected_agents.try_update(|map| {
+        map.retain(|uid, _| new_uids.contains(uid));
+    });
+
+    //
+    // Update or insert agents
+    //
+    set_connected_agents.try_update(|agents| {
         for (uid, last_seen, pid, process_image, is_stale, new_messages) in parsed {
-            if let Some(ta) = (*sig).get_mut(&uid) {
-                let mut tracked_agent = ta.write();
-                tracked_agent.last_check_in = last_seen;
-                tracked_agent.pid = pid;
-                tracked_agent.is_stale = is_stale;
-                tracked_agent.process_name = process_image.clone();
+            let entry = agents.entry(uid.clone()).or_insert_with(|| {
+                RwSignal::new(Agent::from(
+                    uid.clone(),
+                    last_seen,
+                    pid,
+                    process_image.clone(),
+                    is_stale,
+                ))
+            });
 
-                if tracked_agent.output_messages.is_empty() {
-                    if let Ok(stored) = get_item_from_browser_store::<Vec<TabConsoleMessages>>(
+            let mut agent = entry.write();
+            agent.last_check_in = last_seen;
+            agent.pid = pid;
+            agent.is_stale = is_stale;
+            agent.process_name = process_image.clone();
+
+            //
+            // Always hydrate stored messages once
+            //
+            if agent.output_messages.is_empty() {
+                if let Ok(stored) = get_item_from_browser_store::<Vec<TabConsoleMessages>>(
+                    &wyrm_chat_history_browser_key(&uid),
+                ) {
+                    agent.output_messages = stored;
+                }
+            }
+
+            //
+            // Merge new messages
+            //
+            if let Some(msgs) = new_messages {
+                if let Ok(Some(msgs)) =
+                    serde_json::from_value::<Option<Vec<NotificationForAgent>>>(msgs)
+                {
+                    let new_msgs: Vec<_> = msgs.into_iter().map(TabConsoleMessages::from).collect();
+                    agent.output_messages.extend(new_msgs);
+                    let _ = store_item_in_browser_store(
                         &wyrm_chat_history_browser_key(&uid),
-                    ) {
-                        tracked_agent.output_messages = stored;
-                    }
-                }
-
-                if let Some(msgs) = new_messages {
-                    match serde_json::from_value::<Option<Vec<NotificationForAgent>>>(msgs) {
-                        Ok(Some(msgs)) => {
-                            let new_msgs = msgs
-                                .into_iter()
-                                .map(TabConsoleMessages::from)
-                                .collect::<Vec<_>>();
-                            tracked_agent.output_messages.extend(new_msgs);
-                            let _ = store_item_in_browser_store(
-                                &wyrm_chat_history_browser_key(&uid),
-                                &tracked_agent.output_messages,
-                            );
-                        }
-                        Ok(None) => {
-                            // There were no messages
-                            ()
-                        }
-                        Err(e) => {
-                            leptos::logging::error!(
-                                "Failed to deserialize messages for agent {}: {:?}",
-                                uid,
-                                e
-                            );
-                        }
-                    }
-                }
-            } else {
-                // Insert new tracked agent.
-                if let Some(msgs) = new_messages {
-                    if let Ok(Some(msgs)) =
-                        serde_json::from_value::<Option<Vec<NotificationForAgent>>>(msgs)
-                    {
-                        (*sig).insert(
-                            uid.clone(),
-                            RwSignal::new(Agent::from_messages(
-                                msgs,
-                                uid.clone(),
-                                last_seen,
-                                pid,
-                                process_image,
-                                is_stale,
-                            )),
-                        );
-                    } else {
-                        (*sig).insert(
-                            uid.clone(),
-                            RwSignal::new(Agent::from(
-                                uid.clone(),
-                                last_seen,
-                                pid,
-                                process_image,
-                                is_stale,
-                            )),
-                        );
-                    }
-                } else {
-                    (*sig).insert(
-                        uid.clone(),
-                        RwSignal::new(Agent::from(
-                            uid.clone(),
-                            last_seen,
-                            pid,
-                            process_image,
-                            is_stale,
-                        )),
+                        &agent.output_messages,
                     );
-                }
-
-                // after insertion, try to rehydrate stored history
-                if let Some(ta) = (*sig).get_mut(&uid) {
-                    let mut tracked_agent = ta.write();
-                    if tracked_agent.output_messages.is_empty() {
-                        if let Ok(stored) = get_item_from_browser_store::<Vec<TabConsoleMessages>>(
-                            &wyrm_chat_history_browser_key(&uid),
-                        ) {
-                            tracked_agent.output_messages = stored;
-                        }
-                    }
                 }
             }
         }
-    }) {
-        ()
-    };
+    });
 }
