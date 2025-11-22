@@ -149,12 +149,7 @@ impl AppState {
 pub async fn detect_stale_agents(state: Arc<AppState>) {
     // The duration to sleep the async task which will check whether we need to remove an agent from the
     // live list.
-    let stale_agent_sleep_time: u64 = match env::var("STALE_AGENT_SLEEP_TIME") {
-        Ok(s) => s.parse().expect("expected u64"),
-        Err(_) => {
-            panic!("Could not find environment variable STALE_AGENT_SLEEP_TIME");
-        }
-    };
+    const STALE_AGENT_SLEEP_TIME: u64 = 10;
 
     let leeway_seconds: u32 = match env::var("LEEWAY_IN_SECONDS") {
         Ok(s) => s.parse().expect("expected u32"),
@@ -169,7 +164,7 @@ pub async fn detect_stale_agents(state: Arc<AppState>) {
                 .connected_agents
                 .mark_agents_stale(leeway_seconds)
                 .await;
-            tokio::time::sleep(Duration::from_secs(stale_agent_sleep_time)).await;
+            tokio::time::sleep(Duration::from_secs(STALE_AGENT_SLEEP_TIME)).await;
         }
     }
 }
