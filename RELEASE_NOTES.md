@@ -9,6 +9,7 @@ pulling updates.
 ## &#128679; v 0.4.3
 
 - Investigated whether error logging was happening (the C2 hasn't generated an error in a long time) - confirmed error handling works as expected. This is good.
+- Fixes bug which caused some results not to print to an agents console.
 
 ### &#128679; Breaking changes
 
