@@ -7,7 +7,10 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 1) [x] Is the error.log working and the panic hook?
 2) [ ] Remove the `.env`, and put instructions in the docs, makes it easier over time.
-   1) [ ] Actually I think I want to migrate to 1 profile which effectively becomes the .env? Except for db creds, those should be done over an env file. The user selects which profile name to build in the builder, but the c2 ingests only 1 `*.toml` when it boots.
+   1) [x] Actually I think I want to migrate to 1 profile which effectively becomes the .env? Except for db creds, those should be done over an env file. 
+      1) [ ] On boot check only 1 profile.
+      2) [ ] The user selects which **implant name** to build in the builder, but the c2 ingests only 1 `*.toml` when it boots. 
+      3) [ ] `All` should be a special name to build all profiles present.
 
 ### 0.5
 
