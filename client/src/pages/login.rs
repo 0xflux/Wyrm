@@ -98,16 +98,22 @@ pub fn Login() -> impl IntoView {
                     type="url"
                     id="c2"
                     name="c2"
+                    autocomplete="url"
                     class="form-control"
-                    placeholder="https://myc2.com" required autofocus />
+                    placeholder="https://myc2.com" 
+                    required 
+                    autofocus />
 
                 <label for="username" class="sr-only">Username</label>
                 <input
                     bind:value=username
-                    type="username"
+                    type="text"
                     id="username"
                     name="username"
-                    class="form-control" placeholder="Username" required />
+                    autocomplete="username"
+                    class="form-control" 
+                    placeholder="Username" 
+                    required />
 
                 <label for="password" class="sr-only">Password</label>
                 <input
@@ -115,7 +121,10 @@ pub fn Login() -> impl IntoView {
                     type="password"
                     id="password"
                     name="password"
-                    class="form-control" placeholder="Password" required />
+                    autocomplete="current-password"
+                    class="form-control" 
+                    placeholder="Password" 
+                    required />
 
                 <button
                     type="submit"
