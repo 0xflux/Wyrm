@@ -1,29 +1,24 @@
 use std::{
     collections::{BTreeMap, HashSet},
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 use serde::Deserialize;
-use shared::{
-    pretty_print::print_failed,
-    tasks::{NewAgentStaging, StageType, WyrmResult},
-};
+use shared::tasks::{NewAgentStaging, StageType, WyrmResult};
 use tokio::io;
 
-use crate::logging::log_error_async;
-
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct Profile {
     pub server: Server,
     pub implants: BTreeMap<String, Implant>,
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct Server {
     pub token: String,
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct Network {
     pub address: String,
     pub uri: Vec<String>,
@@ -34,7 +29,7 @@ pub struct Network {
     pub jitter: Option<u64>,
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct Implant {
     pub anti_sandbox: Option<AntiSandbox>,
     pub debug: Option<bool>,
@@ -42,13 +37,13 @@ pub struct Implant {
     pub evasion: Evasion,
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct AntiSandbox {
     pub trig: Option<bool>,
     pub ram: Option<bool>,
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct Evasion {
     pub patch_etw: Option<bool>,
     pub timestomp: Option<String>,
@@ -63,7 +58,7 @@ impl Profile {
     /// - `stage_type`: The [`shared::tasks::StageType`] of binary to build
     pub fn as_staged_agent(
         &self,
-        implant_profile_name: &String,
+        implant_profile_name: &str,
         stage_type: StageType,
     ) -> WyrmResult<NewAgentStaging> {
         //
@@ -204,10 +199,6 @@ pub async fn parse_profile() -> io::Result<Profile> {
     };
 
     Ok(profile)
-}
-
-pub async fn get_profile() -> io::Result<Profile> {
-    parse_profile().await
 }
 
 pub fn add_listeners_from_profiles(existing: &mut HashSet<String>, p: &Profile) {

@@ -10,19 +10,15 @@ use crate::{
     DB_EXPORT_PATH, FILE_STORE_PATH,
     app_state::{AppState, DownloadEndpointData},
     logging::{log_error, log_error_async},
-    profiles::get_profile,
+    profiles::Profile,
     timestomping::timestomp_binary_compile_date,
 };
 use axum::extract::State;
 use chrono::{SecondsFormat, Utc};
 use serde_json::Value;
-use shared::{
-    pretty_print::print_failed,
-    task_types::BuildAllBins,
-    tasks::{
-        AdminCommand, Command, DELIM_FILE_DROP_METADATA, FileDropMetadata,
-        FileUploadStagingFromClient, NewAgentStaging, StageType, WyrmResult,
-    },
+use shared::tasks::{
+    AdminCommand, Command, DELIM_FILE_DROP_METADATA, FileDropMetadata, FileUploadStagingFromClient,
+    NewAgentStaging, StageType, WyrmResult,
 };
 use shared_c2_client::{AgentC2MemoryNotifications, MapToMitre, TaskExport};
 use tokio::{
@@ -173,23 +169,84 @@ pub async fn build_all_bins(
         )
     })?;
 
-    //
-    // Read the profile from disk
-    //
+    let profile = {
+        // We use the saved profile in memory
+        let guard = state.profile.read().await;
+        (*guard).clone()
+    };
 
-    let profile = match get_profile().await {
-        Ok(p) => p,
+    //
+    // If we are building all binaries, iterate through them, otherwise just build hte specified one
+    //
+    if implant_profile_name.to_lowercase() == "all" {
+        let keys: Vec<String> = profile.implants.keys().cloned().collect();
+        for key in keys {
+            write_implant_to_tmp_disk(&profile, &save_path, &key, state.clone()).await?;
+        }
+    } else {
+        write_implant_to_tmp_disk(&profile, &save_path, implant_profile_name, state.clone())
+            .await?;
+    }
+
+    //
+    // Finally zip up the result, and return them back to the user.
+    //
+    const ZIP_OUTPUT_PATH: &str = "./profiles/tmp.7z";
+    let mut cmd = tokio::process::Command::new("7z");
+    cmd.args([
+        "a",
+        ZIP_OUTPUT_PATH,
+        &format!("{}", save_path.as_os_str().display()),
+    ]);
+
+    if let Err(e) = cmd.output().await {
+        let msg = format!("Error creating 7z archive with resulting payloads. {e}");
+        let _ = remove_dir(&save_path).await?;
+
+        return Err(msg);
+    };
+
+    //
+    // At this point, we have created the 7z. We now want to read it into a buffer in memory,
+    // delete the archive, then return the buffer back to the user. We will send it through as a
+    // byte stream, which the client can then re-interpret as a file download.
+    //
+    let _ = remove_dir(&save_path).await?;
+
+    let mut buf = Vec::new();
+    let mut file = match tokio::fs::File::open(ZIP_OUTPUT_PATH).await {
+        Ok(f) => f,
         Err(e) => {
+            let msg = format!("Error opening 7z file. {e}");
             let _ = remove_dir(&save_path).await?;
-            let msg = e.to_string();
+
             return Err(msg);
         }
     };
 
+    if let Err(e) = file.read_to_end(&mut buf).await {
+        let msg = format!("Error reading 7z file. {e}");
+        let _ = remove_dir(&save_path).await?;
+
+        return Err(msg);
+    }
+
+    remove_file(ZIP_OUTPUT_PATH).await?;
+
+    Ok(buf)
+}
+
+async fn write_implant_to_tmp_disk(
+    profile: &Profile,
+    save_path: &PathBuf,
+    implant_profile_name: &str,
+    state: State<Arc<AppState>>,
+) -> Result<(), String> {
     //
     // Transform the profile into a valid `NewAgentStaging`
     //
-    let data = match profile.as_staged_agent(implant_profile_name, StageType::All) {
+    let data: NewAgentStaging = match profile.as_staged_agent(implant_profile_name, StageType::All)
+    {
         WyrmResult::Ok(d) => d,
         WyrmResult::Err(e) => {
             let _ = remove_dir(&save_path).await?;
@@ -214,7 +271,6 @@ pub async fn build_all_bins(
 
         if let Err(e) = cmd_build_output {
             let msg = &format!("Failed to build agent. {e}");
-            let _ = stage_new_agent_error_printer(msg, &data.staging_endpoint, state).await;
             let _ = remove_dir(&save_path).await?;
             return Err(msg.to_owned());
         }
@@ -226,7 +282,6 @@ pub async fn build_all_bins(
                 String::from_utf8_lossy(&output.stderr),
             );
 
-            let _ = stage_new_agent_error_printer(msg, &data.staging_endpoint, state).await;
             let _ = remove_dir(&save_path).await?;
 
             return Err(msg.to_owned());
@@ -278,7 +333,6 @@ pub async fn build_all_bins(
                 src.display(),
                 dest.display()
             );
-            let _ = stage_new_agent_error_printer(&msg, &data.staging_endpoint, state).await;
             let _ = remove_dir(&save_path).await?;
 
             return Err(msg);
@@ -292,7 +346,6 @@ pub async fn build_all_bins(
                 "The download URL matches an existing one, or a URL which is used for agent check-in, \
                 this is not permitted. Kind: {e:?}"
             );
-            let _ = stage_new_agent_error_printer(&msg, &data.staging_endpoint, state).await;
             let _ = remove_dir(&save_path).await?;
 
             return Err(msg);
@@ -305,7 +358,6 @@ pub async fn build_all_bins(
         if let Some(ts) = data.timestomp.as_ref() {
             if let Err(e) = timestomp_binary_compile_date(ts, &dest).await {
                 let msg = format!("Could not timestomp binary {}, {e}", dest.display());
-                let _ = stage_new_agent_error_printer(&msg, &data.staging_endpoint, state).await;
                 let _ = remove_dir(&save_path).await?;
 
                 return Err(msg);
@@ -313,53 +365,7 @@ pub async fn build_all_bins(
         }
     }
 
-    const ZIP_OUTPUT_PATH: &str = "./profiles/tmp.7z";
-    let mut cmd = tokio::process::Command::new("7z");
-    cmd.args([
-        "a",
-        ZIP_OUTPUT_PATH,
-        &format!("{}", save_path.as_os_str().display()),
-    ]);
-
-    if let Err(e) = cmd.output().await {
-        let msg = format!("Error creating 7z archive with resulting payloads. {e}");
-        let _ = stage_new_agent_error_printer(&msg, &data.staging_endpoint, state).await;
-        print_failed(&msg);
-        let _ = remove_dir(&save_path).await?;
-
-        return Err(msg);
-    };
-
-    //
-    // At this point, we have created the 7z. We now want to read it into a buffer in memory,
-    // delete the archive, then return the buffer back to the user. We will send it through as a
-    // byte stream, which the client can then re-interpret as a file download.
-    //
-    let _ = remove_dir(&save_path).await?;
-
-    let mut buf = Vec::new();
-    let mut file = match tokio::fs::File::open(ZIP_OUTPUT_PATH).await {
-        Ok(f) => f,
-        Err(e) => {
-            let msg = format!("Error opening 7z file. {e}");
-            let _ = stage_new_agent_error_printer(&msg, &data.staging_endpoint, state).await;
-            let _ = remove_dir(&save_path).await?;
-
-            return Err(msg);
-        }
-    };
-
-    if let Err(e) = file.read_to_end(&mut buf).await {
-        let msg = format!("Error reading 7z file. {e}");
-        let _ = stage_new_agent_error_printer(&msg, &data.staging_endpoint, state).await;
-        let _ = remove_dir(&save_path).await?;
-
-        return Err(msg);
-    }
-
-    remove_file(ZIP_OUTPUT_PATH).await?;
-
-    Ok(buf)
+    Ok(())
 }
 
 async fn remove_dir(save_path: impl AsRef<Path>) -> Result<(), String> {
