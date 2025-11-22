@@ -1,4 +1,4 @@
-# Wyrm - v0.4.2 Hatchling
+# Wyrm - v0.4.3 Hatchling
 
 Read the docs at https://docs.wyrm-c2.com/. Read this for quick setup instructions.
 
@@ -20,7 +20,7 @@ could be present in memory. Project created and maintained by [flux](https://git
 Wyrm currently supports only HTTPS agents using a custom encryption scheme for encrypting traffic below TLS, with a unique packet design so that
 the packets cannot be realistically decrypted even under firewall level TLS inspection.
 
-This project is a work in progress, currently released at v0.2 (Hatchling). Updates are planned through versions 1,0, 2.0, 3.0, and 4.0. You can view
+Updates are planned through versions 1,0, 2.0, 3.0, and 4.0. You can view
 the planned roadmap in this project (see [Milestones.md](https://github.com/0xflux/Wyrm/blob/master/Milestones.md)). In time, this is designed to be an open source competitor to **Cobalt Strike**, **Mythic**, **Sliver**, etc.
 
 For any bugs, or feature requests, please use the Issues tab, and for anything else - please use GitHub Discussions. I am active on this project,
