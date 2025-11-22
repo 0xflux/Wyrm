@@ -4,7 +4,7 @@ use web_sys::{
     js_sys::{self, Uint8Array},
     window,
 };
-/// Initiates a client-side file download in the browser by creating a temporary blob URL.
+/// Initiates a client side file download in the browser by creating a temporary blob URL.
 ///
 /// # Arguments
 ///
@@ -15,7 +15,6 @@ pub fn trigger_download(filename: &str, bytes: &[u8]) {
     let document = window.document().expect("should have a document");
     let body = document.body().expect("document should have a body");
 
-    // Vec<u8> -> Uint8Array
     let uint8_array = Uint8Array::from(bytes);
 
     let parts = js_sys::Array::new();

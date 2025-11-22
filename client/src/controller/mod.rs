@@ -13,10 +13,15 @@ pub enum BodyClass {
     App,
 }
 
+/// Returns the browser storage key for a user's chat history.
 pub fn wyrm_chat_history_browser_key(uid: &str) -> String {
     format!("WYRM_C2_HISTORY_{}", uid)
 }
 
+/// Switches the document body's CSS class between login and app states.
+///
+/// Ensures only one of the two exclusive classes (`login` or `app`) is applied to the body
+/// element at any time, enabling distinct styling for different application states.
 pub fn apply_body_class(target: BodyClass) {
     let body: HtmlElement = document().body().expect("no <body>");
 
