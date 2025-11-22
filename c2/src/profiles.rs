@@ -4,23 +4,26 @@ use std::{
 };
 
 use serde::Deserialize;
-use shared::tasks::{NewAgentStaging, StageType, WyrmResult};
+use shared::{
+    pretty_print::print_failed,
+    tasks::{NewAgentStaging, StageType, WyrmResult},
+};
 use tokio::io;
 
 use crate::logging::log_error_async;
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Profile {
     pub server: Server,
     pub implants: BTreeMap<String, Implant>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Server {
     pub token: String,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Network {
     pub address: String,
     pub uri: Vec<String>,
@@ -31,7 +34,7 @@ pub struct Network {
     pub jitter: Option<u64>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Implant {
     pub anti_sandbox: Option<AntiSandbox>,
     pub debug: Option<bool>,
@@ -39,13 +42,13 @@ pub struct Implant {
     pub evasion: Evasion,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct AntiSandbox {
     pub trig: Option<bool>,
     pub ram: Option<bool>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Evasion {
     pub patch_etw: Option<bool>,
     pub timestomp: Option<String>,
@@ -159,7 +162,7 @@ impl Profile {
 
 /// Parse profiles from within the /profiles/* directory relative to the c2
 /// crate to load configurable user profiles at runtime.
-pub async fn parse_profiles() -> io::Result<Vec<Profile>> {
+pub async fn parse_profiles() -> io::Result<Profile> {
     let path = Path::new("./profiles");
     let mut profile_paths: Vec<String> = Vec::new();
 
@@ -184,23 +187,36 @@ pub async fn parse_profiles() -> io::Result<Vec<Profile>> {
         return Err(io::Error::other("Could not open dir"));
     }
 
-    let mut profiles: Vec<Profile> = Vec::new();
+    //
+    // We now only support 1 profile toml in the profile directory. If more than one is detected,
+    // then return an error, logging the error internally.
+    //
+    if profile_paths.len() > 1 {
+        let msg = "You can only have one `profile.toml` in /c2/profiles. Please consolidate \
+            into one profile. You may specify multiple implant configurations to build, but you must \
+            have one, and only one, `profile.toml`.";
+        print_failed(msg);
+        log_error_async(msg).await;
 
-    for p_path in profile_paths {
-        let temp_path = path.join(&p_path);
-
-        let profile = match read_profile(&temp_path).await {
-            Ok(p) => p,
-            Err(e) => {
-                log_error_async(&format!("{e:?}")).await;
-                continue;
-            }
-        };
-
-        profiles.push(profile);
+        return Err(io::Error::other(msg));
     }
 
-    Ok(profiles)
+    //
+    // Now we have the profile - parse it and return it out
+    //
+    let p_path = std::mem::take(&mut profile_paths[0]);
+    let temp_path = path.join(&p_path);
+
+    let profile = match read_profile(&temp_path).await {
+        Ok(p) => p,
+        Err(e) => {
+            let msg = format!("Could not parse profile. {e:?}");
+            log_error_async(&msg).await;
+            return Err(io::Error::other(msg));
+        }
+    };
+
+    Ok(profile)
 }
 
 pub async fn get_profile(needle: &str) -> io::Result<Profile> {
@@ -225,32 +241,28 @@ pub async fn get_profile(needle: &str) -> io::Result<Profile> {
     }
 }
 
-pub fn add_listeners_from_profiles(existing: &mut HashSet<String>, new: &[Profile]) {
-    for p in new.iter() {
-        for (_, implant) in p.implants.iter() {
-            for uri in &implant.network.uri {
-                // Strip out the leading /
-                if uri.starts_with('/') {
-                    let mut tmp = uri.clone();
-                    tmp.remove(0);
-                    existing.insert(tmp);
-                } else {
-                    existing.insert(uri.clone());
-                }
+pub fn add_listeners_from_profiles(existing: &mut HashSet<String>, p: &Profile) {
+    for (_, implant) in p.implants.iter() {
+        for uri in &implant.network.uri {
+            // Strip out the leading /
+            if uri.starts_with('/') {
+                let mut tmp = uri.clone();
+                tmp.remove(0);
+                existing.insert(tmp);
+            } else {
+                existing.insert(uri.clone());
             }
         }
     }
 }
 
-pub fn add_tokens_from_profiles(existing: &mut HashSet<String>, new: &[Profile]) {
-    for p in new.iter() {
-        // Add the default required token in the [server] attribute
-        existing.insert(p.server.token.clone());
+pub fn add_tokens_from_profiles(existing: &mut HashSet<String>, p: &Profile) {
+    // Add the default required token in the [server] attribute
+    existing.insert(p.server.token.clone());
 
-        for i in p.implants.values() {
-            if let Some(tok) = &i.network.token {
-                existing.insert(tok.clone());
-            }
+    for i in p.implants.values() {
+        if let Some(tok) = &i.network.token {
+            existing.insert(tok.clone());
         }
     }
 }

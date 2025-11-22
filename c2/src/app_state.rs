@@ -26,7 +26,7 @@ pub struct AppState {
     pub endpoints: RwLock<Endpoints>,
     /// Tokens added during the agent creation wizard in which validate agents who are authorised to talk to the C2
     pub agent_tokens: RwLock<HashSet<String>>,
-    pub profile: RwLock<Vec<Profile>>,
+    pub profile: RwLock<Profile>,
     sessions: Arc<Mutex<HashMap<String, Instant>>>,
 }
 
@@ -57,7 +57,7 @@ pub struct Endpoints {
 }
 
 impl AppState {
-    pub async fn from(db_pool: Db, profile: Vec<Profile>) -> Self {
+    pub async fn from(db_pool: Db, profile: Profile) -> Self {
         // Fetch the endpoints from the database that we are going to use. If none are setup, it will
         // default to `::new()` for each type.
         let (mut c2_endpoints, download_endpoints, mut agent_tokens) =
