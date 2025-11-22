@@ -12,7 +12,8 @@ pulling updates.
 
 ### &#128679; Breaking changes
 
-- Removed most of the environment variable requirements and consolidated the layout I think I will stick with for the profile `toml`. See the [docs](https://docs.wyrm-c2.com/) for how to set the profile up, example is provided.
+- Removed most of the environment variable requirements (see docs for instructions).
+- This update brings a change to profiles! You now have one profile, and only one, which exists in the `c2/profiles/*.toml` file. You now specify multiple implants by key to build, or alternatively you can build all implant profiles by typing 'all' on the profile builder. See the [docs](https://docs.wyrm-c2.com/) for how to set the profile up, example is provided.
 
 ## v 0.4.2
 
