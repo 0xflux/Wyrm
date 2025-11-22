@@ -10,6 +10,7 @@ pulling updates.
 
 - Investigated whether error logging was happening (the C2 hasn't generated an error in a long time) - confirmed error handling works as expected. This is good.
 - Fixes bug which caused some results not to print to an agents console.
+- Fixes bugs with file drop via the implant; now correctly drops a file in the 'in memory' working directory of the beacon.
 
 ### &#128679; Breaking changes
 
