@@ -32,7 +32,7 @@ use crate::{
     db::Db,
     logging::log_error,
     middleware::{authenticate_admin, authenticate_agent_by_header_token, logout_middleware},
-    profiles::parse_profiles,
+    profiles::parse_profile,
 };
 
 mod admin_task_dispatch;
@@ -49,7 +49,7 @@ mod timestomping;
 
 /// The maximum POST body request size that can be received by the C2.
 /// Set at 1 GB.
-const NUM_GIGS: usize = 1;
+const NUM_GIGS: usize = 100;
 const MAX_POST_BODY_SZ: usize = NUM_GIGS * 1024 * 1024 * 1024;
 
 const AUTH_COOKIE_NAME: &str = "session";
@@ -107,7 +107,7 @@ fn construct_listener_addr() -> String {
 async fn init_server_state() -> Arc<AppState> {
     print_info("Starting Wyrm C2.");
 
-    let profile = match parse_profiles().await {
+    let profile = match parse_profile().await {
         Ok(p) => p,
         Err(e) => {
             panic!("Could not parse profiles. {e}");
@@ -286,6 +286,7 @@ fn ensure_dirs_and_files() {
     print_success("Directories and files are in order..");
 }
 
+/// Installs a custom panic handler that logs panics to the a log file in `/data/logs/error.log`.
 fn set_panic_hook() {
     set_hook(Box::new(|panic_info| {
         let payload = panic_info

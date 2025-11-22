@@ -1,51 +1,52 @@
 use std::{
     collections::{BTreeMap, HashSet},
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 use serde::Deserialize;
 use shared::tasks::{NewAgentStaging, StageType, WyrmResult};
 use tokio::io;
 
-use crate::logging::log_error_async;
-
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct Profile {
-    pub sleep: Option<u64>,
-    pub useragent: Option<String>,
     pub server: Server,
-    pub listeners: BTreeMap<String, Listener>,
     pub implants: BTreeMap<String, Implant>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct Server {
-    pub uri: Vec<String>,
     pub token: String,
-    pub jitter: Option<u64>,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct Listener {
+#[derive(Deserialize, Debug, Default, Clone)]
+pub struct Network {
     pub address: String,
+    pub uri: Vec<String>,
     pub port: u16,
     pub token: Option<String>,
     pub sleep: Option<u64>,
-    pub protocol: String,
+    pub useragent: Option<String>,
+    pub jitter: Option<u64>,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct Implant {
     pub anti_sandbox: Option<AntiSandbox>,
     pub debug: Option<bool>,
-    pub patch_etw: Option<bool>,
-    pub timestomp: Option<String>,
+    pub network: Network,
+    pub evasion: Evasion,
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct AntiSandbox {
     pub trig: Option<bool>,
     pub ram: Option<bool>,
+}
+
+#[derive(Deserialize, Debug, Default, Clone)]
+pub struct Evasion {
+    pub patch_etw: Option<bool>,
+    pub timestomp: Option<String>,
 }
 
 impl Profile {
@@ -57,27 +58,13 @@ impl Profile {
     /// - `stage_type`: The [`shared::tasks::StageType`] of binary to build
     pub fn as_staged_agent(
         &self,
-        listener_profile_name: &String,
-        implant_profile_name: &String,
+        implant_profile_name: &str,
         stage_type: StageType,
     ) -> WyrmResult<NewAgentStaging> {
-        // TODO at some point we can do away with building a NewAgentStaging; that is no longer required.
-        // leaving in for now, the validation & translation is required but not necessarily converting to
-        // a NewAgentStaging.
-        // This fn isn't the end of the world and a huge waste of compute power, so I'm happy leaving it in for
-        // now.
-
         //
         // Essentially here we are going to validate the input; and reconstruct the data assuming it is correct.
         // In the event of an error, we want to return a WyrmResult::Err to indicate there was some form of failure.
         //
-
-        let listener = match self.listeners.get(listener_profile_name) {
-            Some(l) => l,
-            None => {
-                return WyrmResult::Err(format!("Could not find listener {listener_profile_name}"));
-            }
-        };
 
         let implant = match self.implants.get(implant_profile_name) {
             Some(i) => i,
@@ -89,13 +76,13 @@ impl Profile {
         };
 
         let build_debug = implant.debug.unwrap_or_default();
-        let patch_etw = implant.patch_etw.unwrap_or_default();
+        let patch_etw = implant.evasion.patch_etw.unwrap_or_default();
 
         // Unwrap a sleep time from either profile specific, a higher order key, or if none found, use
         // a default of 1 hr (3600 seconds).
-        let sleep_time = match listener.sleep {
+        let sleep_time = match implant.network.sleep {
             Some(s) => s,
-            None => self.sleep.unwrap_or(3600),
+            None => 3600,
         };
 
         // Try cast to i64 from u64, checking the number stays the same
@@ -107,7 +94,7 @@ impl Profile {
             ));
         }
 
-        let pe_name = format!("{}.{}", listener_profile_name, implant_profile_name);
+        let pe_name = format!("{}", implant_profile_name);
 
         let antisandbox_trig = if let Some(anti) = &implant.anti_sandbox {
             anti.trig.unwrap_or_default()
@@ -121,20 +108,20 @@ impl Profile {
             false
         };
 
-        let agent_security_token = if let Some(token) = &listener.token {
+        let agent_security_token = if let Some(token) = &implant.network.token {
             token.clone()
         } else {
             self.server.token.clone()
         };
 
-        let useragent = if let Some(ua) = &self.useragent {
+        let useragent = if let Some(ua) = &implant.network.useragent {
             ua.clone()
         } else {
             "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.87 Safari/537.36".into()
         };
 
         // Validate we have at least 1 URI endpoint before insertion, otherwise error
-        if self.server.uri.is_empty() {
+        if implant.network.uri.is_empty() {
             return WyrmResult::Err(String::from("At least 1 URI is required for the server."));
         }
 
@@ -142,12 +129,12 @@ impl Profile {
             // TODO not required
             implant_name: String::new(),
             default_sleep_time,
-            c2_address: listener.address.clone(),
-            c2_endpoints: self.server.uri.clone(),
+            c2_address: implant.network.address.clone(),
+            c2_endpoints: implant.network.uri.clone(),
             // TODO not required
             staging_endpoint: String::new(),
             pe_name,
-            port: listener.port,
+            port: implant.network.port,
             agent_security_token,
             antisandbox_trig,
             antisandbox_ram,
@@ -155,15 +142,15 @@ impl Profile {
             build_debug,
             useragent,
             patch_etw,
-            jitter: self.server.jitter,
-            timestomp: implant.timestomp.clone(),
+            jitter: implant.network.jitter,
+            timestomp: implant.evasion.timestomp.clone(),
         })
     }
 }
 
 /// Parse profiles from within the /profiles/* directory relative to the c2
 /// crate to load configurable user profiles at runtime.
-pub async fn parse_profiles() -> io::Result<Vec<Profile>> {
+pub async fn parse_profile() -> io::Result<Profile> {
     let path = Path::new("./profiles");
     let mut profile_paths: Vec<String> = Vec::new();
 
@@ -183,55 +170,40 @@ pub async fn parse_profiles() -> io::Result<Vec<Profile>> {
             }
         }
     } else {
-        log_error_async("Could not open dir profiles.").await;
-
-        return Err(io::Error::other("Could not open dir"));
+        return Err(io::Error::other("Could not open dir profiles."));
     }
 
-    let mut profiles: Vec<Profile> = Vec::new();
-
-    for p_path in profile_paths {
-        let temp_path = path.join(&p_path);
-
-        let profile = match read_profile(&temp_path).await {
-            Ok(p) => p,
-            Err(e) => {
-                log_error_async(&format!("{e:?}")).await;
-                continue;
-            }
-        };
-
-        profiles.push(profile);
+    //
+    // We now only support 1 profile toml in the profile directory. If more than one is detected,
+    // then return an error, logging the error internally.
+    //
+    if profile_paths.len() != 1 {
+        let msg = "You must have only have one `profile.toml` in /c2/profiles. Please consolidate \
+            into one profile. You may specify multiple implant configurations to build, but you must \
+            have one, and only one, `profile.toml`.";
+        return Err(io::Error::other(msg));
     }
 
-    Ok(profiles)
-}
+    //
+    // Now we have the profile - parse it and return it out
+    //
+    let p_path = std::mem::take(&mut profile_paths[0]);
+    let temp_path = path.join(&p_path);
 
-pub async fn get_profile(needle: &str) -> io::Result<Profile> {
-    let mut path = PathBuf::from("./profiles");
-
-    let needle = if needle.ends_with(".toml") {
-        needle.to_owned()
-    } else {
-        let mut tmp = needle.to_owned();
-        tmp.push_str(".toml");
-        tmp
+    let profile = match read_profile(&temp_path).await {
+        Ok(p) => p,
+        Err(e) => {
+            let msg = format!("Could not parse profile. {e:?}");
+            return Err(io::Error::other(msg));
+        }
     };
 
-    path.push(&needle);
-
-    if path.is_file() {
-        read_profile(&path).await
-    } else {
-        let msg = format!("Could not open profile `{needle}`, was not a file.");
-        log_error_async(&msg).await;
-        Err(io::Error::other(msg))
-    }
+    Ok(profile)
 }
 
-pub fn add_listeners_from_profiles(existing: &mut HashSet<String>, new: &[Profile]) {
-    for p in new.iter() {
-        for uri in &p.server.uri {
+pub fn add_listeners_from_profiles(existing: &mut HashSet<String>, p: &Profile) {
+    for (_, implant) in p.implants.iter() {
+        for uri in &implant.network.uri {
             // Strip out the leading /
             if uri.starts_with('/') {
                 let mut tmp = uri.clone();
@@ -244,15 +216,13 @@ pub fn add_listeners_from_profiles(existing: &mut HashSet<String>, new: &[Profil
     }
 }
 
-pub fn add_tokens_from_profiles(existing: &mut HashSet<String>, new: &[Profile]) {
-    for p in new.iter() {
-        // Add the default required token in the [server] attribute
-        existing.insert(p.server.token.clone());
+pub fn add_tokens_from_profiles(existing: &mut HashSet<String>, p: &Profile) {
+    // Add the default required token in the [server] attribute
+    existing.insert(p.server.token.clone());
 
-        for listener in p.listeners.values() {
-            if let Some(tok) = &listener.token {
-                existing.insert(tok.clone());
-            }
+    for i in p.implants.values() {
+        if let Some(tok) = &i.network.token {
+            existing.insert(tok.clone());
         }
     }
 }
@@ -277,18 +247,6 @@ async fn read_profile(path: &Path) -> io::Result<Profile> {
             )));
         }
     };
-
-    // Check the protocol matches the valid protocol names we can have implants built for
-    for (name, listener) in &profile.listeners {
-        if !(listener.protocol.eq("http")
-            || listener.protocol.eq("https")
-            || listener.protocol.eq("smb"))
-        {
-            return Err(io::Error::other(format!(
-                "Listener type was missing when reading profile: {path:?}, profile name: {name}"
-            )));
-        }
-    }
 
     Ok(profile)
 }

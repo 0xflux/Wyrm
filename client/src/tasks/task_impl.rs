@@ -222,7 +222,7 @@ pub async fn pull_file(target: String, agent: &IsTaskingAgent) -> DispatchResult
     agent.has_agent_id()?;
 
     if target.is_empty() {
-        print_failed(format!("Please specify a target file."));
+        leptos::logging::error!("Pull command failed - Please specify a target file");
     }
 
     let target = match split_string_slices_to_n(1, &target, DiscardFirst::Chop) {

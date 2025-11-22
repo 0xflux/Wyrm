@@ -109,11 +109,8 @@ pub fn LoggedInHeaders() -> impl IntoView {
     }
 }
 
+/// Extracts the first non-empty path segment from the current browser URL.
 fn extract_path() -> Option<String> {
-    // Use the browser location pathname (e.g. "/dashboard/123") and
-    // return the first non-empty segment (e.g. "dashboard"). This is
-    // more reliable than parsing `document_uri()` and works for
-    // nested paths as well.
     let window = web_sys::window()?;
     let pathname = window.location().pathname().ok()?;
 

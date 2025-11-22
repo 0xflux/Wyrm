@@ -26,7 +26,7 @@ pub struct AppState {
     pub endpoints: RwLock<Endpoints>,
     /// Tokens added during the agent creation wizard in which validate agents who are authorised to talk to the C2
     pub agent_tokens: RwLock<HashSet<String>>,
-    pub profile: RwLock<Vec<Profile>>,
+    pub profile: RwLock<Profile>,
     sessions: Arc<Mutex<HashMap<String, Instant>>>,
 }
 
@@ -57,7 +57,7 @@ pub struct Endpoints {
 }
 
 impl AppState {
-    pub async fn from(db_pool: Db, profile: Vec<Profile>) -> Self {
+    pub async fn from(db_pool: Db, profile: Profile) -> Self {
         // Fetch the endpoints from the database that we are going to use. If none are setup, it will
         // default to `::new()` for each type.
         let (mut c2_endpoints, download_endpoints, mut agent_tokens) =
@@ -149,27 +149,12 @@ impl AppState {
 pub async fn detect_stale_agents(state: Arc<AppState>) {
     // The duration to sleep the async task which will check whether we need to remove an agent from the
     // live list.
-    let stale_agent_sleep_time: u64 = match env::var("STALE_AGENT_SLEEP_TIME") {
-        Ok(s) => s.parse().expect("expected u64"),
-        Err(_) => {
-            panic!("Could not find environment variable STALE_AGENT_SLEEP_TIME");
-        }
-    };
-
-    let leeway_seconds: u32 = match env::var("LEEWAY_IN_SECONDS") {
-        Ok(s) => s.parse().expect("expected u32"),
-        Err(_) => {
-            panic!("Could not find environment variable LEEWAY_IN_SECONDS");
-        }
-    };
+    const LOOP_SLEEP_SECONDS: u64 = 10;
 
     loop {
         {
-            state
-                .connected_agents
-                .mark_agents_stale(leeway_seconds)
-                .await;
-            tokio::time::sleep(Duration::from_secs(stale_agent_sleep_time)).await;
+            state.connected_agents.mark_agents_stale().await;
+            tokio::time::sleep(Duration::from_secs(LOOP_SLEEP_SECONDS)).await;
         }
     }
 }

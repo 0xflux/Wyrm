@@ -525,6 +525,10 @@ fn print_wyrm_result_string(encoded_data: &String) -> Vec<String> {
     }
 }
 
+/// Tracks the set of open tabs and which tab is currently active.
+///
+/// Used to maintain tab state in the UI, where `tabs` contains all open tab identifiers
+/// and `active_id` points to the currently selected tab (if any).
 #[derive(Serialize, Deserialize, Default, Debug)]
 pub struct ActiveTabs {
     pub tabs: HashSet<String>,

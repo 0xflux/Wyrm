@@ -6,7 +6,18 @@ pulling updates.
 
 **IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
 
-## &#128679; v 0.4.2
+## &#128679; v 0.4.3
+
+- Investigated whether error logging was happening (the C2 hasn't generated an error in a long time) - confirmed error handling works as expected. This is good.
+- Fixes bug which caused some results not to print to an agents console.
+- Fixes bugs with file drop via the implant; now correctly drops a file in the 'in memory' working directory of the beacon.
+
+### &#128679; Breaking changes
+
+- Removed most of the environment variable requirements (see docs for instructions).
+- This update brings a change to profiles! You now have one profile, and only one, which exists in the `c2/profiles/*.toml` file. You now specify multiple implants by key to build, or alternatively you can build all implant profiles by typing 'all' on the profile builder. See the [docs](https://docs.wyrm-c2.com/) for how to set the profile up, example is provided.
+
+## v 0.4.2
 
 - Fixes bug which prevented user logging into C2 for the first time if no user is created.
 
