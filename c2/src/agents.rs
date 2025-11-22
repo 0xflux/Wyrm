@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use shared::tasks::{Command, FirstRunData, Task, tasks_contains_kill_agent};
 use tokio::sync::RwLock;
 
-use crate::db::Db;
+use crate::{db::Db, logging::log_error_async};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Agent {
@@ -85,13 +85,14 @@ impl AgentList {
 
     /// Enumerates over all agents, determines whether an it is stale by calculating if we have
     /// gone past the expected check-in time of the agent by some time, `n` (where `n` is in seconds).
-    pub async fn mark_agents_stale(&self, n: u32) {
-        let margin = Duration::seconds(n as _);
-
+    pub async fn mark_agents_stale(&self) {
         let mut maybe_agents = self.agents.first_entry_async().await;
         while let Some(entry) = maybe_agents {
             let now: DateTime<Utc> = Utc::now();
             let mut lock = entry.write().await;
+
+            let margin = Duration::seconds(calculate_max_time_till_stale(lock.sleep).await);
+
             lock.is_stale =
                 lock.last_checkin_time + Duration::seconds(lock.sleep as _) + margin < now;
 
@@ -222,4 +223,35 @@ pub async fn handle_kill_command(
     if tasks_contains_kill_agent(tasks.as_ref().unwrap()) {
         agent_list.remove_agent(&agent.uid).await;
     }
+}
+
+/// Calculates the maximum time the agent can sleep for before becoming stale, and is set to
+/// double the sleep time.
+///
+/// # Returns
+/// An `i64` of the time to wait before marking as stale. If there is an integer error (value becomes
+/// negative, overflows) during operations, an error will be logged and instead the return value will be
+/// the sleep time of the agent + 1 hr.
+async fn calculate_max_time_till_stale(sleep: u64) -> i64 {
+    const MAX_SLEEP_TILL_STALE_MUL: u64 = 2;
+
+    let res = match sleep.checked_mul(MAX_SLEEP_TILL_STALE_MUL) {
+        Some(s) => s,
+        None => {
+            log_error_async(&format!(
+                "Failed to multiply sleep time from input time: {sleep}."
+            ))
+            .await;
+
+            sleep
+        }
+    } as i64;
+
+    if res.is_negative() {
+        log_error_async(&format!("Sleep time was negative time: {res}.")).await;
+
+        return sleep as i64;
+    }
+
+    res
 }
