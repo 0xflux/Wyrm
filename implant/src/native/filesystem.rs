@@ -260,7 +260,10 @@ pub fn drop_file_to_disk(
         }
     };
 
-    let mut buffer = match File::create(metadata.download_name) {
+    let mut write_path = PathBuf::from(&wyrm.current_working_directory);
+    write_path.push(&metadata.download_name);
+
+    let mut buffer = match File::create(write_path) {
         Ok(b) => b,
         Err(e) => return Some(WyrmResult::Err(e.to_string())),
     };
