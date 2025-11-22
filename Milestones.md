@@ -11,6 +11,9 @@ developed as a premium or otherwise private feature. These will be few and far b
       1) [x] On boot check only 1 profile.
       2) [x] The user selects which **implant name** to build in the builder.
       3) [x] `All/all` should be a special name to build all profiles present.
+3) [x] Test pull
+4) [ ] Test upload via gui
+5) [ ] Test upload via agent
 
 ### 0.5
 

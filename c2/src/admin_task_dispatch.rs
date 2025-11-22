@@ -912,7 +912,7 @@ async fn drop_file_handler(
         let lock = state.endpoints.read().await;
 
         for row in lock.download_endpoints.iter() {
-            if row.1.internal_name.eq(&data.internal_name) {
+            if row.0.eq(&data.internal_name) {
                 found = true;
                 // The URI doesn't include the leading /, so we add it here
                 data.download_uri = Some(format!("/{}", row.0));
