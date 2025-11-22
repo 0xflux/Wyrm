@@ -32,7 +32,7 @@ use crate::{
     db::Db,
     logging::log_error,
     middleware::{authenticate_admin, authenticate_agent_by_header_token, logout_middleware},
-    profiles::parse_profiles,
+    profiles::parse_profile,
 };
 
 mod admin_task_dispatch;
@@ -107,7 +107,7 @@ fn construct_listener_addr() -> String {
 async fn init_server_state() -> Arc<AppState> {
     print_info("Starting Wyrm C2.");
 
-    let profile = match parse_profiles().await {
+    let profile = match parse_profile().await {
         Ok(p) => p,
         Err(e) => {
             panic!("Could not parse profiles. {e}");

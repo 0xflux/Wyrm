@@ -17,10 +17,10 @@ pub fn BuildProfilesPage() -> impl IntoView {
 
         async move {
             // Cleanse the input
-            let profile_name = input.replace(".toml", "");
+            let profile_name = input.trim().to_string();
 
             let result = api_request(
-                AdminCommand::BuildAllBins((profile_name.clone(), ".".to_string(), None, None)),
+                AdminCommand::BuildAllBins(profile_name.clone()),
                 &IsTaskingAgent::No,
                 None,
                 C2Url::Standard,

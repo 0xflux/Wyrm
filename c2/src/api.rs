@@ -242,15 +242,14 @@ pub async fn build_all_binaries_handler(
     state: State<Arc<AppState>>,
     Json(data): Json<BaBData>,
 ) -> Response {
-    let bab = (data.profile_name.clone(), "".to_string(), None, None);
-    let result = build_all_bins(bab, state).await;
+    let result = build_all_bins(&data.implant_key, state).await;
 
     match result {
         Ok(zip_bytes) => {
             //
             // Prepare the data response back to the client and send it.
             //
-            let filename = format!("{}.7z", data.profile_name);
+            let filename = format!("{}.7z", data.implant_key);
             (
                 StatusCode::ACCEPTED,
                 [
@@ -264,11 +263,15 @@ pub async fn build_all_binaries_handler(
             )
                 .into_response()
         }
-        Err(e) => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Html(format!("Error building binaries: {e}",)),
-        )
-            .into_response(),
+        Err(e) => {
+            log_error_async(&e).await;
+
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Html(format!("Error building binaries: {e}",)),
+            )
+                .into_response()
+        }
     }
 }
 

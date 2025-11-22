@@ -160,52 +160,40 @@ pub async fn admin_dispatch(
 ///
 /// On success, this function returns None, otherwise an Error is encoded within a `Value` as a `WyrmResult`
 pub async fn build_all_bins(
-    bab: BuildAllBins,
+    implant_profile_name: &String,
     state: State<Arc<AppState>>,
 ) -> Result<Vec<u8>, String> {
     // Save into tmp within profiles, we will delete it on completion.
     let save_path = PathBuf::from("./profiles/tmp");
-    let profile_name = bab.0;
 
-    if let Err(e) = create_dir_all(&save_path) {
-        let msg = format!(
+    create_dir_all(&save_path).map_err(|e| {
+        format!(
             "Failed to create tmp directory on c2 for profile staging. {}",
             e.kind()
-        );
-        log_error_async(&msg).await;
-        return Err(msg);
-    };
+        )
+    })?;
 
     //
     // Read the profile from disk
     //
 
-    let profile = match get_profile(&profile_name).await {
+    let profile = match get_profile().await {
         Ok(p) => p,
         Err(e) => {
-            let msg = format!("Error reading profile: {profile_name}. {e:?}");
-            log_error_async(&msg).await;
             let _ = remove_dir(&save_path).await?;
+            let msg = e.to_string();
             return Err(msg);
         }
     };
 
-    let listener_profile_name = &bab.2.unwrap_or("default".into());
-    let implant_profile_name = &bab.3.unwrap_or("default".into());
-
     //
     // Transform the profile into a valid `NewAgentStaging`
     //
-    let data = match profile.as_staged_agent(
-        listener_profile_name,
-        implant_profile_name,
-        StageType::All,
-    ) {
+    let data = match profile.as_staged_agent(implant_profile_name, StageType::All) {
         WyrmResult::Ok(d) => d,
         WyrmResult::Err(e) => {
-            let msg = format!("Error constructing a NewAgentStaging: {profile_name}. {e:?}");
-            log_error_async(&msg).await;
             let _ = remove_dir(&save_path).await?;
+            let msg = format!("Error constructing a NewAgentStaging. {e:?}");
             return Err(msg);
         }
     };
@@ -226,7 +214,6 @@ pub async fn build_all_bins(
 
         if let Err(e) = cmd_build_output {
             let msg = &format!("Failed to build agent. {e}");
-            log_error_async(msg).await;
             let _ = stage_new_agent_error_printer(msg, &data.staging_endpoint, state).await;
             let _ = remove_dir(&save_path).await?;
             return Err(msg.to_owned());
@@ -238,7 +225,6 @@ pub async fn build_all_bins(
                 "Failed to build agent. {:#?}",
                 String::from_utf8_lossy(&output.stderr),
             );
-            log_error_async(msg).await;
 
             let _ = stage_new_agent_error_printer(msg, &data.staging_endpoint, state).await;
             let _ = remove_dir(&save_path).await?;
@@ -279,7 +265,6 @@ pub async fn build_all_bins(
             StageType::All => unreachable!(),
         }) {
             let msg = format!("Failed to add extension to local file. {dest:?}");
-            log_error_async(&msg).await;
             let _ = remove_dir(&save_path).await?;
 
             return Err(msg);
@@ -358,7 +343,6 @@ pub async fn build_all_bins(
         Err(e) => {
             let msg = format!("Error opening 7z file. {e}");
             let _ = stage_new_agent_error_printer(&msg, &data.staging_endpoint, state).await;
-            print_failed(&msg);
             let _ = remove_dir(&save_path).await?;
 
             return Err(msg);
@@ -368,7 +352,6 @@ pub async fn build_all_bins(
     if let Err(e) = file.read_to_end(&mut buf).await {
         let msg = format!("Error reading 7z file. {e}");
         let _ = stage_new_agent_error_printer(&msg, &data.staging_endpoint, state).await;
-        print_failed(&msg);
         let _ = remove_dir(&save_path).await?;
 
         return Err(msg);

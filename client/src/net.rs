@@ -125,7 +125,7 @@ fn prepare_body_data(input: AdminCommand, creds: Option<(String, String)>) -> Va
         })
         .unwrap(),
         AdminCommand::BuildAllBins(data) => {
-            serde_json::to_value(BaBData::from(data.0.clone())).unwrap()
+            serde_json::to_value(BaBData::from(data.clone())).unwrap()
         }
         _ => serde_json::to_value(input).unwrap(),
     }

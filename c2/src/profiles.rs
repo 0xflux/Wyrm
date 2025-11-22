@@ -63,16 +63,9 @@ impl Profile {
     /// - `stage_type`: The [`shared::tasks::StageType`] of binary to build
     pub fn as_staged_agent(
         &self,
-        listener_profile_name: &String,
         implant_profile_name: &String,
         stage_type: StageType,
     ) -> WyrmResult<NewAgentStaging> {
-        // TODO at some point we can do away with building a NewAgentStaging; that is no longer required.
-        // leaving in for now, the validation & translation is required but not necessarily converting to
-        // a NewAgentStaging.
-        // This fn isn't the end of the world and a huge waste of compute power, so I'm happy leaving it in for
-        // now.
-
         //
         // Essentially here we are going to validate the input; and reconstruct the data assuming it is correct.
         // In the event of an error, we want to return a WyrmResult::Err to indicate there was some form of failure.
@@ -106,7 +99,7 @@ impl Profile {
             ));
         }
 
-        let pe_name = format!("{}.{}", listener_profile_name, implant_profile_name);
+        let pe_name = format!("{}", implant_profile_name);
 
         let antisandbox_trig = if let Some(anti) = &implant.anti_sandbox {
             anti.trig.unwrap_or_default()
@@ -162,7 +155,7 @@ impl Profile {
 
 /// Parse profiles from within the /profiles/* directory relative to the c2
 /// crate to load configurable user profiles at runtime.
-pub async fn parse_profiles() -> io::Result<Profile> {
+pub async fn parse_profile() -> io::Result<Profile> {
     let path = Path::new("./profiles");
     let mut profile_paths: Vec<String> = Vec::new();
 
@@ -182,9 +175,7 @@ pub async fn parse_profiles() -> io::Result<Profile> {
             }
         }
     } else {
-        log_error_async("Could not open dir profiles.").await;
-
-        return Err(io::Error::other("Could not open dir"));
+        return Err(io::Error::other("Could not open dir profiles."));
     }
 
     //
@@ -195,9 +186,6 @@ pub async fn parse_profiles() -> io::Result<Profile> {
         let msg = "You can only have one `profile.toml` in /c2/profiles. Please consolidate \
             into one profile. You may specify multiple implant configurations to build, but you must \
             have one, and only one, `profile.toml`.";
-        print_failed(msg);
-        log_error_async(msg).await;
-
         return Err(io::Error::other(msg));
     }
 
@@ -211,7 +199,6 @@ pub async fn parse_profiles() -> io::Result<Profile> {
         Ok(p) => p,
         Err(e) => {
             let msg = format!("Could not parse profile. {e:?}");
-            log_error_async(&msg).await;
             return Err(io::Error::other(msg));
         }
     };
@@ -219,26 +206,8 @@ pub async fn parse_profiles() -> io::Result<Profile> {
     Ok(profile)
 }
 
-pub async fn get_profile(needle: &str) -> io::Result<Profile> {
-    let mut path = PathBuf::from("./profiles");
-
-    let needle = if needle.ends_with(".toml") {
-        needle.to_owned()
-    } else {
-        let mut tmp = needle.to_owned();
-        tmp.push_str(".toml");
-        tmp
-    };
-
-    path.push(&needle);
-
-    if path.is_file() {
-        read_profile(&path).await
-    } else {
-        let msg = format!("Could not open profile `{needle}`, was not a file.");
-        log_error_async(&msg).await;
-        Err(io::Error::other(msg))
-    }
+pub async fn get_profile() -> io::Result<Profile> {
+    parse_profile().await
 }
 
 pub fn add_listeners_from_profiles(existing: &mut HashSet<String>, p: &Profile) {
