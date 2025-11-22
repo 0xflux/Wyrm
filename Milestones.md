@@ -5,7 +5,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 ### 0.4.3
 
-1) [ ] Is the error.log working and the panic hook?
+1) [x] Is the error.log working and the panic hook?
 2) [ ] Remove the `.env`, and put instructions in the docs, makes it easier over time..
 
 ### 0.5
