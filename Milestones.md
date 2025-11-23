@@ -11,11 +11,10 @@ developed as a premium or otherwise private feature. These will be few and far b
    2) [ ] Can use a macro to write the function exporting the function name
       1) [ ] Option per function for it to run Wyrm, or alternatively it is a junk function (not sure how to macroise that for random things? Maybe thats a bad idea)
 3) [ ] Build implant as svc
-4) [ ] Multiple profiles for listener and implant
-5) [ ] Admin URI can be configured specifically in the profile - this will help defeat a little CTI
-6) [ ] Number of downloads for staged resources
-7) [ ] String stomping options on built binary 
-8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
+4) [ ] Admin URI can be configured specifically in the profile - this will help defeat a little CTI
+5) [ ] Number of downloads for staged resources
+6) [ ] String stomping options on built binary 
+7) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 
 ### 0.5.1
 
