@@ -14,7 +14,8 @@ developed as a premium or otherwise private feature. These will be few and far b
 4) [ ] Admin URI can be configured specifically in the profile - this will help defeat a little CTI
 5) [ ] Number of downloads for staged resources
 6) [ ] String stomping options on built binary 
-7) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
+7) [ ] Random garbage exports in DLL?
+8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 
 ### 0.5.1
 
