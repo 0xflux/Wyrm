@@ -5,22 +5,20 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 ### 0.5
 
-1) [ ] Create custom DLL exports when staging a DLL, which would make it useful for DLL SOH/side loading
-   1) [ ] Maybe this should be configurable by the TOML, so each payload can have its own name can can be built individually (or all payloads can be built at once)
-   2) [ ] Can use a macro to write the function exporting the function name
-      1) [ ] Option per function for it to run Wyrm, or alternatively it is a junk function (not sure how to macroise that for random things? Maybe thats a bad idea)
-2) [ ] Build implant as svc
-3) [ ] Admin URI can be configured specifically in the profile - this will help defeat a little CTI
-4) [ ] Number of downloads for staged resources
-5) [ ] String stomping options on built binary 
-6) [ ] Random garbage exports in DLL?
-   1) [ ] Custom exports (also option to remove run and use custom ones) in profile
-   2) [ ] Random garbage exports
-   3) [ ] Can we link to an extern that someone has written? Hmmm
-7) [ ] PE Bear shows 'implant.dll' in Exports -> Name, needs stomping!
-8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
+1) [ ] Build implant as svc
+2) [x] Random garbage exports in DLL?
+   1) [x] Custom exports (also option to remove run and use custom ones) in profile
+   2) [x] Exports with user defined machine code
 
 ### 0.5.1
+
+1) [ ] Admin URI can be configured specifically in the profile - this will help defeat a little CTI
+2) [ ] Number of downloads for staged resources
+3) [ ] String stomping options on built binary 
+4) [ ] PE Bear shows 'implant.dll' in Exports -> Name, needs stomping!
+5) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
+
+### 0.5.2
 
 1) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
 2) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
@@ -39,6 +37,9 @@ developed as a premium or otherwise private feature. These will be few and far b
 8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 9) [ ] Ps should show parent pids with children in a hierarchy
 10) [ ] Logrotate setup
+11) [ ] More custom export functionality:
+    1)  [ ] Can we link to an extern that someone has written?
+    2)  [ ] Auto .obj to machine code converter for profiles?
  
 ### v1.0 - Whelpfire
 
@@ -52,7 +53,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 7) [ ] Create a "weaponisation" section; which can house various tools to automate weaponisation of certain features. 
    1) [ ] First feature to create here is a stage zero shortcut creator for downloading, moving and executing a payload
 8) [ ] Website docs, maybe gitbook or smth, im liking the look of https://github.com/redimp/otterwiki
-9) [ ] Stop bcrypt'ing on each admin control / auth event, use tokens. It is needlessly inefficient currently.
+9)  [ ] Stop bcrypt'ing on each admin control / auth event, use tokens. It is needlessly inefficient currently.
 10) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
 11) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 
