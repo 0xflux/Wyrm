@@ -5,37 +5,28 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 ### 0.5
 
-1) [ ] DLL needs thread start in `DLLMain`
-2) [ ] Create custom DLL exports when staging a DLL, which would make it useful for DLL SOH/side loading
-   1) [ ] Maybe this should be configurable by the TOML, so each payload can have its own name can can be built individually (or all payloads can be built at once)
-   2) [ ] Can use a macro to write the function exporting the function name
-      1) [ ] Option per function for it to run Wyrm, or alternatively it is a junk function (not sure how to macroise that for random things? Maybe thats a bad idea)
-3) [ ] Build implant as svc
-4) [ ] Multiple profiles for listener and implant
-5) [ ] Admin URI can be configured specifically in the profile - this will help defeat a little CTI
-6) [ ] Number of downloads for staged resources
-7) [ ] String stomping options on built binary 
-8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
-
-### 0.5.1
-
-1) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
-2) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
-3) [ ] Create multiple users
+1) [ ] Build implant as svc, user will have to define a service name in the profile for SCM.
+2) [ ] Number of downloads for staged resources
+3) [ ] String stomping options on built binary 
+4) [ ] PE Bear shows 'implant.dll' in Exports -> Name, needs stomping!
+5) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
+6) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
+7) [ ] Max upload size set on C2 from profile
 
 ### 0.6
 
-1) [ ] Max upload size set on C2
-2) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
-3) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
-4) [ ] Consider deprecating the sleep in `listener` and moving it to the `implant` section instead
+1) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
+2) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
+3) [ ] Consider deprecating the sleep in `listener` and moving it to the `implant` section instead
    1) [ ] Or, keep `listener` but the implant options you can have an array of listener key names to include in the build
-5) [ ] Multiple URLs / IPs for C2
-6) [ ] Separate URIs for POST and GET
-7) [ ] Round robin and different styles for URI & URL rotation
-8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
-9) [ ] Ps should show parent pids with children in a hierarchy
-10) [ ] Logrotate setup
+4) [ ] Multiple URLs / IPs for C2
+5) [ ] Separate URIs for POST and GET
+6) [ ] Round robin and different styles for URI & URL rotation
+7) [ ] Ps should show parent pids with children in a hierarchy
+8) [ ] Logrotate setup
+9)  [ ] More custom export functionality:
+    1)  [ ] Can we link to an extern that someone has written?
+    2)  [ ] Auto .obj to machine code converter for profiles?
  
 ### v1.0 - Whelpfire
 
@@ -49,13 +40,9 @@ developed as a premium or otherwise private feature. These will be few and far b
 7) [ ] Create a "weaponisation" section; which can house various tools to automate weaponisation of certain features. 
    1) [ ] First feature to create here is a stage zero shortcut creator for downloading, moving and executing a payload
 8) [ ] Website docs, maybe gitbook or smth, im liking the look of https://github.com/redimp/otterwiki
-9) [ ] Stop bcrypt'ing on each admin control / auth event, use tokens. It is needlessly inefficient currently.
+9)  [ ] Stop bcrypt'ing on each admin control / auth event, use tokens. It is needlessly inefficient currently.
 10) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
 11) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
-
-### v1.0.1
-
-1) [ ] Consider unit tests.
 
 ### v1.1
 
@@ -104,6 +91,8 @@ These are to be split out further as required for more manageable releases.
 31) [ ] `drives` search for additional drive volumes
 32) [ ] Scope / date / time checks
 33) [ ] Add a note to an implant
+34) [ ] Create multiple users 
+    1)  [ ] Make implant multiplayer - this may need a bit of rearchitecting
 
 ### Voidheart - v2.0
 
