@@ -11,28 +11,27 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 ### 0.5.1
 
-1) [ ] Build implant as svc, user will have to define a service name in the profile for SCM.
-2) [ ] Admin URI can be configured specifically in the profile - this will help defeat a little CTI
-3) [ ] Number of downloads for staged resources
-4) [ ] String stomping options on built binary 
-5) [ ] PE Bear shows 'implant.dll' in Exports -> Name, needs stomping!
-6) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
-7) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
+1) [ ] Number of downloads for staged resources
+2) [ ] String stomping options on built binary 
+3) [ ] PE Bear shows 'implant.dll' in Exports -> Name, needs stomping!
+4) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
+5) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
 
 ### 0.6
 
-1) [ ] Max upload size set on C2
-2) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
-3) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
-4) [ ] Consider deprecating the sleep in `listener` and moving it to the `implant` section instead
+1) [ ] Build implant as svc, user will have to define a service name in the profile for SCM.
+2) [ ] Max upload size set on C2
+3) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
+4) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
+5) [ ] Consider deprecating the sleep in `listener` and moving it to the `implant` section instead
    1) [ ] Or, keep `listener` but the implant options you can have an array of listener key names to include in the build
-5) [ ] Multiple URLs / IPs for C2
-6) [ ] Separate URIs for POST and GET
-7) [ ] Round robin and different styles for URI & URL rotation
-8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
-9) [ ] Ps should show parent pids with children in a hierarchy
-10) [ ] Logrotate setup
-11) [ ] More custom export functionality:
+6) [ ] Multiple URLs / IPs for C2
+7) [ ] Separate URIs for POST and GET
+8) [ ] Round robin and different styles for URI & URL rotation
+9) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
+10) [ ] Ps should show parent pids with children in a hierarchy
+11) [ ] Logrotate setup
+12) [ ] More custom export functionality:
     1)  [ ] Can we link to an extern that someone has written?
     2)  [ ] Auto .obj to machine code converter for profiles?
  
