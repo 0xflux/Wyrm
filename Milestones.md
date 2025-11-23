@@ -5,24 +5,19 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 ### 0.5
 
-1) [ ] Build implant as svc
-2) [x] Random garbage exports in DLL?
+1) [x] Random garbage exports in DLL?
    1) [x] Custom exports (also option to remove run and use custom ones) in profile
    2) [x] Exports with user defined machine code
 
 ### 0.5.1
 
-1) [ ] Admin URI can be configured specifically in the profile - this will help defeat a little CTI
-2) [ ] Number of downloads for staged resources
-3) [ ] String stomping options on built binary 
-4) [ ] PE Bear shows 'implant.dll' in Exports -> Name, needs stomping!
-5) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
-
-### 0.5.2
-
-1) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
-2) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
-3) [ ] Create multiple users
+1) [ ] Build implant as svc, user will have to define a service name in the profile for SCM.
+2) [ ] Admin URI can be configured specifically in the profile - this will help defeat a little CTI
+3) [ ] Number of downloads for staged resources
+4) [ ] String stomping options on built binary 
+5) [ ] PE Bear shows 'implant.dll' in Exports -> Name, needs stomping!
+6) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
+7) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
 
 ### 0.6
 
@@ -56,10 +51,6 @@ developed as a premium or otherwise private feature. These will be few and far b
 9)  [ ] Stop bcrypt'ing on each admin control / auth event, use tokens. It is needlessly inefficient currently.
 10) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
 11) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
-
-### v1.0.1
-
-1) [ ] Consider unit tests.
 
 ### v1.1
 
@@ -108,6 +99,8 @@ These are to be split out further as required for more manageable releases.
 31) [ ] `drives` search for additional drive volumes
 32) [ ] Scope / date / time checks
 33) [ ] Add a note to an implant
+34) [ ] Create multiple users 
+    1)  [ ] Make implant multiplayer - this may need a bit of rearchitecting
 
 ### Voidheart - v2.0
 
