@@ -6,10 +6,7 @@ pulling updates.
 
 **IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
 
-## v 0.5
-
-This update contains less features than I wanted for a major version number; but I wanted to publish it early as I want to write a blog
-post on the technique implemented in this version.
+## v 0.4.4
 
 - Introduces the profile options to build custom DLL export names, as well as define custom machine code to run at an export. This could be used for DLL Sideloading (better support for that coming later, but it should still work in some cases), OPSEC, or just causing a bit of mayhem for a blue teamer.
 
