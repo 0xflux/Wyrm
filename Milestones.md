@@ -5,16 +5,19 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 ### 0.5
 
-1) [ ] DLL needs thread start in `DLLMain`
-2) [ ] Create custom DLL exports when staging a DLL, which would make it useful for DLL SOH/side loading
+1) [ ] Create custom DLL exports when staging a DLL, which would make it useful for DLL SOH/side loading
    1) [ ] Maybe this should be configurable by the TOML, so each payload can have its own name can can be built individually (or all payloads can be built at once)
    2) [ ] Can use a macro to write the function exporting the function name
       1) [ ] Option per function for it to run Wyrm, or alternatively it is a junk function (not sure how to macroise that for random things? Maybe thats a bad idea)
-3) [ ] Build implant as svc
-4) [ ] Admin URI can be configured specifically in the profile - this will help defeat a little CTI
-5) [ ] Number of downloads for staged resources
-6) [ ] String stomping options on built binary 
-7) [ ] Random garbage exports in DLL?
+2) [ ] Build implant as svc
+3) [ ] Admin URI can be configured specifically in the profile - this will help defeat a little CTI
+4) [ ] Number of downloads for staged resources
+5) [ ] String stomping options on built binary 
+6) [ ] Random garbage exports in DLL?
+   1) [ ] Custom exports (also option to remove run and use custom ones) in profile
+   2) [ ] Random garbage exports
+   3) [ ] Can we link to an extern that someone has written? Hmmm
+7) [ ] PE Bear shows 'implant.dll' in Exports -> Name, needs stomping!
 8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 
 ### 0.5.1
