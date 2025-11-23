@@ -13,6 +13,7 @@
 //
 
 use crate::entry::start_wyrm;
+use core::arch::naked_asm;
 
 macro_rules! build_dll_export_by_name_start_wyrm {
     ($name:ident) => {
@@ -23,4 +24,18 @@ macro_rules! build_dll_export_by_name_start_wyrm {
     };
 }
 
-build_dll_export_by_name_start_wyrm!(testexporthehe);
+macro_rules! build_dll_export_by_name_junk_machine_code {
+    ($name:ident, $($b:expr),+ $(,)?) => {
+        #[unsafe(no_mangle)]
+        #[unsafe(naked)]
+        pub unsafe extern "system" fn $name() {
+            naked_asm!(
+                $(
+                    concat!(".byte ", stringify!($b)),
+                )+
+            )
+        }
+    };
+}
+
+include!(concat!(env!("OUT_DIR"), "/custom_exports.rs"));

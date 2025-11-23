@@ -1,6 +1,7 @@
 use core::panic;
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::BTreeMap,
     fmt::{Debug, Display},
     mem::transmute,
     path::PathBuf,
@@ -366,6 +367,31 @@ pub struct NewAgentStaging {
     pub patch_etw: bool,
     pub jitter: Option<u64>,
     pub timestomp: Option<String>,
+    pub exports: Exports,
+}
+
+impl NewAgentStaging {
+    pub fn from_staged_file_metadata(staging_endpoint: &String, download_name: &String) -> Self {
+        NewAgentStaging {
+            implant_name: "-".into(),
+            default_sleep_time: 0,
+            c2_address: "-".into(),
+            c2_endpoints: vec!["-".into()],
+            staging_endpoint: staging_endpoint.clone(),
+            pe_name: download_name.clone(),
+            port: 1,
+            agent_security_token: "-".into(),
+            antisandbox_trig: false,
+            antisandbox_ram: false,
+            stage_type: StageType::Exe,
+            build_debug: false,
+            useragent: "".into(),
+            patch_etw: false,
+            jitter: None,
+            timestomp: None,
+            exports: None,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]
@@ -432,4 +458,13 @@ impl BaBData {
     pub fn from(implant_key: String) -> Self {
         Self { implant_key }
     }
+}
+
+/// An export which is added to the binary when built as a DLL to allow for
+/// DLL sideloading, custom entrypoints, and annoying some blue teamers :E
+pub type Exports = Option<BTreeMap<String, ExportConfig>>;
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct ExportConfig {
+    pub machine_code: Option<Vec<u8>>,
 }

@@ -435,12 +435,6 @@ impl Wyrm {
                 buf.len() as u32,
             );
 
-            // NOTE: I forgot I left this in (whilst trying some things out to get rid of defenders ML wacatac detections)
-            // however, I dont think I hate it? I', gonna keep this sleep in for now, though, I think it is kinda pointless. I can review
-            // in the future whether this does anything meaningful in terms of some runtime heuristic evasion. My gut says no, as the previous
-            // checks (from the profile) should go some way as to defeating AV/EDR - sleeps can be very easily ignored by detection solutions.
-            sleep(Duration::from_secs(3));
-
             // In the event of an error, we will just send "unknown" to the server
             if len == 0 {
                 #[cfg(debug_assertions)]

