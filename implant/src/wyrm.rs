@@ -1,10 +1,7 @@
 //! Wyrm represents the state and structure of the implant itself, including any functions
 //! on the implant.
 
-use std::{
-    collections::VecDeque, path::PathBuf, process::exit, ptr::null_mut, thread::sleep,
-    time::Duration,
-};
+use std::{collections::VecDeque, path::PathBuf, process::exit, ptr::null_mut};
 
 use rand::{Rng, rng};
 use serde::Serialize;

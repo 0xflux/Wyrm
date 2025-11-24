@@ -39,7 +39,7 @@ impl XorEncode for Vec<u8> {
 pub fn encode_u16buf_to_u8buf(input: &[u16]) -> Vec<u8> {
     let mut buf: Vec<u8> = Vec::with_capacity(input.len());
 
-    for word in input.iter() {
+    for word in input {
         let [lo, hi] = word.to_le_bytes();
         buf.push(lo);
         buf.push(hi);

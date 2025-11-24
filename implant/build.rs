@@ -38,19 +38,19 @@ fn write_exports_to_build_dir() {
     if let Some(export_str) = exports_jmp_wyrm {
         if export_str.is_empty() {
             // If there was no custom export defined, then we just export the 'run' extern
-            write!(&mut code, "build_dll_export_by_name_start_wyrm!(run);\n",).unwrap();
+            writeln!(&mut code, "build_dll_export_by_name_start_wyrm!(run);",).unwrap();
         }
 
         for fn_name in export_str.split(';').filter(|s| !s.trim().is_empty()) {
-            write!(
+            writeln!(
                 &mut code,
-                "build_dll_export_by_name_start_wyrm!({fn_name});\n",
+                "build_dll_export_by_name_start_wyrm!({fn_name});",
             )
             .unwrap();
         }
     } else {
         // Just in case.. we still need an entrypoint, tho this should never run
-        write!(&mut code, "build_dll_export_by_name_start_wyrm!(run);\n",).unwrap();
+        writeln!(&mut code, "build_dll_export_by_name_start_wyrm!(run);",).unwrap();
     }
 
     if let Some(export_str) = exports_usr_machine_code {
@@ -59,15 +59,12 @@ fn write_exports_to_build_dir() {
             let name = parts.next().unwrap().trim();
             let bytes = parts.next().unwrap_or("").trim();
 
-            if name.is_empty() && bytes.is_empty() {
-                panic!("Error parsing export: {name}");
-            }
+            assert!(name.is_empty());
+            assert!(bytes.is_empty());
 
-            write!(
+            writeln!(
                 &mut code,
-                "build_dll_export_by_name_junk_machine_code!({name}, {bytes});\n",
-                name = name,
-                bytes = bytes,
+                "build_dll_export_by_name_junk_machine_code!({name}, {bytes});",
             )
             .unwrap();
         }
