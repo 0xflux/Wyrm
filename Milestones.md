@@ -8,12 +8,13 @@ developed as a premium or otherwise private feature. These will be few and far b
 1) [ ] Build implant as svc, user will have to define a service name in the profile for SCM.
    1) [ ] Malleable svc name
    2) [ ] What happens in the event of a panic where it cannot call svc exit?
-2) [ ] Number of downloads for staged resources
-3) [ ] String stomping options on built binary 
-4) [ ] PE Bear shows 'implant.dll' in Exports -> Name, needs stomping!
-5) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
-6) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
-7) [ ] Max upload size set on C2 from profile
+2) [ ] Some things are still not being printed... starting with an ls on the svc? But then a few commands later it does...?
+3) [ ] Number of downloads for staged resources
+4) [ ] String stomping options on built binary 
+5) [ ] PE Bear shows 'implant.dll' in Exports -> Name, needs stomping!
+6) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
+7) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
+8) [ ] Max upload size set on C2 from profile
 
 ### 0.6
 
