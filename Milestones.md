@@ -15,6 +15,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
 7) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
 8) [ ] Max upload size set on C2 from profile
+9) [ ] Test different LTO for build time and binary size
 
 ### 0.6
 
