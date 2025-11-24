@@ -416,7 +416,7 @@ impl FormatOutput for NotificationForAgent {
                 // alright this deser is gross ...
                 //
                 if let Some(response) = &self.result {
-                    match serde_json::from_str::<WyrmResult<String>>(&response) {
+                    match serde_json::from_str::<WyrmResult<String>>(response) {
                         Ok(data) => match data {
                             WyrmResult::Ok(inner_string_from_result) => {
                                 match serde_json::from_str::<Vec<String>>(&inner_string_from_result)
@@ -512,15 +512,15 @@ impl StripCannon for Path {
 
 /// A helper function to print values when it is just a WyrmResult<String>
 fn print_wyrm_result_string(encoded_data: &String) -> Vec<String> {
-    match serde_json::from_str::<WyrmResult<String>>(&encoded_data) {
+    match serde_json::from_str::<WyrmResult<String>>(encoded_data) {
         Ok(wyrm_result) => match wyrm_result {
-            WyrmResult::Ok(d) => return vec![d],
-            WyrmResult::Err(e) => return vec![format!("An error occurred: {e}")],
+            WyrmResult::Ok(d) => vec![d],
+            WyrmResult::Err(e) => vec![format!("An error occurred: {e}")],
         },
         Err(e) => {
-            return vec![format!(
+            vec![format!(
                 "Could not deserialise response: {e}. Got: {encoded_data:#?}"
-            )];
+            )]
         }
     }
 }
@@ -539,10 +539,7 @@ impl ActiveTabs {
     /// Instantiates a new [`ActiveTabs`] from the store. If it did not exist, a new [`ActiveTabs`] will be
     /// created.
     pub fn from_store() -> Self {
-        match get_item_from_browser_store(TAB_STORAGE_KEY) {
-            Ok(s) => s,
-            Err(_) => Self::default(),
-        }
+        get_item_from_browser_store(TAB_STORAGE_KEY).unwrap_or_default()
     }
 
     /// Writes the current tab layout to the browser store

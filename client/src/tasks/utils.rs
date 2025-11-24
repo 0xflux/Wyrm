@@ -9,7 +9,7 @@ use shared::task_types::RegType;
 /// * `n` - The expected number of resulting tokens.  
 /// * `strs` - The input string slice to be tokenised.  
 /// * `discard_first` - Whether the first discovered token should be discarded (`Chop`) or kept (`DontChop`). If you
-///  wish to chop the first 2 params, select [`DiscardFirst::ChopTwo`]
+///   wish to chop the first 2 params, select [`DiscardFirst::ChopTwo`]
 ///
 /// # Returns
 /// Returns `Some(Vec<String>)` if exactly `n` tokens are produced after processing,  
@@ -45,7 +45,7 @@ pub fn split_string_slices_to_n(
     let mut s = String::new();
     let mut toggle: bool = false;
 
-    for (_, c) in strs.chars().enumerate() {
+    for c in strs.chars() {
         if c == '"' {
             if toggle {
                 toggle = false;
@@ -165,13 +165,11 @@ pub fn validate_reg_type(input: &str, reg_type: RegType) -> Result<(), ()> {
             if let Err(_) = input.parse::<u32>() {
                 return Err(());
             }
-            ()
         }
         RegType::U64 => {
             if let Err(_) = input.parse::<u64>() {
                 return Err(());
             }
-            ()
         }
     }
 
