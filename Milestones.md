@@ -6,6 +6,8 @@ developed as a premium or otherwise private feature. These will be few and far b
 ### 0.5
 
 1) [ ] Build implant as svc, user will have to define a service name in the profile for SCM.
+   1) [ ] Malleable svc name
+   2) [ ] What happens in the event of a panic where it cannot call svc exit?
 2) [ ] Number of downloads for staged resources
 3) [ ] String stomping options on built binary 
 4) [ ] PE Bear shows 'implant.dll' in Exports -> Name, needs stomping!

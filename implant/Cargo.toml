@@ -17,6 +17,10 @@ split-debuginfo = "off"
 name = "implant"
 path = "src/main.rs"
 
+[[bin]]
+name = "implant_svc"
+path = "src/main_svc.rs"
+
 [lib]
 name = "implant"
 path = "src/lib.rs"
@@ -50,6 +54,7 @@ windows-sys = {version = "0.61", features = [
     "Win32_Security",
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_Diagnostics_Debug",
+    "Win32_System_Services",
 ]}
 rand = "0.9"
 windows-registry = "0.6"

