@@ -97,7 +97,7 @@ pub fn BuildProfilesPage() -> impl IntoView {
                                 bind:value=form_data
                                 required
                                 />
-                            <div class="form-text">The profile name <strong>should not include the toml extension</strong>, and it should be present under <code>c2/profiles/</code>.</div>
+                            <div class="form-text">The profile name <strong> should not include the toml extension</strong>, and it should be present under <code>c2/profiles/</code>.</div>
                         </div>
 
                         <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" disabled=move || submitting.get()>
