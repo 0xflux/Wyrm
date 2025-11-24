@@ -59,8 +59,8 @@ fn write_exports_to_build_dir() {
             let name = parts.next().unwrap().trim();
             let bytes = parts.next().unwrap_or("").trim();
 
-            assert!(name.is_empty());
-            assert!(bytes.is_empty());
+            assert!(!name.is_empty());
+            assert!(!bytes.is_empty());
 
             writeln!(
                 &mut code,
