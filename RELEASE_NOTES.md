@@ -12,6 +12,10 @@ pulling updates.
 
 - Introduced the .svc binary which builds as part of your build package from the C2. There is a new required field in the profile, which is **svc_name**. Read more in the Wyrm Docs profile section as to how to use this field. In short, the value of this field (required) is passed to the Windows Service Control Manager when the service binary is run.
 
+### Non-breaking changes
+
+- Fixed bug (again..) that was preventing messages showing in the GUI, even though they were processed by the client. Hopefully that is the end of that bug!
+
 ## v 0.4.4
 
 - Introduces the profile options to build custom DLL export names, as well as define custom machine code to run at an export. This could be used for DLL Sideloading (better support for that coming later, but it should still work in some cases), OPSEC, or just causing a bit of mayhem for a blue teamer.
