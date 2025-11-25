@@ -33,9 +33,6 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] Round robin and different styles for URI & URL rotation
 7) [ ] Ps should show parent pids with children in a hierarchy
 8) [ ] Logrotate setup
-9)  [ ] More custom export functionality:
-    1)  [ ] Can we link to an extern that someone has written?
-    2)  [ ] Auto .obj to machine code converter for profiles?
  
 ### v1.0 - Whelpfire
 
