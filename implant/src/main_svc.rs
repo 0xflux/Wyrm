@@ -15,7 +15,6 @@ use windows_sys::{
         },
     },
     core::PWSTR,
-    w,
 };
 
 use crate::{
@@ -30,6 +29,18 @@ mod native;
 mod utils;
 mod wyrm;
 
+/// Creates a service binary name, based on the malleable profile (or unwrap at comptime). The macro
+/// returns a PWSTR (*mut u16) which can be used in place of a PWSTR in windows_sys
+macro_rules! service_name_pwstr {
+    () => {{
+        let svc_name = option_env!("SVC_NAME").unwrap();
+        let mut svc_name = svc_name.to_string();
+        svc_name.push('\0');
+        let mut svc_name_wide: Vec<u16> = svc_name.encode_utf16().collect();
+        PWSTR::from(svc_name_wide.as_mut_ptr())
+    }};
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn ServiceMain(_: u32, _: *mut PWSTR) {
     svc_start();
@@ -37,7 +48,8 @@ pub unsafe extern "system" fn ServiceMain(_: u32, _: *mut PWSTR) {
 
 fn svc_start() {
     // register the service with SCM
-    let h_svc = unsafe { RegisterServiceCtrlHandlerW(w!("MyService"), Some(service_handler)) };
+    let h_svc =
+        unsafe { RegisterServiceCtrlHandlerW(service_name_pwstr!(), Some(service_handler)) };
     if h_svc.is_null() {
         return;
     }
@@ -60,11 +72,9 @@ unsafe extern "system" fn service_handler(control: u32) {
 }
 
 fn main() {
-    let mut service_name: Vec<u16> = "MyService\0".encode_utf16().collect();
-
     let service_table = [
         SERVICE_TABLE_ENTRYW {
-            lpServiceName: PWSTR::from(service_name.as_mut_ptr()),
+            lpServiceName: service_name_pwstr!(),
             lpServiceProc: Some(ServiceMain),
         },
         SERVICE_TABLE_ENTRYW::default(),
