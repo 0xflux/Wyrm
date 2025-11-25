@@ -69,8 +69,9 @@ These are to be split out further as required for more manageable releases.
 11) [ ] Concurrent removable media scanner - runs when main thread is sleeping between calls and looks for a removable disk being added. Auto-pillage.
    1)  [ ] The auto pillage file extensions should be specified in the profile toml
 12) [ ] Auto Escalator (this could be done a separate project that can be used by others, but also compiles into this):
-   1) [ ] Local user -> Local Admin
-   2) [ ] Local Admin -> SYSTEM
+    1)  [ ] User -> SYSTEM (service paths etc)
+    2)  [ ] Local user -> Local Admin
+    3)  [ ] Local Admin -> SYSTEM
 13) [ ] Improved anti-sandbox checks
 14) [ ] Lateral movement:
    1) [ ] PsExec
