@@ -14,6 +14,9 @@ pulling updates.
 
 ### Non-breaking changes
 
+- Introduced the **string scrubber**!
+  - The string scrubber automatically scrubs 'implant.dll' from the export name of the Wyrm DLL.
+  - The string scrubber allows through a malleable profile the ability to scrub certain strings from the binary. **Warning:** this interprets bytes like for like and either allows you to replace them, or zero them out. This could lead to accidental pattern collisions with machine code / other artifacts, so if you are using this feature, be sure to test the binary before deployment on a red team op!
 - Fixed bug (again..) that was preventing messages showing in the GUI, even though they were processed by the client. Hopefully that is the end of that bug!
 
 ## v 0.4.4
