@@ -10,8 +10,8 @@ use crate::{
     DB_EXPORT_PATH, FILE_STORE_PATH,
     app_state::{AppState, DownloadEndpointData},
     logging::{log_error, log_error_async},
+    pe_utils::{scrub_strings, timestomp_binary_compile_date},
     profiles::{Profile, parse_exports_to_string_for_env},
-    timestomping::timestomp_binary_compile_date,
 };
 use axum::extract::State;
 use chrono::{SecondsFormat, Utc};
@@ -365,6 +365,15 @@ async fn write_implant_to_tmp_folder(
 
                 return Err(msg);
             }
+        }
+
+        //
+        // Scrub implant.dll out
+        //
+        if stage_type == StageType::Dll {
+            if let Err(e) = scrub_strings(&dest, b"implant.dll\0", None).await {
+                println!("Failed {e}");
+            };
         }
     }
 

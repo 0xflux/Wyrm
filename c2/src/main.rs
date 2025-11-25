@@ -44,8 +44,8 @@ mod exfil;
 mod logging;
 mod middleware;
 mod net;
+mod pe_utils;
 mod profiles;
-mod timestomping;
 
 /// The maximum POST body request size that can be received by the C2.
 /// Set at 1 GB.
