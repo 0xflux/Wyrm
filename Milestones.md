@@ -97,6 +97,7 @@ These are to be split out further as required for more manageable releases.
 33) [ ] Add a note to an implant
 34) [ ] Create multiple users 
     1)  [ ] Make implant multiplayer - this may need a bit of rearchitecting
+35) [ ] Runtime obfuscation, sleep masking and covert loading (L?)
 
 ### Voidheart - v2.0
 
@@ -110,11 +111,10 @@ These are to be split out further as required for more manageable releases.
 6) [ ] Time-stomping for builds & also agent can stomp files on target
 7) [ ] Any inspiration from [trustedsec's BOFs](https://github.com/trustedsec/CS-Situational-Awareness-BOF) around some sitrep stuff this can do?
    1)  [ ] `ldapsearch`
-8) [ ] Runtime obfuscation and sleep masking
-9)  [ ] 'Overwatch' system on the C2
-10) [ ] TOPT
-11) [ ] Add ability to protect staged downloads with a header `key=value`, to try prevent mass downloading of an agent in cases where the operator wants it behind a check
-12) [ ] Post Quantum Encryption for below TLS implant comms
+8) [ ] 'Overwatch' system on the C2
+9) [ ] TOPT
+10) [ ] Add ability to protect staged downloads with a header `key=value`, to try prevent mass downloading of an agent in cases where the operator wants it behind a check
+11) [ ] Post Quantum Encryption for below TLS implant comms
 
 ### Ashen Crown - v3.0
 
