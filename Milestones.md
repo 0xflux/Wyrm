@@ -88,10 +88,8 @@ These are to be split out further as required for more manageable releases.
 27) [ ] `drives` search for additional drive volumes
 28) [ ] Scope / date / time checks
 29) [ ] Add a note to an implant
-30) [ ] Create multiple users 
-    1)  [ ] Make implant multiplayer - this may need a bit of rearchitecting
-31) [ ] Runtime obfuscation, sleep masking and covert loading (L?)
-32) [ ] Some UAC bypasses?
+30) [ ] Runtime obfuscation, sleep masking and covert loading (L?)
+31) [ ] Some UAC bypasses?
 
 ### Voidheart - v2.0
 
@@ -109,6 +107,8 @@ These are to be split out further as required for more manageable releases.
 9) [ ] TOPT
 10) [ ] Add ability to protect staged downloads with a header `key=value`, to try prevent mass downloading of an agent in cases where the operator wants it behind a check
 11) [ ] Post Quantum Encryption for below TLS implant comms
+12) [ ] Create multiple users 
+    1)  [ ] Make implant multiplayer - this may need a bit of rearchitecting
 
 ### Ashen Crown - v3.0
 
