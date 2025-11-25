@@ -98,6 +98,7 @@ These are to be split out further as required for more manageable releases.
 34) [ ] Create multiple users 
     1)  [ ] Make implant multiplayer - this may need a bit of rearchitecting
 35) [ ] Runtime obfuscation, sleep masking and covert loading (L?)
+36) [ ] Some UAC bypasses?
 
 ### Voidheart - v2.0
 
