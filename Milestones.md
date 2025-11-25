@@ -16,6 +16,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 8) [ ] Max upload size set on C2 from profile
 9) [ ] Test different LTO for build time and binary size
 10) [ ] Serialise the agent message thing move from \t, it is reasonable for \t to exist and break this..
+11) [ ] `ls` command output should indicate whether is dir or file (maybe on the left somewhere in [ ] ?)
 
 ### 0.6
 
