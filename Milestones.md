@@ -38,17 +38,12 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 1) [ ] NG Proxy Bypass (NGPB) (L)
 2) [ ] Internal proxy resolution for HTTP requests
-3) [ ] Auto poll notifications across all active tabs
-4) [ ] `execute-assembly`
+3) [ ] `execute-assembly`
    1) [ ] AMSI patching option in profile 
-5) [ ] `jump psexec`
-6) [ ] Build all Windows payloads (exe, dll, svc), staging should happen via file upload - not by creating an individual payload (at least for now)
-7) [ ] Create a "weaponisation" section; which can house various tools to automate weaponisation of certain features. 
-   1) [ ] First feature to create here is a stage zero shortcut creator for downloading, moving and executing a payload
-8) [ ] Website docs, maybe gitbook or smth, im liking the look of https://github.com/redimp/otterwiki
-9)  [ ] Stop bcrypt'ing on each admin control / auth event, use tokens. It is needlessly inefficient currently.
-10) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
-11) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
+4) [ ] `jump psexec`
+5) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
+6) [ ] Profile option for mutex
+7) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 
 ### v1.1
 
@@ -58,50 +53,45 @@ These are to be split out further as required for more manageable releases.
    1) [ ] The base payload should move from an exe/dll to a RDLL or similar so the entry becomes a bootstrapper
    2) [ ] Don't forget ETW & anti_sandbox strategies here - they are in the 2nd stage but may need moving to the 1st stage (aka the bootstrapper)
 2) [ ] Long running tasks which have a specified integrity level, so any task set under this scheme can execute at a given integrity level for that machine
-3) [ ] Selectable listener profiles, which will feed into things such as spawn, or other things where a selectable listener is required
-4) [ ] `spawn`
-5) [ ] `inject`
-6) [ ] Killing the agent should support from thread as well as from process (in the case of an injected process).
-7) [ ] Clone a webpage and automatic download of implant at a staged location (separate wizard needed).
-8) [ ] Agent & C2 supports multiple endpoints (selectable in build process from cli) / c2 profiles
+3) [ ] `spawn` + malleable options
+4) [ ] `inject` + malleable options
+5) [ ] Killing the agent should support from thread as well as from process (in the case of an injected process).
+6) [ ] Agent & C2 supports multiple endpoints (selectable in build process from cli) / c2 profiles
    1) This needs to be implemented in the wizard also
-9)  [ ] `zip` command to natively zip a folder
-10) [ ] Improve pillage function
-11) [ ] Concurrent removable media scanner - runs when main thread is sleeping between calls and looks for a removable disk being added. Auto-pillage.
+7)  [ ] `zip` command to natively zip a folder
+8)  [ ] Improve pillage function
+9)  [ ] Concurrent removable media scanner - runs when main thread is sleeping between calls and looks for a removable disk being added. Auto-pillage.
    1)  [ ] The auto pillage file extensions should be specified in the profile toml
-12) [ ] Auto Escalator (this could be done a separate project that can be used by others, but also compiles into this):
+10) [ ] Auto Escalator (this could be done a separate project that can be used by others, but also compiles into this):
     1)  [ ] User -> SYSTEM (service paths etc)
     2)  [ ] Local user -> Local Admin
     3)  [ ] Local Admin -> SYSTEM
-13) [ ] Improved anti-sandbox checks
-14) [ ] Lateral movement:
-   1) [ ] PsExec
-15) [ ] C2 junk padding response size (needs to play nice with NGPB)
-16) [ ] Export agent db info for reporting
-17) [ ] Read users clipboard continuously and upload to C2
-18) [ ] Multiple C2 implementations on the agent. This could be a task which orders the creation on the implant itself.
-19) [ ] More lateral movement techniques
-20) [ ] Capture screenshots
-21) [ ] Autoloot:
+11) [ ] Improved anti-sandbox checks
+12) [ ] Additional lateral movement options
+13) [ ] C2 junk padding response size (needs to play nice with NGPB)
+14) [ ] Export agent db info for reporting
+15) [ ] Read users clipboard continuously and upload to C2
+16) [ ] Multiple C2 implementations on the agent. This could be a task which orders the creation on the implant itself.
+17) [ ] Capture screenshots
+18) [ ] Autoloot:
     1)  [ ] SSH keys
     2)  [ ] Image hashes (L)
     3)  [ ] Filenames of office docs, .pdf, .jpg, .mov, .kdbx
-22) [ ] Builds agent that can use APIs via hells/halos gate, etc.
-23) [ ] Pool Party
-24) [ ] C2 rotation strategy from profile
-25) [ ] `cat`
-26) [ ] `tasks` and `task_kill`
-27) [ ] SOCKS proxy
-28) [ ] Shellcode loader
-29) [ ] C2 configurable so it is hosted on TOR, with C2 fronted redirectors into the TOR network
-30) [ ] Profile option for mutex
-31) [ ] `drives` search for additional drive volumes
-32) [ ] Scope / date / time checks
-33) [ ] Add a note to an implant
-34) [ ] Create multiple users 
+19) [ ] Builds agent that can use APIs via hells/halos gate, etc.
+20) [ ] Pool Party
+21) [ ] C2 rotation strategy from profile
+22) [ ] `cat`
+23) [ ] `tasks` and `task_kill`
+24) [ ] SOCKS proxy
+25) [ ] Shellcode loader
+26) [ ] C2 configurable so it is hosted on TOR, with C2 fronted redirectors into the TOR network
+27) [ ] `drives` search for additional drive volumes
+28) [ ] Scope / date / time checks
+29) [ ] Add a note to an implant
+30) [ ] Create multiple users 
     1)  [ ] Make implant multiplayer - this may need a bit of rearchitecting
-35) [ ] Runtime obfuscation, sleep masking and covert loading (L?)
-36) [ ] Some UAC bypasses?
+31) [ ] Runtime obfuscation, sleep masking and covert loading (L?)
+32) [ ] Some UAC bypasses?
 
 ### Voidheart - v2.0
 
