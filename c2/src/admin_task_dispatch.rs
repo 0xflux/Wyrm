@@ -712,6 +712,7 @@ async fn build_agent(
         .env("C2_URIS", c2_endpoints)
         .env("C2_PORT", data.port.to_string())
         .env("JITTER", jitter.to_string())
+        .env("SVC_NAME", data.svc_name.clone())
         .env("USERAGENT", &data.useragent)
         .env("STAGING_URI", &data.staging_endpoint)
         .env("EXPORTS_JMP_WYRM", exports.export_only_jmp_wyrm)

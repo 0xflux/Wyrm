@@ -372,6 +372,7 @@ pub struct NewAgentStaging {
     pub jitter: Option<u64>,
     pub timestomp: Option<String>,
     pub exports: Exports,
+    pub svc_name: String,
 }
 
 impl NewAgentStaging {
@@ -394,6 +395,7 @@ impl NewAgentStaging {
             jitter: None,
             timestomp: None,
             exports: None,
+            svc_name: "-".to_string(),
         }
     }
 }

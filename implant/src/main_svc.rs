@@ -65,6 +65,7 @@ fn svc_start() {
 unsafe extern "system" fn service_handler(control: u32) {
     match control {
         SERVICE_CONTROL_STOP => {
+            // TODO, do we want actual stop control to work?
             SERVICE_STOP_EVENT.store(true, Ordering::SeqCst);
         }
         _ => {}

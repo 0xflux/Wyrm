@@ -33,6 +33,7 @@ pub struct Network {
 pub struct Implant {
     pub anti_sandbox: Option<AntiSandbox>,
     pub debug: Option<bool>,
+    svc_name: String,
     pub network: Network,
     pub evasion: Evasion,
     pub exports: Exports,
@@ -146,6 +147,7 @@ impl Profile {
             jitter: implant.network.jitter,
             timestomp: implant.evasion.timestomp.clone(),
             exports: implant.exports.clone(),
+            svc_name: implant.svc_name.clone(),
         })
     }
 }

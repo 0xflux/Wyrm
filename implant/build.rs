@@ -10,6 +10,7 @@ fn main() {
         "USERAGENT",
         "AGENT_NAME",
         "JITTER",
+        "SVC_NAME",
         "EXPORTS_JMP_WYRM",
         "EXPORTS_USR_MACHINE_CODE",
     ];
