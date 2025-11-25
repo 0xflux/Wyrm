@@ -15,6 +15,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 7) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
 8) [ ] Max upload size set on C2 from profile
 9) [ ] Test different LTO for build time and binary size
+10) [ ] Serialise the agent message thing move from \t, it is reasonable for \t to exist and break this..
 
 ### 0.6
 
