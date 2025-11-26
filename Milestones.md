@@ -17,10 +17,13 @@ developed as a premium or otherwise private feature. These will be few and far b
 7) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
 8) [ ] Max upload size set on C2 from profile
 9) [x] Test different LTO for build time and binary size
-10) [ ] Serialise the agent message thing move from \t, it is reasonable for \t to exist and break this..
-11) [ ] `ls` command output should indicate whether is dir or file (maybe on the left somewhere in [ ] ?)
-12) [ ] \n in output should put on new line (e.g. whoami /priv)
-    1)  [ ] Can we colour output?
+
+### 0.5.1
+
+1) [ ] \n in output should put on new line (e.g. whoami /priv)
+   1)  [ ] Can we colour output?
+2) [ ] `ls` command output should indicate whether is dir or file (maybe on the left somewhere in [ ] ?)
+3) [ ] Serialise the agent message thing move from \t, it is reasonable for \t to exist and break this..
 
 ### 0.6
 
