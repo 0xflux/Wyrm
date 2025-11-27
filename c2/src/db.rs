@@ -573,7 +573,7 @@ impl Db {
     pub async fn get_staged_agent_data(&self) -> Result<Vec<StagedResourceData>, sqlx::Error> {
         let rows = sqlx::query_as::<_, StagedResourceData>(
             r#"
-            SELECT agent_name, c2_endpoint, staged_endpoint, pe_name, sleep_time, port
+            SELECT agent_name, c2_endpoint, staged_endpoint, pe_name, sleep_time, port, num_downloads
             FROM agent_staging"#,
         )
         .fetch_all(&self.pool)
@@ -616,5 +616,18 @@ impl Db {
         }
 
         Ok(Some(results))
+    }
+
+    pub async fn update_download_count(&self, staged_endpoint: &String) -> Result<(), sqlx::Error> {
+        let _ = sqlx::query(
+            "UPDATE agent_staging
+            SET num_downloads = num_downloads + 1
+            WHERE staged_endpoint = $1",
+        )
+        .bind(staged_endpoint)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
     }
 }

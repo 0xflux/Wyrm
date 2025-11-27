@@ -63,6 +63,7 @@ pub async fn handle_agent_get_with_path(
     if lock.c2_endpoints.contains(&endpoint) {
         // There is no need to authenticate here, that is done subsequently during
         // `handle_agent_get` where we pull the agent_id from the header
+        drop(lock);
         return handle_agent_get(state, request).await.into_response();
     }
 
@@ -71,6 +72,11 @@ pub async fn handle_agent_get_with_path(
     // over to them.
     //
     if let Some(metadata) = lock.download_endpoints.get(&endpoint) {
+        state
+            .db_pool
+            .update_download_count(&endpoint)
+            .await
+            .expect("could not update download count.");
         let filename = &metadata.file_name;
         return serve_file(filename, metadata.xor_key).await.into_response();
     }
