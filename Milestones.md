@@ -9,9 +9,8 @@ developed as a premium or otherwise private feature. These will be few and far b
    1) [x] Malleable svc name
 2) [x] Some things are still not being printed... starting with an ls on the svc? But then a few commands later it does...?
 3) [ ] Number of downloads for staged resources
-4) [ ] String stomping options on built binary 
-   1) [ ] Needs profile building & testing
-   2) [ ] Profile should add the null terminator on each input and replacement string (if repl is present)
+4) [x] String stomping options on built binary 
+   1) [x] Needs profile building & testing
 5) [x] PE Bear shows 'implant.dll' in Exports -> Name, needs stomping!
 6) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
 7) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
