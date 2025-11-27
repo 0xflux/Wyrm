@@ -144,13 +144,10 @@ pub async fn scrub_strings(
     const CIRCUIT_BREAKER_MAX: u32 = 10000;
     let mut i = 0;
 
-    while let Some(pos) = buf
-        .windows(needle.len())
-        .position(|w| w.eq_ignore_ascii_case(needle))
-    {
+    while let Some(pos) = buf.windows(needle.len()).position(|w| w.eq(needle)) {
         let end = pos + needle.len();
         if let Some(replacement) = replacement {
-            if end > needle.len() {
+            if replacement.len() > needle.len() {
                 let s = String::from_utf8_lossy(needle);
                 log_error_async(&format!(
                     "Could not scrub string {s}, replacement was longer than input."

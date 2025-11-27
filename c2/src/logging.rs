@@ -90,8 +90,6 @@ pub async fn log_error_async(message: &str) {
     let mut path = PathBuf::from(LOG_PATH);
     path.push(ERROR_LOG);
 
-    print_failed(message);
-
     log(&path, message, None).await
 }
 

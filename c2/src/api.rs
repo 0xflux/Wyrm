@@ -2,7 +2,7 @@ use std::{net::SocketAddr, sync::Arc};
 
 use crate::{
     AUTH_COOKIE_NAME, COOKIE_TTL,
-    admin_task_dispatch::{admin_dispatch, build_all_bins},
+    admin_task_dispatch::{admin_dispatch, implant_builder::build_all_bins},
     agents::{extract_agent_id, handle_kill_command},
     app_state::AppState,
     exfil::handle_exfiltrated_file,
@@ -25,7 +25,6 @@ use axum_extra::extract::{
 };
 use shared::{
     net::{AdminLoginPacket, XorEncode, decode_http_response},
-    pretty_print::print_failed,
     tasks::{AdminCommand, BaBData, Command, FirstRunData},
 };
 

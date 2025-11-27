@@ -4,7 +4,7 @@ use std::{
 };
 
 use serde::Deserialize;
-use shared::tasks::{Exports, NewAgentStaging, StageType, WyrmResult};
+use shared::tasks::{Exports, NewAgentStaging, StageType, StringStomp, WyrmResult};
 use tokio::io;
 
 #[derive(Deserialize, Debug, Default, Clone)]
@@ -37,6 +37,7 @@ pub struct Implant {
     pub network: Network,
     pub evasion: Evasion,
     pub exports: Exports,
+    pub string_stomp: Option<StringStomp>,
 }
 
 #[derive(Deserialize, Debug, Default, Clone)]
@@ -127,6 +128,8 @@ impl Profile {
             return WyrmResult::Err(String::from("At least 1 URI is required for the server."));
         }
 
+        let string_stomp = StringStomp::from(&implant.string_stomp);
+
         WyrmResult::Ok(NewAgentStaging {
             // TODO not required
             implant_name: String::new(),
@@ -148,6 +151,7 @@ impl Profile {
             timestomp: implant.evasion.timestomp.clone(),
             exports: implant.exports.clone(),
             svc_name: implant.svc_name.clone(),
+            string_stomp,
         })
     }
 }

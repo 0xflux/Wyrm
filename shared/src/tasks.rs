@@ -1,7 +1,7 @@
 use core::panic;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashSet},
     fmt::{Debug, Display},
     mem::transmute,
     path::PathBuf,
@@ -373,6 +373,7 @@ pub struct NewAgentStaging {
     pub timestomp: Option<String>,
     pub exports: Exports,
     pub svc_name: String,
+    pub string_stomp: Option<StringStomp>,
 }
 
 impl NewAgentStaging {
@@ -396,6 +397,7 @@ impl NewAgentStaging {
             timestomp: None,
             exports: None,
             svc_name: "-".to_string(),
+            string_stomp: None,
         }
     }
 }
@@ -475,4 +477,63 @@ pub type Exports = Option<BTreeMap<String, ExportConfig>>;
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct ExportConfig {
     pub machine_code: Option<Vec<u8>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct StringStomp {
+    /// Strings to remove with zeros from the binary
+    pub remove: Option<HashSet<String>>,
+    /// Strings to replace in the binary
+    pub replace: Option<BTreeMap<String, String>>,
+}
+
+impl StringStomp {
+    /// Creates a new [`StringStomp`] from optional input lists of the correct type. The function will
+    /// add a null byte to the end of each string if it does not exist so that it is compatible with
+    /// searching for proper null terminated strings.
+    pub fn from(string_stomp: &Option<StringStomp>) -> Option<Self> {
+        let string_stomp = match string_stomp {
+            Some(s) => s,
+            None => return None,
+        };
+
+        let remove = {
+            if let Some(inner) = &string_stomp.remove {
+                let mut r = HashSet::with_capacity(inner.len());
+
+                for s in inner.iter() {
+                    let builder = s.to_owned();
+                    let mut builder = builder.replace(r"\\", r"\");
+
+                    if !builder.ends_with('\0') {
+                        builder.push('\0');
+                    }
+
+                    r.insert(builder);
+                }
+
+                Some(r)
+            } else {
+                None
+            }
+        };
+
+        let replace = {
+            if let Some(inner) = &string_stomp.replace {
+                let mut r = BTreeMap::new();
+
+                for (k, v) in inner.iter() {
+                    let k_builder = k.to_owned();
+                    let v_builder = v.to_owned();
+                    r.insert(k_builder, v_builder);
+                }
+
+                Some(r)
+            } else {
+                None
+            }
+        };
+
+        Some(Self { remove, replace })
+    }
 }
