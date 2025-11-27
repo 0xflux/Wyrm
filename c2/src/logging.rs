@@ -1,14 +1,13 @@
 use std::{env, io::Write, path::PathBuf};
 
 use chrono::{SecondsFormat, Utc};
-use shared::pretty_print::print_failed;
 use tokio::io::AsyncWriteExt;
 
-use crate::{ACCESS_LOG, ERROR_LOG, LOG_PATH, LOGIN_LOG};
+use crate::{ACCESS_LOG, DOWNLOAD, ERROR_LOG, LOG_PATH, LOGIN_LOG};
 
 pub async fn log_download_accessed(uri: &str, addr: &str) {
     let mut path = PathBuf::from(LOG_PATH);
-    path.push(ACCESS_LOG);
+    path.push(DOWNLOAD);
 
     let msg = format!("Download accessed: /{uri}.");
 
@@ -90,8 +89,6 @@ pub async fn log_error_async(message: &str) {
     let mut path = PathBuf::from(LOG_PATH);
     path.push(ERROR_LOG);
 
-    print_failed(message);
-
     log(&path, message, None).await
 }
 
@@ -136,4 +133,34 @@ fn construct_msg(addr: Option<&str>, message: &str) -> String {
     } else {
         format!("[{time_now}] {message}\n")
     }
+}
+
+#[macro_export]
+macro_rules! ensure_log_file_on_disk {
+    ($filename:expr) => {{
+        use crate::LOG_PATH;
+
+        let mut log_path = std::path::PathBuf::from(LOG_PATH);
+        log_path.push($filename);
+        if let Err(e) = std::fs::File::create_new(&log_path) {
+            match e.kind() {
+                std::io::ErrorKind::AlreadyExists => (),
+                _ => {
+                    panic!("Cannot create log for {}", $filename);
+                }
+            }
+        }
+    }};
+}
+
+#[macro_export]
+macro_rules! create_dir {
+    ($dir_path:expr) => {{
+        if let Err(e) = std::fs::create_dir($dir_path) {
+            match e.kind() {
+                std::io::ErrorKind::AlreadyExists => (),
+                _ => panic!("Could not create dir for {}", $dir_path),
+            }
+        }
+    }};
 }

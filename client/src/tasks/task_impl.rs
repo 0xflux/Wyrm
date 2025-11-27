@@ -180,10 +180,7 @@ pub async fn remove_file(
 ) -> DispatchResult {
     agent.has_agent_id()?;
     let target_path = match split_string_slices_to_n(1, &raw_input, DiscardFirst::Chop) {
-        Some(mut inner) => {
-            let target_path = take(&mut inner[0]);
-            target_path
-        }
+        Some(mut inner) => take(&mut inner[0]),
         None => {
             return Err(TaskingError::TaskDispatchError(
                 TaskDispatchError::BadTokens("Could not get data from tokens in move_file.".into()),
@@ -250,7 +247,7 @@ pub async fn remove_agent(agent: &IsTaskingAgent) -> DispatchResult {
     agent.has_agent_id()?;
     let _ = api_request(
         AdminCommand::RemoveAgentFromList,
-        &agent,
+        agent,
         None,
         C2Url::Standard,
         None,
@@ -622,7 +619,7 @@ pub async fn reg_query_del(
     agent.has_agent_id()?;
 
     if inputs.is_empty() {
-        print_failed(format!("Please specify options."));
+        print_failed("Please specify options.");
     }
 
     //
@@ -687,7 +684,7 @@ pub async fn reg_add(inputs: String, agent: &IsTaskingAgent) -> DispatchResult {
     agent.has_agent_id()?;
 
     if inputs.is_empty() {
-        print_failed(format!("Please specify options."));
+        print_failed("Please specify options.");
     }
 
     //
@@ -699,12 +696,13 @@ pub async fn reg_add(inputs: String, agent: &IsTaskingAgent) -> DispatchResult {
     //
 
     let reg_add_options = split_string_slices_to_n(4, &inputs, DiscardFirst::ChopTwo);
-    let mut reg_add_options = if reg_add_options.is_none() {
-        return Err(TaskingError::TaskDispatchError(
-            TaskDispatchError::BadTokens("Could not find options for command".into()),
-        ));
-    } else {
-        reg_add_options.unwrap()
+    let mut reg_add_options = match reg_add_options {
+        Some(o) => o,
+        None => {
+            return Err(TaskingError::TaskDispatchError(
+                TaskDispatchError::BadTokens("Could not find options for command".into()),
+            ));
+        }
     };
 
     let reg_type = match reg_add_options[3].as_str() {

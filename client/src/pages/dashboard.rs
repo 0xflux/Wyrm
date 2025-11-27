@@ -143,7 +143,7 @@ fn MiddleTabBar() -> impl IntoView {
                         href="#"
                         on:click=move |_| {
                             let mut guard = tabs.write();
-                            (*guard).active_id = None
+                            guard.active_id = None
                         }
                     >
                         "Server"

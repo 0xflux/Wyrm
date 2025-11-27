@@ -1,9 +1,7 @@
 #![feature(map_try_insert)]
 
 use core::panic;
-use std::{
-    fs::create_dir, net::SocketAddr, panic::set_hook, path::PathBuf, sync::Arc, time::Duration,
-};
+use std::{net::SocketAddr, panic::set_hook, sync::Arc, time::Duration};
 
 use api::{handle_agent_get, handle_agent_post};
 use axum::{
@@ -44,8 +42,8 @@ mod exfil;
 mod logging;
 mod middleware;
 mod net;
+mod pe_utils;
 mod profiles;
-mod timestomping;
 
 /// The maximum POST body request size that can be received by the C2.
 /// Set at 1 GB.
@@ -62,6 +60,7 @@ const EXFIL_PATH: &str = "/data/loot";
 const LOG_PATH: &str = "/data/logs";
 const DB_EXPORT_PATH: &str = "/data/exports";
 const ACCESS_LOG: &str = "access.log";
+const DOWNLOAD: &str = "downloads.log";
 const LOGIN_LOG: &str = "login.log";
 const ERROR_LOG: &str = "error.log";
 
@@ -215,73 +214,15 @@ fn build_routes(state: Arc<AppState>) -> Router {
 }
 
 fn ensure_dirs_and_files() {
-    //
-    // Create relevant directories
-    //
+    create_dir!(FILE_STORE_PATH);
+    create_dir!(DB_EXPORT_PATH);
+    create_dir!(EXFIL_PATH);
+    create_dir!(LOG_PATH);
 
-    if let Err(e) = std::fs::create_dir(FILE_STORE_PATH) {
-        match e.kind() {
-            std::io::ErrorKind::AlreadyExists => (),
-            _ => panic!("Could not create dir for FILE_STORE_PATH"),
-        }
-    }
-
-    if let Err(e) = std::fs::create_dir(DB_EXPORT_PATH) {
-        match e.kind() {
-            std::io::ErrorKind::AlreadyExists => (),
-            _ => panic!("Could not create dir for DB_EXPORT_PATH"),
-        }
-    }
-
-    if let Err(e) = std::fs::create_dir(EXFIL_PATH) {
-        match e.kind() {
-            std::io::ErrorKind::AlreadyExists => (),
-            _ => panic!("Could not create dir for EXFIL_PATH"),
-        }
-    }
-
-    if let Err(e) = create_dir(LOG_PATH) {
-        match e.kind() {
-            std::io::ErrorKind::AlreadyExists => (),
-            _ => panic!("Could not create dir for LOG_PATH"),
-        }
-    }
-
-    //
-    // Create files
-    //
-    let mut log_path = PathBuf::from(LOG_PATH);
-    log_path.push(ACCESS_LOG);
-    if let Err(e) = std::fs::File::create_new(&log_path) {
-        match e.kind() {
-            std::io::ErrorKind::AlreadyExists => (),
-            _ => {
-                panic!("Cannot create access log");
-            }
-        }
-    }
-
-    log_path.pop();
-    log_path.push(LOGIN_LOG);
-    if let Err(e) = std::fs::File::create_new(&log_path) {
-        match e.kind() {
-            std::io::ErrorKind::AlreadyExists => (),
-            _ => {
-                panic!("Cannot create login log");
-            }
-        }
-    }
-
-    log_path.pop();
-    log_path.push(ERROR_LOG);
-    if let Err(e) = std::fs::File::create_new(&log_path) {
-        match e.kind() {
-            std::io::ErrorKind::AlreadyExists => (),
-            _ => {
-                panic!("Cannot create error log");
-            }
-        }
-    }
+    ensure_log_file_on_disk!(ACCESS_LOG);
+    ensure_log_file_on_disk!(DOWNLOAD);
+    ensure_log_file_on_disk!(LOGIN_LOG);
+    ensure_log_file_on_disk!(ERROR_LOG);
 
     print_success("Directories and files are in order..");
 }

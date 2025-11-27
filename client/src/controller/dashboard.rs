@@ -1,10 +1,9 @@
 use std::{
     collections::{HashMap, HashSet},
-    ffi::CStr,
     str::FromStr,
 };
 
-use chrono::{DateTime, Utc};
+use chrono::DateTime;
 use leptos::prelude::*;
 
 use crate::controller::{
@@ -37,37 +36,45 @@ pub fn update_connected_agents(
 
     let new_uids: HashSet<_> = parsed.iter().map(|(uid, ..)| uid.clone()).collect();
 
-    //
-    // Retain only agents still present
-    //
     set_connected_agents.try_update(|map| {
         map.retain(|uid, _| new_uids.contains(uid));
     });
 
     //
-    // Update or insert agents
+    // Ensure all UIDs exist in the map (but don't touch messages yet)
     //
     set_connected_agents.try_update(|agents| {
-        for (uid, last_seen, pid, process_image, is_stale, new_messages) in parsed {
-            let entry = agents.entry(uid.clone()).or_insert_with(|| {
+        for (uid, last_seen, pid, process_image, is_stale, _) in &parsed {
+            agents.entry(uid.clone()).or_insert_with(|| {
                 RwSignal::new(Agent::from(
                     uid.clone(),
-                    last_seen,
-                    pid,
+                    *last_seen,
+                    *pid,
                     process_image.clone(),
-                    is_stale,
+                    *is_stale,
                 ))
             });
+        }
+    });
 
-            let mut agent = entry.write();
+    //
+    // Now merge fields & messages using the known goods
+    //
+    let agent_map_snapshot = set_connected_agents.get();
+
+    for (uid, last_seen, pid, process_image, is_stale, new_messages) in parsed {
+        let Some(agent_sig) = agent_map_snapshot.get(&uid).cloned() else {
+            continue;
+        };
+
+        agent_sig.update(|agent| {
+            // Basic fields
             agent.last_check_in = last_seen;
             agent.pid = pid;
             agent.is_stale = is_stale;
             agent.process_name = process_image.clone();
 
-            //
-            // Always hydrate stored messages once
-            //
+            // Hydrate from store once
             if agent.output_messages.is_empty() {
                 if let Ok(stored) = get_item_from_browser_store::<Vec<TabConsoleMessages>>(
                     &wyrm_chat_history_browser_key(&uid),
@@ -76,21 +83,28 @@ pub fn update_connected_agents(
                 }
             }
 
-            //
             // Merge new messages
-            //
-            if let Some(msgs) = new_messages {
-                if let Ok(Some(msgs)) =
-                    serde_json::from_value::<Option<Vec<NotificationForAgent>>>(msgs)
-                {
-                    let new_msgs: Vec<_> = msgs.into_iter().map(TabConsoleMessages::from).collect();
-                    agent.output_messages.extend(new_msgs);
-                    let _ = store_item_in_browser_store(
-                        &wyrm_chat_history_browser_key(&uid),
-                        &agent.output_messages,
-                    );
+            if let Some(raw) = new_messages {
+                match serde_json::from_value::<Vec<NotificationForAgent>>(raw) {
+                    Ok(msgs) if !msgs.is_empty() => {
+                        let new_msgs: Vec<_> =
+                            msgs.into_iter().map(TabConsoleMessages::from).collect();
+
+                        agent.output_messages.extend(new_msgs);
+
+                        let _ = store_item_in_browser_store(
+                            &wyrm_chat_history_browser_key(&uid),
+                            &agent.output_messages,
+                        );
+                    }
+                    Ok(_) => {
+                        leptos::logging::log!("Parsed empty new_messages vec for {uid}");
+                    }
+                    Err(e) => {
+                        leptos::logging::error!("Failed to parse new_messages for {uid}: {e}");
+                    }
                 }
             }
-        }
-    });
+        });
+    }
 }

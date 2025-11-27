@@ -124,7 +124,7 @@ fn extract_path() -> Option<String> {
 }
 
 fn create_url_path_signal() -> RwSignal<String> {
-    let initial = extract_path().unwrap_or_else(|| "".to_string());
+    let initial = extract_path().unwrap_or_default();
     let url_path = RwSignal::new(initial);
 
     if let Some(win) = web_sys::window() {
@@ -148,7 +148,7 @@ fn create_url_path_signal() -> RwSignal<String> {
             }
         }
 
-        let url_path_clone = url_path.clone();
+        let url_path_clone = url_path;
         let closure =
             leptos::wasm_bindgen::closure::Closure::wrap(Box::new(move |_ev: web_sys::Event| {
                 let new = extract_path().unwrap_or_else(|| "".to_string());

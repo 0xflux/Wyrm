@@ -14,4 +14,5 @@ pub struct StagedResourceDataNoSqlx {
     pub pe_name: String,
     pub sleep_time: i64,
     pub port: i16,
+    pub num_downloads: i64,
 }

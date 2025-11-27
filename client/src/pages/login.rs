@@ -55,7 +55,7 @@ pub fn Login() -> impl IntoView {
                         },
                         ApiError::BadStatus(code, _) => {
                             if *code == 404 {
-                                login_box_html.set(format!(r#"<div class="mt-3 alert alert-danger" role="alert">Invalid credentials</div>"#, ));
+                                login_box_html.set(r#"<div class="mt-3 alert alert-danger" role="alert">Invalid credentials</div>"#.to_string());
                             } else {
                                 login_box_html.set(format!(r#"<div class="mt-3 alert alert-danger" role="alert">Error making request: {}</div>"#, e));
                             }

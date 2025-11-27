@@ -119,8 +119,6 @@ pub fn FileUploadPage() -> impl IntoView {
                             if let Some(file) = file_input {
                                 let file_reader = FileReader::new().unwrap();
                                 let fr_c = file_reader.clone();
-                                let submit_page = submit_page.clone();
-                                let submitting = submitting.clone();
                                 let download_name = download_name.clone();
                                 let download_api = download_api.clone();
                                 let onload = Closure::wrap(Box::new(move |_e: web_sys::Event| {

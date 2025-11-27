@@ -32,7 +32,6 @@ impl IsTaskingAgent {
     }
 }
 
-///
 pub enum C2Url {
     /// Will be obtained from the key `C2_STORAGE_KEY`
     Standard,
@@ -213,13 +212,7 @@ pub async fn admin_health_check() -> bool {
         .send()
         .await
     {
-        Ok(resp) => {
-            if resp.status() == 200 {
-                true
-            } else {
-                false
-            }
-        }
+        Ok(resp) => resp.status() == 200,
         Err(e) => panic!("Could not make request when making logged in check. {e}"),
     }
 }

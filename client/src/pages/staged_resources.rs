@@ -11,8 +11,7 @@ use crate::{
 pub struct StagedResourcesRowInner {
     download_name: String,
     uri: String,
-    // TODO
-    _num_downloads: usize,
+    num_downloads: i64,
 }
 
 #[component]
@@ -47,7 +46,7 @@ pub fn StagedResourcesPage() -> impl IntoView {
                                 (*guard).push(StagedResourcesRowInner {
                                     download_name: line.pe_name,
                                     uri: line.staged_endpoint,
-                                    _num_downloads: 0,
+                                    num_downloads: line.num_downloads,
                                 });
                             }
                         }
@@ -96,7 +95,7 @@ pub fn StagedResourcesPage() -> impl IntoView {
                                         <tr>
                                             <td class="col">{ row.download_name }</td>
                                             <td class="col">{ row.uri }</td>
-                                            <td class="col disabled">"Not yet implemented"</td>
+                                            <td class="col">{ row.num_downloads }</td>
                                         </tr>
                                     }
                                 }
@@ -105,7 +104,7 @@ pub fn StagedResourcesPage() -> impl IntoView {
                                 <tr>
                                     <td class="col">Loading data please wait..</td>
                                     <td class="col"></td>
-                                    <td class="col disabled"></td>
+                                    <td class="col"></td>
                                 </tr>
                             </Show>
                         </tbody>
