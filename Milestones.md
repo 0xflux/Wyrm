@@ -12,6 +12,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 4) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
 5) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
 6) [ ] Max upload size set on C2 from profile
+7) [ ] Break some code on the C2 down, modularise it a little, general tidy up
 
 ### 0.6
 
