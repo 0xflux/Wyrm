@@ -11,7 +11,7 @@ use crate::{
 pub struct StagedResourcesRowInner {
     download_name: String,
     uri: String,
-    num_downloads: i32,
+    num_downloads: i64,
 }
 
 #[component]
