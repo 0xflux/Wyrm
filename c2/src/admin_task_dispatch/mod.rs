@@ -12,8 +12,7 @@ use axum::extract::State;
 use chrono::{SecondsFormat, Utc};
 use serde_json::Value;
 use shared::tasks::{
-    Command, DELIM_FILE_DROP_METADATA, FileDropMetadata, FileUploadStagingFromClient,
-    NewAgentStaging, StageType, WyrmResult,
+    Command, DELIM_FILE_DROP_METADATA, FileDropMetadata, NewAgentStaging, WyrmResult,
 };
 use shared_c2_client::{AgentC2MemoryNotifications, MapToMitre, TaskExport};
 use tokio::{fs, io::AsyncWriteExt};
@@ -163,127 +162,6 @@ fn show_server_time() -> Option<Value> {
             Some(serde_json::to_value(&s).unwrap())
         }
     }
-}
-
-/// Stages a file uploaded to the C2 by an admin which will be made available for public download
-/// at a specified API endpoint.
-async fn stage_file_upload_from_users_disk(
-    data: FileUploadStagingFromClient,
-    state: State<Arc<AppState>>,
-) -> Option<Value> {
-    let out_dir = Path::new(FILE_STORE_PATH);
-    let dest = out_dir.join(&data.download_name);
-
-    if let Err(e) = fs::write(&dest, &data.file_data).await {
-        let serialised = serde_json::to_value(WyrmResult::Err::<String>(format!(
-            "Failed to write file on C2: {e:?}",
-        )))
-        .unwrap();
-
-        return Some(serialised);
-    }
-
-    let agent_stage_template =
-        NewAgentStaging::from_staged_file_metadata(&data.api_endpoint, &data.download_name);
-
-    //
-    // Try insert into the database, following that, deconflict the download URI and add it into the in-memory
-    // list.
-    //
-    if let Err(e) = state.db_pool.add_staged_agent(&agent_stage_template).await {
-        log_error_async(&format!("Failed to insert row in db: {e:?}")).await;
-        let serialised = serde_json::to_value(WyrmResult::Err::<String>(format!(
-            "Failed to insert row in db for new staged agent: {e:?}",
-        )))
-        .unwrap();
-
-        return Some(serialised);
-    };
-
-    if let Err(e) = add_api_endpoint_for_staged_resource(&agent_stage_template, state.clone()).await
-    {
-        return stage_new_agent_error_printer(
-            &format!(
-                "The download URL matches an existing one, or a URL which is used for agent \
-                check-in, this is not permitted. Kind: {e:?}"
-            ),
-            &data.download_name,
-            state,
-        )
-        .await;
-    };
-
-    let serialised = match serde_json::to_value(WyrmResult::Ok(format!(
-        "File successfully uploaded, and is being served at /{}. File name: {}",
-        data.api_endpoint, data.download_name,
-    ))) {
-        Ok(s) => s,
-        Err(e) => {
-            return stage_new_agent_error_printer(
-                &format!("Failed to serialise response. {e}"),
-                &data.download_name,
-                state,
-            )
-            .await;
-        }
-    };
-
-    Some(serialised)
-}
-
-/// Validates the extension of the build target matches that expected by the operator
-/// after building takes place.
-fn validate_extension(name: &String, expected_type: StageType) -> String {
-    let mut new_name = String::from(name);
-
-    match expected_type {
-        StageType::Dll => {
-            if !new_name.ends_with(".dll") && (name.ends_with(".exe") || name.ends_with(".svc")) {
-                let _ = new_name.replace(".exe", "");
-                let _ = new_name.replace(".svc", "");
-                new_name.push_str(".dll");
-            } else {
-                new_name.push_str(".dll");
-            }
-        }
-        StageType::Exe => {
-            if !new_name.ends_with(".exe") && (name.ends_with(".dll") || name.ends_with(".svc")) {
-                let _ = new_name.replace(".dll", "");
-                let _ = new_name.replace(".svc", "");
-                new_name.push_str(".exe");
-            } else {
-                new_name.push_str(".exe");
-            }
-        }
-        StageType::Svc => {
-            if !new_name.ends_with(".exe") && (name.ends_with(".dll") || name.ends_with(".svc")) {
-                let _ = new_name.replace(".dll", "");
-                let _ = new_name.replace(".exe", "");
-                new_name.push_str(".svc");
-            } else {
-                new_name.push_str(".svc");
-            }
-        }
-        StageType::All => unreachable!(),
-    }
-
-    new_name
-}
-
-/// Prints an error to the C2 console and returns a formatted error.
-///
-/// **IMPORTANT**: This function will also delete the staged_agent row from the database by it's `implant_name`.
-async fn stage_new_agent_error_printer(
-    message: &str,
-    uri: &str,
-    state: State<Arc<AppState>>,
-) -> Option<Value> {
-    log_error_async(message).await;
-    let _ = state.db_pool.delete_staged_resource_by_uri(uri).await;
-
-    let serialised = serde_json::to_value(WyrmResult::Err::<String>(message.to_string())).unwrap();
-
-    Some(serialised)
 }
 
 /// Lists staged resources on the C2, such as staged agents
