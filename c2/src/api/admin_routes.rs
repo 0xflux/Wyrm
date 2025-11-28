@@ -2,7 +2,7 @@ use std::{net::SocketAddr, sync::Arc};
 
 use crate::{
     AUTH_COOKIE_NAME, COOKIE_TTL,
-    admin_task_dispatch::{admin_dispatch, implant_builder::build_all_bins},
+    admin_task_dispatch::{dispatch_table::admin_dispatch, implant_builder::build_all_bins},
     app_state::AppState,
     logging::{log_admin_login_attempt, log_error_async},
     middleware::{create_new_operator, verify_password},
