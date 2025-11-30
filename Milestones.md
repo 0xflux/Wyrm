@@ -6,27 +6,27 @@ developed as a premium or otherwise private feature. These will be few and far b
 ### 0.5.1
 
 1) [x] \n in output should put on new line (e.g. whoami /priv)
-   1)  [x] Can we colour output?
-2) [ ] `ls` command output should indicate whether is dir or file (maybe on the left somewhere in [ ] ?)
+2) [x] `ls` command output should indicate whether is dir or file (maybe on the left somewhere in [ ] ?)
 3) [x] Serialise the agent message thing move from \t, it is reasonable for \t to exist and break this..
    1) [x] Also split out new columns for integrity, remove the drive serial, etc.
 4) [x] Periodically delete items from browser store not in connected agents if not open in a tab.
-5) [ ] Max upload size set on C2 from profile
-6) [x] Break some code on the C2 down, modularise it a little, general tidy up
-7) [ ] Improve output of reg query, maybe use \t\t or smth
+5) [x] Break some code on the C2 down, modularise it a little, general tidy up
+
+### 0.5.2
+
+1) [ ] Improve output of reg query, maybe use \t\t or smth
+2) [ ] Ps should show parent pids with children in a hierarchy
 
 ### 0.6
 
 1) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
 2) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
-3) [ ] Consider deprecating the sleep in `listener` and moving it to the `implant` section instead
-   1) [ ] Or, keep `listener` but the implant options you can have an array of listener key names to include in the build
-4) [ ] Multiple URLs / IPs for C2
-5) [ ] Separate URIs for POST and GET
-6) [ ] Round robin and different styles for URI & URL rotation
-7) [ ] Ps should show parent pids with children in a hierarchy
-8) [ ] Logrotate setup
-9) [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
+3) [ ] Multiple URLs / IPs for C2
+4) [ ] Separate URIs for POST and GET
+5) [ ] Round robin and different styles for URI & URL rotation
+6) [ ] Logrotate setup
+7) [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
+8) [ ] Max upload size set on C2 from profile
  
 ### v1.0 - Whelpfire
 

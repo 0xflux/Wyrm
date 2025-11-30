@@ -9,6 +9,7 @@ pulling updates.
 ## v 0.5.1
 
 - Improved GUI updates! The dashboard message panel now looks much better, with newlines appearing properly, and spacing kept from the raw output. Colours have also been improved making it much easier to distinguish between message sections!
+- Improved UI printing of the `ls` command.
 
 ## &#128679; v 0.5
 
