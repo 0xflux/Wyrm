@@ -1,7 +1,7 @@
 FROM lukemathwalker/cargo-chef:latest-rust-1.90-bookworm AS chef
 
 FROM chef AS planner
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml ./
 COPY c2 /c2
 COPY client /client
 COPY shared /shared
