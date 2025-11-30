@@ -9,6 +9,7 @@ developed as a premium or otherwise private feature. These will be few and far b
    1)  [x] Can we colour output?
 2) [ ] `ls` command output should indicate whether is dir or file (maybe on the left somewhere in [ ] ?)
 3) [ ] Serialise the agent message thing move from \t, it is reasonable for \t to exist and break this..
+   1) [ ] Also split out new columns for integrity, remove the drive serial, etc.
 4) [x] Periodically delete items from browser store not in connected agents if not open in a tab.
 5) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
 6) [ ] Max upload size set on C2 from profile
