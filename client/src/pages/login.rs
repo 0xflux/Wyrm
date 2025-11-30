@@ -110,7 +110,7 @@ pub fn Login() -> impl IntoView {
                     type="text"
                     id="username"
                     name="username"
-                    autocomplete="username"
+                    autocomplete="off"
                     class="form-control" 
                     placeholder="Username" 
                     required />
@@ -121,7 +121,7 @@ pub fn Login() -> impl IntoView {
                     type="password"
                     id="password"
                     name="password"
-                    autocomplete="current-password"
+                    autocomplete="off"
                     class="form-control" 
                     placeholder="Password" 
                     required />
