@@ -13,6 +13,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 4) [x] Periodically delete items from browser store not in connected agents if not open in a tab.
 5) [ ] Max upload size set on C2 from profile
 6) [x] Break some code on the C2 down, modularise it a little, general tidy up
+7) [ ] Improve output of reg query, maybe use \t\t or smth
 
 ### 0.6
 
@@ -25,6 +26,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] Round robin and different styles for URI & URL rotation
 7) [ ] Ps should show parent pids with children in a hierarchy
 8) [ ] Logrotate setup
+9) [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
  
 ### v1.0 - Whelpfire
 
