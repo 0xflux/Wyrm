@@ -239,25 +239,32 @@ fn MessagePanel() -> impl IntoView {
     let tabs: RwSignal<ActiveTabs> =
         use_context().expect("could not get tabs context in MessagePanel()");
 
-    let messages = Memo::new(move |_| {
+    let messages = Signal::derive(move || {
         let map = agent_map.get();
-        let active_id = tabs.read().active_id.clone();
-
-        let Some(agent_id) = active_id.and_then(|id| resolve_tab_to_agent_id(&id, &map)) else {
-            return Vec::<(String, TabConsoleMessages)>::new();
+        let Some(agent_id) = tabs
+            .read()
+            .active_id
+            .clone()
+            .and_then(|id| resolve_tab_to_agent_id(&id, &map))
+        else {
+            return Vec::new();
         };
 
         let Some(agent_sig) = map.get(&agent_id) else {
-            return Vec::<(String, TabConsoleMessages)>::new();
+            return Vec::new();
         };
 
-        // Track the agent signal so UI updates when its messages change.
-        let msgs = agent_sig.with(|agent| agent.output_messages.clone());
-
-        msgs.into_iter()
-            .enumerate()
-            .map(|(idx, msg)| (format!("{agent_id}-{idx}"), msg))
-            .collect::<Vec<(String, TabConsoleMessages)>>()
+        agent_sig.with(|agent| {
+            agent
+                .output_messages
+                .iter()
+                .enumerate()
+                .map(|(idx, msg)| {
+                    let key = format!("{agent_id}-{}-{idx}", msg.completed_id);
+                    (key, msg.clone())
+                })
+                .collect::<Vec<_>>()
+        })
     });
 
     let message_panel_ref = NodeRef::<html::Div>::new();
