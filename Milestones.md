@@ -71,6 +71,7 @@ These are to be split out further as required for more manageable releases.
     2)  [ ] Image hashes (L)
     3)  [ ] Filenames of office docs, .pdf, .jpg, .mov, .kdbx
 19) [ ] Builds agent that can use APIs via hells/halos gate, etc.
+    1)  [ ] Look at FreshyCalls as an alternate
 20) [ ] Pool Party
 21) [ ] C2 rotation strategy from profile
 22) [ ] `cat`
