@@ -346,3 +346,13 @@ table#staged-resources-tbl tr td a:hover {
   color: var(--link);
   text-decoration: none;
 }
+
+p.msg-line {
+  margin-bottom: 0;
+  color: #eff1f5;
+  white-space: pre-wrap;
+}
+
+.console-line {
+  margin-bottom: 10px;
+}

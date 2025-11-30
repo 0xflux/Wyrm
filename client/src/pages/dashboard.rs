@@ -2,7 +2,7 @@ use std::{collections::HashMap, time::Duration};
 
 use chrono::Utc;
 use gloo_timers::future::sleep;
-use leptos::{IntoView, component, prelude::*, reactive::spawn_local, view};
+use leptos::{IntoView, component, html, prelude::*, reactive::spawn_local, view};
 use shared::tasks::AdminCommand;
 
 use crate::{
@@ -211,29 +211,68 @@ fn MessagePanel() -> impl IntoView {
         let active_id = tabs.read().active_id.clone();
 
         let Some(agent_id) = active_id else {
-            return Vec::<TabConsoleMessages>::new();
+            return Vec::<(String, TabConsoleMessages)>::new();
         };
 
         let map = agent_map.get();
 
         let Some(agent_sig) = map.get(&agent_id) else {
-            return Vec::<TabConsoleMessages>::new();
+            return Vec::<(String, TabConsoleMessages)>::new();
         };
 
-        let agent = agent_sig.get();
+        let agent = agent_sig.read();
 
-        agent.output_messages.clone()
+        agent
+            .output_messages
+            .iter()
+            .enumerate()
+            .map(|(idx, msg)| (format!("{agent_id}-{idx}"), msg.clone()))
+            .collect::<Vec<(String, TabConsoleMessages)>>()
+    });
+
+    let message_panel_ref = NodeRef::<html::Div>::new();
+    let should_auto_scroll = RwSignal::new(true);
+
+    let on_scroll = {
+        let message_panel_ref = message_panel_ref.clone();
+        move |_| {
+            if let Some(panel) = message_panel_ref.get() {
+                let max_scroll_top = panel.scroll_height() - panel.client_height();
+                let near_bottom_threshold = (max_scroll_top - 24).max(0);
+                let is_near_bottom = panel.scroll_top() >= near_bottom_threshold;
+
+                should_auto_scroll.set(is_near_bottom);
+            }
+        }
+    };
+
+    Effect::new({
+        let message_panel_ref = message_panel_ref.clone();
+        move |_| {
+            let _ = messages.with(|msgs| msgs.len());
+
+            if !should_auto_scroll.get() {
+                return;
+            }
+
+            if let Some(panel) = message_panel_ref.get() {
+                panel.set_scroll_top(panel.scroll_height());
+            }
+        }
     });
 
     view! {
-        <div id="message-panel" class="container-fluid">
+        <div
+            id="message-panel"
+            class="container-fluid"
+            node_ref=message_panel_ref
+            on:scroll=on_scroll
+        >
             <For
-                each=move || {
-                    messages.get().into_iter().enumerate().collect::<Vec<(usize, TabConsoleMessages)>>()
-                }
-                key=|entry: &(usize, TabConsoleMessages)| entry.0.to_string()
-                children=move |entry: (usize, TabConsoleMessages)| {
-                    let (_idx, line) = entry;
+                each=move || messages.get()
+                key=|entry: &(String, TabConsoleMessages)| entry.0.clone()
+                children=move |entry: (String, TabConsoleMessages)| {
+                    let (_key, line) = entry;
                     view! {
                         <div class="console-line">
                             <span class="time">"["{ line.time }"]"</span>
@@ -243,8 +282,23 @@ fn MessagePanel() -> impl IntoView {
                                 each=move || line.messages.clone()
                                 key=|msg_line: &String| msg_line.clone()
                                 children=move |msg_line: String| {
+                                    let split_lines: Vec<String> = msg_line
+                                        .split('\n')
+                                        .map(|s| s.to_string())
+                                        .collect();
+
                                     view! {
-                                        <div class="msg">{ msg_line }</div>
+                                        <div class="msg">
+                                            <For
+                                                each=move || split_lines.clone()
+                                                key=|line: &String| line.clone()
+                                                children=move |text: String| {
+                                                    view! {
+                                                        <p class="msg-line">{ text }</p>
+                                                    }
+                                                }
+                                            />
+                                        </div>
                                     }
                                 }
                             />

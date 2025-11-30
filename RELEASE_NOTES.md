@@ -6,6 +6,10 @@ pulling updates.
 
 **IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
 
+## v 0.5.1
+
+- Improved GUI updates! The dashboard message panel now looks much better, with newlines appearing properly, and spacing kept from the raw output. Colours have also been improved making it much easier to distinguish between message sections!
+
 ## &#128679; v 0.5
 
 ### &#128679; Breaking changes
