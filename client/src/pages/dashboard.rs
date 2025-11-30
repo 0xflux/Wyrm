@@ -251,13 +251,12 @@ fn MessagePanel() -> impl IntoView {
             return Vec::<(String, TabConsoleMessages)>::new();
         };
 
-        let agent = agent_sig.read();
+        // Track the agent signal so UI updates when its messages change.
+        let msgs = agent_sig.with(|agent| agent.output_messages.clone());
 
-        agent
-            .output_messages
-            .iter()
+        msgs.into_iter()
             .enumerate()
-            .map(|(idx, msg)| (format!("{agent_id}-{idx}"), msg.clone()))
+            .map(|(idx, msg)| (format!("{agent_id}-{idx}"), msg))
             .collect::<Vec<(String, TabConsoleMessages)>>()
     });
 
