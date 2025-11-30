@@ -5,11 +5,11 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 ### 0.5.1
 
-1) [ ] \n in output should put on new line (e.g. whoami /priv)
-   1)  [ ] Can we colour output?
+1) [x] \n in output should put on new line (e.g. whoami /priv)
+   1)  [x] Can we colour output?
 2) [ ] `ls` command output should indicate whether is dir or file (maybe on the left somewhere in [ ] ?)
 3) [ ] Serialise the agent message thing move from \t, it is reasonable for \t to exist and break this..
-4) [ ] Periodically delete items from browser store not in connected agents if not open in a tab.
+4) [x] Periodically delete items from browser store not in connected agents if not open in a tab.
 5) [ ] Save chat from browser store to disk on ka & tab close? Or command to restore history to console.
 6) [ ] Max upload size set on C2 from profile
 7) [x] Break some code on the C2 down, modularise it a little, general tidy up
