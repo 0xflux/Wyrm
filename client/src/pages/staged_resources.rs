@@ -102,7 +102,7 @@ pub fn StagedResourcesPage() -> impl IntoView {
                             />
                             <Show when=move || staged_rows.get().is_empty()>
                                 <tr>
-                                    <td class="col">Loading data please wait..</td>
+                                    <td class="col">You currently have no staged resources.</td>
                                     <td class="col"></td>
                                     <td class="col"></td>
                                 </tr>

@@ -2,12 +2,15 @@ use std::{collections::HashMap, time::Duration};
 
 use chrono::Utc;
 use gloo_timers::future::sleep;
-use leptos::{IntoView, component, prelude::*, reactive::spawn_local, view};
+use leptos::{IntoView, component, html, prelude::*, reactive::spawn_local, view};
 use shared::tasks::AdminCommand;
 
 use crate::{
     controller::dashboard::update_connected_agents,
-    models::dashboard::{ActiveTabs, Agent, AgentC2MemoryNotifications, TabConsoleMessages},
+    models::dashboard::{
+        ActiveTabs, Agent, AgentC2MemoryNotifications, AgentIdSplit, TabConsoleMessages,
+        get_agent_tab_name, get_info_from_agent_id, resolve_tab_to_agent_id,
+    },
     net::{C2Url, IsTaskingAgent, api_request},
     pages::logged_in_headers::LoggedInHeaders,
     tasks::task_dispatch::dispatch_task,
@@ -93,10 +96,12 @@ fn ConnectedAgents(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
         <div id="connected-agent-container" class="container-fluid">
 
             <div id="agents-header" class="row">
-                <div class="col-4">Agent ID</div>
+                <div class="col-2">Hostname</div>
+                <div class="col-2">Username</div>
+                <div class="col-1">Integrity</div>
                 <div class="col-1">Process ID</div>
                 <div class="col-2">Last check-in</div>
-                <div class="col-5">Process name</div>
+                <div class="col-4">Process name</div>
             </div>
 
             <div id="agent-rows">
@@ -116,10 +121,30 @@ fn ConnectedAgents(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
                         }
                     >
                         <div class="row agent-row">
-                            <div class="col-4">{ move || agent.get().agent_id }</div>
+                            <div class="col-2">{ move ||
+                                {
+                                    let id_raw: String = agent.get().agent_id;
+                                    let part = get_info_from_agent_id(&id_raw, AgentIdSplit::Hostname).unwrap_or("Error");
+                                    part.to_string()
+                                }
+                            }</div>
+                            <div class="col-2">{ move ||
+                                {
+                                    let id_raw: String = agent.get().agent_id;
+                                    let part = get_info_from_agent_id(&id_raw, AgentIdSplit::Username).unwrap_or("Error");
+                                    part.to_string()
+                                }
+                            }</div>
+                            <div class="col-1">{ move ||
+                                {
+                                    let id_raw: String = agent.get().agent_id;
+                                    let part = get_info_from_agent_id(&id_raw, AgentIdSplit::Integrity).unwrap_or("Error");
+                                    part.to_string()
+                                }
+                            }</div>
                             <div class="col-1">{ move || agent.get().pid }</div>
                             <div class="col-2">{ move || agent.get().last_check_in.to_string() }</div>
-                            <div class="col-5">{ move || agent.get().process_name }</div>
+                            <div class="col-4">{ move || agent.get().process_name }</div>
                         </div>
                     </a>
                 </For>
@@ -132,6 +157,8 @@ fn ConnectedAgents(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
 fn MiddleTabBar() -> impl IntoView {
     let tabs: RwSignal<ActiveTabs> =
         use_context().expect("could not get tabs context in CommandInput()");
+    let agent_map: RwSignal<HashMap<String, RwSignal<Agent>>> =
+        use_context().expect("no agent map found in MiddleTabBar");
 
     view! {
         <div class="tabbar">
@@ -160,15 +187,17 @@ fn MiddleTabBar() -> impl IntoView {
                             <li class="nav-item d-flex align-items-center">
                                 <a
                                     class="nav-link"
-                                    class:active={
+                                    class:active={{
                                         let value = tab.clone();
-                                        move || match tabs.read().active_id.clone()  {
-                                            Some(tab_id) => {
-                                                tab_id.eq(&value)
-                                            },
-                                            None => false,
+                                        move || {
+                                            let resolved = resolve_tab_to_agent_id(&value, &agent_map.get())
+                                                .unwrap_or_else(|| value.clone());
+                                            match tabs.read().active_id.clone() {
+                                                Some(active) => active == resolved || active == value,
+                                                None => false,
+                                            }
                                         }
-                                    }
+                                    }}
                                     href="#"
                                     on:click={
                                         let value = tab.clone();
@@ -178,7 +207,10 @@ fn MiddleTabBar() -> impl IntoView {
                                         }
                                     }
                                 >
-                                    {tab.clone()}
+                                    {
+                                        let label = get_agent_tab_name(&tab).unwrap_or_else(|| tab.clone());
+                                        label.clone()
+                                    }
                                 </a>
 
                                 <button
@@ -208,32 +240,69 @@ fn MessagePanel() -> impl IntoView {
         use_context().expect("could not get tabs context in MessagePanel()");
 
     let messages = Memo::new(move |_| {
+        let map = agent_map.get();
         let active_id = tabs.read().active_id.clone();
 
-        let Some(agent_id) = active_id else {
-            return Vec::<TabConsoleMessages>::new();
+        let Some(agent_id) = active_id.and_then(|id| resolve_tab_to_agent_id(&id, &map)) else {
+            return Vec::<(String, TabConsoleMessages)>::new();
         };
-
-        let map = agent_map.get();
 
         let Some(agent_sig) = map.get(&agent_id) else {
-            return Vec::<TabConsoleMessages>::new();
+            return Vec::<(String, TabConsoleMessages)>::new();
         };
 
-        let agent = agent_sig.get();
+        // Track the agent signal so UI updates when its messages change.
+        let msgs = agent_sig.with(|agent| agent.output_messages.clone());
 
-        agent.output_messages.clone()
+        msgs.into_iter()
+            .enumerate()
+            .map(|(idx, msg)| (format!("{agent_id}-{idx}"), msg))
+            .collect::<Vec<(String, TabConsoleMessages)>>()
+    });
+
+    let message_panel_ref = NodeRef::<html::Div>::new();
+    let should_auto_scroll = RwSignal::new(true);
+
+    let on_scroll = {
+        let message_panel_ref = message_panel_ref.clone();
+        move |_| {
+            if let Some(panel) = message_panel_ref.get() {
+                let max_scroll_top = panel.scroll_height() - panel.client_height();
+                let near_bottom_threshold = (max_scroll_top - 24).max(0);
+                let is_near_bottom = panel.scroll_top() >= near_bottom_threshold;
+
+                should_auto_scroll.set(is_near_bottom);
+            }
+        }
+    };
+
+    Effect::new({
+        let message_panel_ref = message_panel_ref.clone();
+        move |_| {
+            let _ = messages.with(|msgs| msgs.len());
+
+            if !should_auto_scroll.get() {
+                return;
+            }
+
+            if let Some(panel) = message_panel_ref.get() {
+                panel.set_scroll_top(panel.scroll_height());
+            }
+        }
     });
 
     view! {
-        <div id="message-panel" class="container-fluid">
+        <div
+            id="message-panel"
+            class="container-fluid"
+            node_ref=message_panel_ref
+            on:scroll=on_scroll
+        >
             <For
-                each=move || {
-                    messages.get().into_iter().enumerate().collect::<Vec<(usize, TabConsoleMessages)>>()
-                }
-                key=|entry: &(usize, TabConsoleMessages)| entry.0.to_string()
-                children=move |entry: (usize, TabConsoleMessages)| {
-                    let (_idx, line) = entry;
+                each=move || messages.get()
+                key=|entry: &(String, TabConsoleMessages)| entry.0.clone()
+                children=move |entry: (String, TabConsoleMessages)| {
+                    let (_key, line) = entry;
                     view! {
                         <div class="console-line">
                             <span class="time">"["{ line.time }"]"</span>
@@ -243,8 +312,23 @@ fn MessagePanel() -> impl IntoView {
                                 each=move || line.messages.clone()
                                 key=|msg_line: &String| msg_line.clone()
                                 children=move |msg_line: String| {
+                                    let split_lines: Vec<String> = msg_line
+                                        .split('\n')
+                                        .map(|s| s.to_string())
+                                        .collect();
+
                                     view! {
-                                        <div class="msg">{ msg_line }</div>
+                                        <div class="msg">
+                                            <For
+                                                each=move || split_lines.clone()
+                                                key=|line: &String| line.clone()
+                                                children=move |text: String| {
+                                                    view! {
+                                                        <p class="msg-line">{ text }</p>
+                                                    }
+                                                }
+                                            />
+                                        </div>
                                     }
                                 }
                             />
@@ -268,12 +352,13 @@ fn CommandInput() -> impl IntoView {
 
     let submit_input = Action::new_local(move |input: &String| {
         let input = input.clone();
-
+        let map = agent_map.get();
         let agent_id = tabs
             .read()
             .active_id
             .clone()
-            .expect("could not read agent id from active tab");
+            .and_then(|id| resolve_tab_to_agent_id(&id, &map))
+            .expect("could not resolve agent id from active tab");
 
         async move { dispatch_task(input, IsTaskingAgent::Yes(agent_id)).await }
     });
@@ -293,8 +378,13 @@ fn CommandInput() -> impl IntoView {
                     // Push the input message by the user into the currently selected
                     // agent.
                     //
-                    let agent_id = tabs.read().active_id.clone().unwrap();
                     let map = agent_map.get();
+                    let agent_id = tabs
+                        .read()
+                        .active_id
+                        .clone()
+                        .and_then(|id| resolve_tab_to_agent_id(&id, &map))
+                        .expect("could not resolve agent id from active tab");
                     let agent_sig = map.get(&agent_id).unwrap();
 
                     // Get a snapshot of the input and work with that

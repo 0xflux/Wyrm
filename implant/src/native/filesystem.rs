@@ -107,10 +107,25 @@ pub fn dir_listing(cwd: &Path) -> Option<impl Serialize + use<>> {
         }
     };
 
-    let entries = dir
-        .map(|res| res.map(|e| e.path()))
-        .collect::<Result<Vec<_>, io::Error>>()
-        .unwrap_or_default();
+    let mut entries = Vec::new();
+    for e in dir {
+        if let Ok(entry) = e {
+            let label = match entry.metadata() {
+                Ok(metadata) => {
+                    if metadata.is_dir() {
+                        "DIR".to_string()
+                    } else {
+                        "FILE".to_string()
+                    }
+                }
+                Err(e) => {
+                    format!("{e}")
+                }
+            };
+
+            entries.push(format!("[{label}]     {}", entry.path().display()));
+        }
+    }
 
     if entries.is_empty() {
         #[cfg(debug_assertions)]

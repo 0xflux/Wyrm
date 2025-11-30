@@ -3,7 +3,6 @@
 use core::panic;
 use std::{net::SocketAddr, panic::set_hook, sync::Arc, time::Duration};
 
-use api::{handle_agent_get, handle_agent_post};
 use axum::{
     Router,
     extract::DefaultBodyLimit,
@@ -22,9 +21,13 @@ use shared::{
 
 use crate::{
     api::{
-        admin_login, build_all_binaries_handler, handle_admin_commands_on_agent,
-        handle_admin_commands_without_agent, handle_agent_get_with_path,
-        handle_agent_post_with_path, is_adm_logged_in, logout, poll_agent_notifications,
+        admin_routes::{
+            admin_login, build_all_binaries_handler, handle_admin_commands_on_agent,
+            handle_admin_commands_without_agent, is_adm_logged_in, logout,
+            poll_agent_notifications,
+        },
+        agent_get::{handle_agent_get, handle_agent_get_with_path},
+        agent_post::{handle_agent_post, handle_agent_post_with_path},
     },
     app_state::{AppState, detect_stale_agents},
     db::Db,

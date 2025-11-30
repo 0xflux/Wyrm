@@ -1,9 +1,10 @@
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
 };
 
 use chrono::{DateTime, Utc};
+use leptos::prelude::RwSignal;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use shared::{
@@ -565,4 +566,66 @@ impl ActiveTabs {
         delete_item_in_browser_store(&key);
         let _ = self.save_to_store();
     }
+}
+
+/// Information we wish to pull out of the agent ID, which has the format
+/// `hostname|serial|username|integrity|pid|epoch`. This information is used by
+/// the DB to uniquely identify each agent.
+pub enum AgentIdSplit {
+    Hostname,
+    Integrity,
+    Username,
+}
+
+/// Get a `String` of the component from a custom deserialisation of the Agent's ID string.
+pub fn get_info_from_agent_id<'a>(haystack: &'a str, needle: AgentIdSplit) -> Option<&'a str> {
+    let parts: Vec<&str> = haystack.split('|').collect();
+    // How many variants the enum `AgentIdSplit` has, to make sure we are dealing with good data.
+    const MAX_VARIANTS: usize = 3;
+
+    if parts.len() < MAX_VARIANTS {
+        return None;
+    }
+
+    // WARNING: This is highly dependant on the Agent ID not changing positional chars. If bugs appear,
+    // its almost certain because the ordering of delimited args are in the str.
+    let extracted_slice = match needle {
+        AgentIdSplit::Hostname => parts[0],
+        AgentIdSplit::Integrity => parts[3],
+        AgentIdSplit::Username => parts[2],
+    };
+
+    Some(extracted_slice)
+}
+
+pub fn get_agent_tab_name(haystack: &str) -> Option<String> {
+    let parts: Vec<&str> = haystack.split('|').collect();
+    // We want to make sure we have enough parts collected
+    const MAX_VARIANTS: usize = 5;
+
+    if parts.len() < MAX_VARIANTS {
+        return None;
+    }
+
+    Some(format!(
+        "{username}@{hostname} [{integrity}] - {pid}",
+        integrity = parts[3],
+        username = parts[2],
+        hostname = parts[0],
+        pid = parts[4],
+    ))
+}
+
+pub fn resolve_tab_to_agent_id(
+    tab: &str,
+    agent_map: &HashMap<String, RwSignal<Agent>>,
+) -> Option<String> {
+    if agent_map.contains_key(tab) {
+        return Some(tab.to_string());
+    }
+
+    agent_map
+        .keys()
+        .find(|id| get_agent_tab_name(id).as_deref() == Some(tab))
+        .cloned()
 }

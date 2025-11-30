@@ -109,8 +109,11 @@ pub fn Login() -> impl IntoView {
                     bind:value=username
                     type="text"
                     id="username"
-                    name="username"
-                    autocomplete="username"
+                    name="login_user"
+                    autocomplete="off"
+                    data-1p-ignore
+                    data-bwignore
+                    data-lpignore
                     class="form-control" 
                     placeholder="Username" 
                     required />
@@ -120,8 +123,11 @@ pub fn Login() -> impl IntoView {
                     bind:value=password
                     type="password"
                     id="password"
-                    name="password"
-                    autocomplete="current-password"
+                    name="login_pass"
+                    data-1p-ignore
+                    data-bwignore
+                    data-lpignore
+                    autocomplete="off"
                     class="form-control" 
                     placeholder="Password" 
                     required />
