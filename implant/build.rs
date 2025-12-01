@@ -13,6 +13,7 @@ fn main() {
         "SVC_NAME",
         "EXPORTS_JMP_WYRM",
         "EXPORTS_USR_MACHINE_CODE",
+        "EXPORTS_PROXY",
     ];
 
     for key in envs {
@@ -35,6 +36,7 @@ fn write_exports_to_build_dir() {
 
     let exports_usr_machine_code = option_env!("EXPORTS_USR_MACHINE_CODE");
     let exports_jmp_wyrm = option_env!("EXPORTS_JMP_WYRM");
+    let exports_proxy = option_env!("EXPORTS_PROXY");
 
     if let Some(export_str) = exports_jmp_wyrm {
         if export_str.is_empty() {
@@ -68,6 +70,12 @@ fn write_exports_to_build_dir() {
                 "build_dll_export_by_name_junk_machine_code!({name}, {bytes});",
             )
             .unwrap();
+        }
+    }
+
+    if let Some(exports) = exports_proxy {
+        for item in exports.split(';').filter(|s| !s.trim().is_empty()) {
+            println!("cargo:rustc-link-arg=/export:{item}");
         }
     }
 

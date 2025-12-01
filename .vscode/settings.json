@@ -71,6 +71,7 @@
         "repr",
         "reqwest",
         "rundll",
+        "rustc",
         "rustls",
         "rustup",
         "rwlock",
