@@ -29,7 +29,7 @@ use windows_sys::{
 
 use crate::{
     comms::comms_http_check_in,
-    entry::IS_IMPLANT_SVC,
+    entry::{APPLICATION_RUNNING, IS_IMPLANT_SVC},
     native::{
         accounts::{ProcessIntegrityLevel, get_logged_in_username, get_process_integrity_level},
         filesystem::{
@@ -211,6 +211,8 @@ impl Wyrm {
                     self.push_completed_task(&task, res);
                 }
                 Command::KillAgent => {
+                    // TODO handle KA for thread vs process exit here..
+                    APPLICATION_RUNNING.store(false, core::sync::atomic::Ordering::SeqCst);
                     std::process::exit(0);
                 }
                 Command::Ls => {
