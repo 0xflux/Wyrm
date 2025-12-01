@@ -70,6 +70,7 @@
         "regq",
         "repr",
         "reqwest",
+        "rundll",
         "rustls",
         "rustup",
         "rwlock",

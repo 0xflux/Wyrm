@@ -6,6 +6,14 @@ pulling updates.
 
 **IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
 
+## v 0.5.2
+
+- DLL internals now allow for a better loading mechanism which ensures if run via rundll32, and from DLL Search Order Hijacking, without early termination.
+
+### Issues under investigation
+
+There is still a very rare, small case where the first few instructions get dispatched and sent to the client, but don't appear in the console. They are logged in the browser store temporarily, but I think the bug is still here.. under investigation - extremely rare which is making it difficult to determine if it is still an issue.
+
 ## v 0.5.1
 
 - Improved GUI updates! The dashboard message panel now looks much better, with newlines appearing properly, and spacing kept from the raw output. Colours have also been improved making it much easier to distinguish between message sections!
