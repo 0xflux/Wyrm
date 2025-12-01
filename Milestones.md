@@ -5,8 +5,9 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 ### 0.5.2
 
-1) [ ] Improve output of reg query, maybe use \t\t or smth
-2) [ ] Ps should show parent pids with children in a hierarchy
+1) [ ] Experiment with proxified DLL SOH
+2) [ ] Improve output of reg query, maybe use \t\t or smth
+3) [ ] Ps should show parent pids with children in a hierarchy
 
 ### 0.6
 
