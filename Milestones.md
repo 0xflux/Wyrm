@@ -6,6 +6,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 ### 0.5.2
 
 1) [ ] Experiment with proxified DLL SOH
+   1) [ ] DllMain loader
 2) [ ] Improve output of reg query, maybe use \t\t or smth
 3) [ ] Ps should show parent pids with children in a hierarchy
 
@@ -22,14 +23,24 @@ developed as a premium or otherwise private feature. These will be few and far b
  
 ### v1.0 - Whelpfire
 
-1) [ ] NG Proxy Bypass (NGPB) (L)
-2) [ ] Internal proxy resolution for HTTP requests
-3) [ ] `execute-assembly`
+1) [ ] Move to new basic model with stagers, the exports, etc can also apply to those, but we would produce:
+   1) [ ] DLL, Exe, Svc of the 'virgin' payload
+   2) [ ] NoStd loader (stageless) - encrypted 2nd stage shipped in binary
+   3) [ ] NoStd loader (staged) - encrypted 2nd stage
+   4) [ ] The NoStds should produce:
+      1) [ ] DLL
+      2) [ ] Exe
+      3) [ ] Svc
+   5) [ ] No fancy techniques under the hood, that will come with a (L) version
+   6) [ ] Malleable encryption byte in profile
+2) [ ] NG Proxy Bypass (NGPB) (L)
+3) [ ] Internal proxy resolution for HTTP requests
+4) [ ] `execute-assembly`
    1) [ ] AMSI patching option in profile 
-4) [ ] `jump psexec`
-5) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
-6) [ ] Profile option for mutex
-7) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
+5) [ ] `jump psexec`
+6) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
+7) [ ] Profile option for mutex
+8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 
 ### v1.1
 
