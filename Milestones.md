@@ -3,15 +3,6 @@
 Any item with a (L) tag is a contribution which will not be live (or requires further decision making) as this is intended to be
 developed as a premium or otherwise private feature. These will be few and far between.
 
-### 0.5.1
-
-1) [x] \n in output should put on new line (e.g. whoami /priv)
-2) [x] `ls` command output should indicate whether is dir or file (maybe on the left somewhere in [ ] ?)
-3) [x] Serialise the agent message thing move from \t, it is reasonable for \t to exist and break this..
-   1) [x] Also split out new columns for integrity, remove the drive serial, etc.
-4) [x] Periodically delete items from browser store not in connected agents if not open in a tab.
-5) [x] Break some code on the C2 down, modularise it a little, general tidy up
-
 ### 0.5.2
 
 1) [ ] Improve output of reg query, maybe use \t\t or smth
