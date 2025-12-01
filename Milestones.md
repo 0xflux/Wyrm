@@ -32,6 +32,8 @@ developed as a premium or otherwise private feature. These will be few and far b
       2) [ ] Exe
       3) [ ] Svc
    5) [ ] No fancy techniques under the hood, that will come with a (L) version
+      1) [ ] Need to think about what the L version will include and look like
+      2) [ ] Maybe early bird and other similar techniques, syscalls, etc?
    6) [ ] Malleable encryption byte in profile
 2) [ ] NG Proxy Bypass (NGPB) (L)
 3) [ ] Internal proxy resolution for HTTP requests
