@@ -356,3 +356,10 @@ p.msg-line {
 .console-line {
   margin-bottom: 10px;
 }
+
+.jetbrains-gui {
+  font-family: "JetBrains Mono", monospace;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}

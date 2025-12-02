@@ -191,20 +191,39 @@ impl FormatOutput for NotificationForAgent {
                 let listings_serialised = match self.result.as_ref() {
                     Some(inner) => inner,
                     None => {
-                        return vec![format!("No data returned from ls command.")];
+                        return vec![format!("No data returned from ps command.")];
                     }
                 };
 
                 let deser: Option<Vec<Process>> =
                     serde_json::from_str(listings_serialised).unwrap();
                 if deser.is_none() {
-                    return vec![format!("Directory listings empty.")];
+                    return vec![format!("Process listings empty.")];
                 }
 
                 let mut builder = vec![];
 
+                const PID_W: usize = 10;
+                const PPID_W: usize = 10;
+                const NAME_W: usize = 40;
+                const USER_W: usize = 16;
+
+                let pid = "PID:";
+                let ppid = "PPID:";
+                let name = "Name:";
+                let user = "User:";
+                let f = format!(
+                    "{:<PID_W$}{:<PPID_W$}{:<NAME_W$}{:<USER_W$}",
+                    pid, ppid, name, user
+                );
+                builder.push(f);
+
                 for row in deser.unwrap() {
-                    builder.push(format!("{}: {} ({})", row.pid, row.name, row.user));
+                    let f = format!(
+                        "{:<PID_W$}{:<PPID_W$}{:<NAME_W$}{:<USER_W$}",
+                        row.pid, row.ppid, row.name, row.user
+                    );
+                    builder.push(f);
                 }
 
                 return builder;

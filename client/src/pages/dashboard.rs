@@ -311,7 +311,7 @@ fn MessagePanel() -> impl IntoView {
                 children=move |entry: (String, TabConsoleMessages)| {
                     let (_key, line) = entry;
                     view! {
-                        <div class="console-line">
+                        <div class="console-line jetbrains-gui">
                             <span class="time">"["{ line.time }"]"</span>
                             <span class="evt">"["{ line.event }"]"</span>
 
@@ -331,7 +331,7 @@ fn MessagePanel() -> impl IntoView {
                                                 key=|line: &String| line.clone()
                                                 children=move |text: String| {
                                                     view! {
-                                                        <p class="msg-line">{ text }</p>
+                                                        <p class="msg-line jetbrains-gui">{ text }</p>
                                                     }
                                                 }
                                             />
