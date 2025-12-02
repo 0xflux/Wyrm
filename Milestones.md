@@ -10,7 +10,6 @@ developed as a premium or otherwise private feature. These will be few and far b
    2) [x] Write it up on the docs
    3) [x] Add a global mutex
 2) [ ] Ps should show parent pids with children in a hierarchy
-3) [ ] Implant should dispatch task BEFORE checking back in / sleep, rather than on next wake up?
 
 ### 0.6
 
@@ -22,6 +21,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] Logrotate setup
 7) [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
 8) [ ] Max upload size set on C2 from profile
+9) [ ] Implant should dispatch task BEFORE checking back in / sleep, rather than on next wake up?
  
 ### v1.0 - Whelpfire
 
