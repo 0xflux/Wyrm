@@ -554,8 +554,8 @@ impl ActiveTabs {
     pub fn add_tab(&mut self, name: &str) {
         let name = name.to_string();
         let _ = self.tabs.insert(name.clone());
+        self.active_id = Some(name.clone());
         let _ = self.save_to_store();
-        self.active_id = Some(name);
     }
 
     /// Removes a tab to the tracked tabs, doing nothing if the value did not exists
