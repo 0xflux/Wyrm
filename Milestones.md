@@ -9,7 +9,7 @@ developed as a premium or otherwise private feature. These will be few and far b
    1) [x] DllMain loader
    2) [x] Write it up on the docs
    3) [x] Add a global mutex
-2) [ ] Ps should show parent pids with children in a hierarchy
+2) [ ] Further font improvements?
 
 ### 0.6
 
