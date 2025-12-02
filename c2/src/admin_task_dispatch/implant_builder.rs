@@ -207,7 +207,8 @@ pub async fn build_agent(
         .env("EXPORTS_JMP_WYRM", exports.export_only_jmp_wyrm)
         .env("EXPORTS_USR_MACHINE_CODE", exports.export_machine_code)
         .env("EXPORTS_PROXY", exports.export_proxy)
-        .env("SECURITY_TOKEN", &data.agent_security_token);
+        .env("SECURITY_TOKEN", &data.agent_security_token)
+        .env("MUTEX", &data.mutex.clone().unwrap_or_default());
 
     cmd.arg("build");
 

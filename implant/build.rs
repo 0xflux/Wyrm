@@ -14,6 +14,7 @@ fn main() {
         "EXPORTS_JMP_WYRM",
         "EXPORTS_USR_MACHINE_CODE",
         "EXPORTS_PROXY",
+        "MUTEX",
     ];
 
     for key in envs {
@@ -29,6 +30,7 @@ fn main() {
     write_exports_to_build_dir();
 }
 
+/// Writes exported symbols to the binary, whether genuine exports or proxied ones.
 fn write_exports_to_build_dir() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     let dest = out_dir.join("custom_exports.rs");

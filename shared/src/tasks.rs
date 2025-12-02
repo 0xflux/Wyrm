@@ -374,6 +374,7 @@ pub struct NewAgentStaging {
     pub exports: Exports,
     pub svc_name: String,
     pub string_stomp: Option<StringStomp>,
+    pub mutex: Option<String>,
 }
 
 impl NewAgentStaging {
@@ -398,6 +399,7 @@ impl NewAgentStaging {
             exports: None,
             svc_name: "-".to_string(),
             string_stomp: None,
+            mutex: None,
         }
     }
 }

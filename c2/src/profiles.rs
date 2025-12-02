@@ -38,6 +38,7 @@ pub struct Implant {
     pub evasion: Evasion,
     pub exports: Exports,
     pub string_stomp: Option<StringStomp>,
+    pub mutex: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Default, Clone)]
@@ -152,6 +153,7 @@ impl Profile {
             exports: implant.exports.clone(),
             svc_name: implant.svc_name.clone(),
             string_stomp,
+            mutex: implant.mutex.clone(),
         })
     }
 }
