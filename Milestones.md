@@ -9,8 +9,8 @@ developed as a premium or otherwise private feature. These will be few and far b
    1) [x] DllMain loader
    2) [x] Write it up on the docs
    3) [x] Add a global mutex
-2) [ ] Improve output of reg query, maybe use \t\t or smth
-3) [ ] Ps should show parent pids with children in a hierarchy
+2) [ ] Ps should show parent pids with children in a hierarchy
+3) [ ] Implant should dispatch task BEFORE checking back in / sleep, rather than on next wake up?
 
 ### 0.6
 

