@@ -3,14 +3,6 @@
 Any item with a (L) tag is a contribution which will not be live (or requires further decision making) as this is intended to be
 developed as a premium or otherwise private feature. These will be few and far between.
 
-### 0.5.2
-
-1) [x] Experiment with proxified DLL SOH
-   1) [x] DllMain loader
-   2) [x] Write it up on the docs
-   3) [x] Add a global mutex
-2) [ ] Further font improvements?
-
 ### 0.6
 
 1) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
