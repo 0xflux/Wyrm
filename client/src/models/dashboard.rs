@@ -8,7 +8,7 @@ use leptos::prelude::RwSignal;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use shared::{
-    process::Process,
+    stomped_structs::{Process, RegQueryResult},
     tasks::{Command, PowershellOutput, WyrmResult},
 };
 
@@ -432,32 +432,13 @@ impl FormatOutput for NotificationForAgent {
                 return vec!["File exfiltrated successfully and can be found on the C2.".into()];
             }
             Command::RegQuery => {
-                //
-                // alright this deser is gross ...
-                //
                 if let Some(response) = &self.result {
-                    match serde_json::from_str::<WyrmResult<String>>(response) {
-                        Ok(data) => match data {
-                            WyrmResult::Ok(inner_string_from_result) => {
-                                match serde_json::from_str::<Vec<String>>(&inner_string_from_result)
-                                {
-                                    Ok(results_as_vec) => return results_as_vec,
-                                    Err(_) => {
-                                        // Try as a single string (in the event it was querying an exact value)
-                                        return vec![inner_string_from_result];
-                                    }
-                                }
-                            }
-                            WyrmResult::Err(e) => {
-                                return vec![format!("Error with operation. {e}")];
-                            }
-                        },
-                        Err(e) => {
-                            return vec![format!("Could not deserialise response data. {e}.")];
-                        }
+                    match RegQueryResult::try_from(response.as_str()) {
+                        Ok(r) => return r.client_print_formatted(),
+                        Err(e) => return e,
                     }
                 } else {
-                    return vec!["No data returned, something may have gone wrong.".into()];
+                    return vec!["No data.".to_string()];
                 }
             }
             Command::RegAdd => {

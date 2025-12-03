@@ -12,6 +12,7 @@ pulling updates.
 - Malleable profile now provides support for fully fledged DLL Search Order Hijacking attacks!
 - Malleable profile now includes the ability to create a global mutex so you can ensure only one implant (profile) can run on the system, this could be useful for DLL sideloading / search order hijacking if the target is extremely noisy in terms of lots of subprocesses loading in the binary. You can of course have this applied to one profile, but not another, as it is fully optional.
 - Improves the output of the `ps` and `reg query` commands.
+- Added additional deserialisation option for output of `reg query` such that the `REG_BINARY` type gets decoded.
 
 ### Issues under investigation
 

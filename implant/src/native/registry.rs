@@ -1,7 +1,8 @@
-use std::slice::from_raw_parts;
+use std::{io::Read, slice::from_raw_parts};
 
 use serde::Serialize;
 use shared::{
+    stomped_structs::RegQueryResult,
     task_types::{RegAddInner, RegQueryInner, RegType},
     tasks::WyrmResult,
 };
@@ -239,12 +240,11 @@ fn query_key(path: String) -> Option<WyrmResult<String>> {
     //
     // As we are querying the keys/values themselves, we need to iterate through it
     //
-    let mut constructed: Vec<String> = vec![];
+    let mut constructed_result = RegQueryResult::default();
 
     if let Ok(keys) = open_key.keys() {
         for k in keys {
-            let fmt = format!("[subkey] {k}");
-            constructed.push(fmt);
+            constructed_result.subkeys.push(k.clone());
         }
     }
 
@@ -262,15 +262,17 @@ fn query_key(path: String) -> Option<WyrmResult<String>> {
                 data_as_str = String::from("(empty)");
             }
 
-            constructed.push(format!("[value name] {name}, [value data] {data_as_str}",));
+            constructed_result
+                .values
+                .insert(name.clone(), data_as_str.clone());
         }
     }
 
-    if constructed.is_empty() {
+    if constructed_result.subkeys.is_empty() && constructed_result.values.is_empty() {
         return Some(WyrmResult::Ok(sc!("No data in key.", 71).unwrap()));
     }
 
-    match serde_json::to_string(&constructed) {
+    match serde_json::to_string(&constructed_result) {
         Ok(s) => Some(WyrmResult::Ok(s)),
         Err(e) => {
             let msg = format!("{}. {e}", sc!("Could not serialise data.", 84).unwrap());
@@ -286,7 +288,7 @@ fn value_to_string(data: &Value) -> String {
         windows_registry::Type::String => val_string_to_str(&data.to_vec()),
         windows_registry::Type::ExpandString => val_string_to_str(&data.to_vec()),
         windows_registry::Type::MultiString => val_string_to_str(&data.to_vec()),
-        windows_registry::Type::Bytes => String::from("Not implemented"),
+        windows_registry::Type::Bytes => val_bytes_to_str(&data),
         windows_registry::Type::Other(_) => String::from("Not implemented"),
     }
 }
@@ -297,6 +299,19 @@ fn val_u32_to_str(value: &Value) -> String {
 
 fn val_u64_to_str(value: &Value) -> String {
     u64::from_le_bytes(value[0..8].try_into().unwrap()).to_string()
+}
+
+fn val_bytes_to_str(value: &Value) -> String {
+    let mut builder = String::new();
+    for b in value.to_vec() {
+        builder.push_str(&format!("{b:#X}, "));
+    }
+
+    // Trim the last whitespace + comma
+    let len = builder.len();
+    let builder = builder[0..len - 2].to_string();
+
+    builder
 }
 
 fn val_string_to_str(value: &[u8]) -> String {

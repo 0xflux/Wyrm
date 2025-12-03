@@ -4,7 +4,7 @@ use serde::Serialize;
 #[cfg(debug_assertions)]
 use shared::pretty_print::print_failed;
 use shared::{
-    process::Process,
+    stomped_structs::Process,
     tasks::{Task, WyrmResult},
 };
 use std::{ffi::CStr, mem::MaybeUninit, ptr::null_mut};

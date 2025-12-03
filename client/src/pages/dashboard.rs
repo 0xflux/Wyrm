@@ -99,7 +99,7 @@ fn ConnectedAgents(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
                 <div class="col-2">Hostname</div>
                 <div class="col-2">Username</div>
                 <div class="col-1">Integrity</div>
-                <div class="col-1">Process ID</div>
+                <div class="col-1">PID</div>
                 <div class="col-2">Last check-in</div>
                 <div class="col-4">Process name</div>
             </div>
@@ -114,7 +114,7 @@ fn ConnectedAgents(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
                     let:(agent)
                 >
                     <a href="#"
-                        class="jetbrains-gui-smallest"
+                        class="jetbrains-gui-smaller"
                         class=("agent-stale", move || agent.get().is_stale)
                         on:click=move |_| {
                             let mut guard = tabs.write();
