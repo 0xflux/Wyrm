@@ -13,7 +13,6 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] Logrotate setup
 7) [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
 8) [ ] Max upload size set on C2 from profile
-9) [ ] Implant should dispatch task BEFORE checking back in / sleep, rather than on next wake up?
  
 ### v1.0 - Whelpfire
 
@@ -31,13 +30,14 @@ developed as a premium or otherwise private feature. These will be few and far b
    6) [ ] Malleable encryption byte in profile
 2) [ ] NG Proxy Bypass (NGPB) (L)
 3) [ ] Internal proxy resolution for HTTP requests
-4) [ ] `execute-assembly`
+4) [ ] `execute-bin` (non-dotnet)
+5) [ ] `execute-dotnet`
    1) [ ] AMSI patching option in profile 
-5) [ ] `jump psexec`
-6) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
-7) [ ] Profile option for mutex
-8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
-9) [ ] `ps` needs testing in an AD lab; as well as anything else which may rely on kerb / AD config (e.g. the hostname/domain or smth?)
+6) [ ] `jump psexec`
+7) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
+8) [ ] Profile option for mutex
+9) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
+10) [ ] `ps` needs testing in an AD lab; as well as anything else which may rely on kerb / AD config (e.g. the hostname/domain or smth?)
 
 ### v1.1
 

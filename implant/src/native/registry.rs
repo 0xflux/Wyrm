@@ -1,4 +1,4 @@
-use std::{io::Read, slice::from_raw_parts};
+use std::slice::from_raw_parts;
 
 use serde::Serialize;
 use shared::{
