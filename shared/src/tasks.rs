@@ -374,6 +374,7 @@ pub struct NewAgentStaging {
     pub exports: Exports,
     pub svc_name: String,
     pub string_stomp: Option<StringStomp>,
+    pub mutex: Option<String>,
 }
 
 impl NewAgentStaging {
@@ -398,6 +399,7 @@ impl NewAgentStaging {
             exports: None,
             svc_name: "-".to_string(),
             string_stomp: None,
+            mutex: None,
         }
     }
 }
@@ -476,7 +478,11 @@ pub type Exports = Option<BTreeMap<String, ExportConfig>>;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct ExportConfig {
+    /// Optional machine code to be placed under the export.
     pub machine_code: Option<Vec<u8>>,
+    /// Used for DLL Search Order Hijacking, the BTreeMap consists of
+    /// k=target DLL, v=Target function
+    pub proxy: Option<BTreeMap<String, String>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]

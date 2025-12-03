@@ -8,7 +8,7 @@ use leptos::prelude::RwSignal;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use shared::{
-    process::Process,
+    stomped_structs::{Process, RegQueryResult},
     tasks::{Command, PowershellOutput, WyrmResult},
 };
 
@@ -191,20 +191,39 @@ impl FormatOutput for NotificationForAgent {
                 let listings_serialised = match self.result.as_ref() {
                     Some(inner) => inner,
                     None => {
-                        return vec![format!("No data returned from ls command.")];
+                        return vec![format!("No data returned from ps command.")];
                     }
                 };
 
                 let deser: Option<Vec<Process>> =
                     serde_json::from_str(listings_serialised).unwrap();
                 if deser.is_none() {
-                    return vec![format!("Directory listings empty.")];
+                    return vec![format!("Process listings empty.")];
                 }
 
                 let mut builder = vec![];
 
+                const PID_W: usize = 10;
+                const PPID_W: usize = 10;
+                const NAME_W: usize = 40;
+                const USER_W: usize = 16;
+
+                let pid = "PID:";
+                let ppid = "PPID:";
+                let name = "Name:";
+                let user = "User:";
+                let f = format!(
+                    "{:<PID_W$}{:<PPID_W$}{:<NAME_W$}{:<USER_W$}",
+                    pid, ppid, name, user
+                );
+                builder.push(f);
+
                 for row in deser.unwrap() {
-                    builder.push(format!("{}: {} ({})", row.pid, row.name, row.user));
+                    let f = format!(
+                        "{:<PID_W$}{:<PPID_W$}{:<NAME_W$}{:<USER_W$}",
+                        row.pid, row.ppid, row.name, row.user
+                    );
+                    builder.push(f);
                 }
 
                 return builder;
@@ -413,32 +432,13 @@ impl FormatOutput for NotificationForAgent {
                 return vec!["File exfiltrated successfully and can be found on the C2.".into()];
             }
             Command::RegQuery => {
-                //
-                // alright this deser is gross ...
-                //
                 if let Some(response) = &self.result {
-                    match serde_json::from_str::<WyrmResult<String>>(response) {
-                        Ok(data) => match data {
-                            WyrmResult::Ok(inner_string_from_result) => {
-                                match serde_json::from_str::<Vec<String>>(&inner_string_from_result)
-                                {
-                                    Ok(results_as_vec) => return results_as_vec,
-                                    Err(_) => {
-                                        // Try as a single string (in the event it was querying an exact value)
-                                        return vec![inner_string_from_result];
-                                    }
-                                }
-                            }
-                            WyrmResult::Err(e) => {
-                                return vec![format!("Error with operation. {e}")];
-                            }
-                        },
-                        Err(e) => {
-                            return vec![format!("Could not deserialise response data. {e}.")];
-                        }
+                    match RegQueryResult::try_from(response.as_str()) {
+                        Ok(r) => return r.client_print_formatted(),
+                        Err(e) => return e,
                     }
                 } else {
-                    return vec!["No data returned, something may have gone wrong.".into()];
+                    return vec!["No data.".to_string()];
                 }
             }
             Command::RegAdd => {
@@ -554,8 +554,8 @@ impl ActiveTabs {
     pub fn add_tab(&mut self, name: &str) {
         let name = name.to_string();
         let _ = self.tabs.insert(name.clone());
+        self.active_id = Some(name.clone());
         let _ = self.save_to_store();
-        self.active_id = Some(name);
     }
 
     /// Removes a tab to the tracked tabs, doing nothing if the value did not exists

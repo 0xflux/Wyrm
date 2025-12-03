@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod net;
 pub mod pretty_print;
-pub mod process;
+pub mod stomped_structs;
 pub mod task_types;
 pub mod tasks;
 

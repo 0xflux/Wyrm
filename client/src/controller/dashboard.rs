@@ -74,11 +74,11 @@ pub fn update_connected_agents(
             agent.is_stale = is_stale;
             agent.process_name = process_image.clone();
 
-            // Hydrate from store once
-            if agent.output_messages.is_empty() {
-                if let Ok(stored) = get_item_from_browser_store::<Vec<TabConsoleMessages>>(
-                    &wyrm_chat_history_browser_key(&uid),
-                ) {
+            // Hydrate from store when empty or when the store has more messages
+            if let Ok(stored) = get_item_from_browser_store::<Vec<TabConsoleMessages>>(
+                &wyrm_chat_history_browser_key(&uid),
+            ) {
+                if agent.output_messages.is_empty() || stored.len() > agent.output_messages.len() {
                     agent.output_messages = stored;
                 }
             }

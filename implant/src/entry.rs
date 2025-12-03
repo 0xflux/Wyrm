@@ -14,6 +14,8 @@ use crate::{
 
 /// Determines whether the agent is built as a service, or not
 pub static IS_IMPLANT_SVC: AtomicBool = AtomicBool::new(false);
+/// Is the application currently running - this will be set to false when the exit command is given.
+pub static APPLICATION_RUNNING: AtomicBool = AtomicBool::new(true);
 
 /// Literally just the entry function into the payload allowing flexibility to call from either
 /// an exe, or dll

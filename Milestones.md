@@ -3,20 +3,6 @@
 Any item with a (L) tag is a contribution which will not be live (or requires further decision making) as this is intended to be
 developed as a premium or otherwise private feature. These will be few and far between.
 
-### 0.5.1
-
-1) [x] \n in output should put on new line (e.g. whoami /priv)
-2) [x] `ls` command output should indicate whether is dir or file (maybe on the left somewhere in [ ] ?)
-3) [x] Serialise the agent message thing move from \t, it is reasonable for \t to exist and break this..
-   1) [x] Also split out new columns for integrity, remove the drive serial, etc.
-4) [x] Periodically delete items from browser store not in connected agents if not open in a tab.
-5) [x] Break some code on the C2 down, modularise it a little, general tidy up
-
-### 0.5.2
-
-1) [ ] Improve output of reg query, maybe use \t\t or smth
-2) [ ] Ps should show parent pids with children in a hierarchy
-
 ### 0.6
 
 1) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
@@ -27,17 +13,31 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] Logrotate setup
 7) [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
 8) [ ] Max upload size set on C2 from profile
+9) [ ] Implant should dispatch task BEFORE checking back in / sleep, rather than on next wake up?
  
 ### v1.0 - Whelpfire
 
-1) [ ] NG Proxy Bypass (NGPB) (L)
-2) [ ] Internal proxy resolution for HTTP requests
-3) [ ] `execute-assembly`
+1) [ ] Move to new basic model with stagers, the exports, etc can also apply to those, but we would produce:
+   1) [ ] DLL, Exe, Svc of the 'virgin' payload
+   2) [ ] NoStd loader (stageless) - encrypted 2nd stage shipped in binary
+   3) [ ] NoStd loader (staged) - encrypted 2nd stage
+   4) [ ] The NoStds should produce:
+      1) [ ] DLL
+      2) [ ] Exe
+      3) [ ] Svc
+   5) [ ] No fancy techniques under the hood, that will come with a (L) version
+      1) [ ] Need to think about what the L version will include and look like
+      2) [ ] Maybe early bird and other similar techniques, syscalls, etc?
+   6) [ ] Malleable encryption byte in profile
+2) [ ] NG Proxy Bypass (NGPB) (L)
+3) [ ] Internal proxy resolution for HTTP requests
+4) [ ] `execute-assembly`
    1) [ ] AMSI patching option in profile 
-4) [ ] `jump psexec`
-5) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
-6) [ ] Profile option for mutex
-7) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
+5) [ ] `jump psexec`
+6) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
+7) [ ] Profile option for mutex
+8) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
+9) [ ] `ps` needs testing in an AD lab; as well as anything else which may rely on kerb / AD config (e.g. the hostname/domain or smth?)
 
 ### v1.1
 

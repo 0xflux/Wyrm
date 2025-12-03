@@ -6,6 +6,18 @@ pulling updates.
 
 **IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
 
+## v 0.5.2
+
+- DLL internals now allow for a better loading mechanism which ensures if run via rundll32, and from DLL Search Order Hijacking, without early termination.
+- Malleable profile now provides support for fully fledged DLL Search Order Hijacking attacks! See docs for more info.
+- Malleable profile now includes the ability to create a global mutex so you can ensure only one implant (profile) can run on the system, this could be useful for DLL sideloading / search order hijacking if the target is extremely noisy in terms of lots of subprocesses loading in the binary. You can of course have this applied to one profile, but not another, as it is fully optional.
+- Improves the output of the `ps` and `reg query` commands.
+- Added additional deserialisation option for output of `reg query` such that the `REG_BINARY` type gets decoded.
+
+### Issues under investigation
+
+There is still a very rare, small case where the first few instructions get dispatched and sent to the client, but don't appear in the console. They are logged in the browser store temporarily, but I think the bug is still here.. under investigation - extremely rare which is making it difficult to determine if it is still an issue.
+
 ## v 0.5.1
 
 - Improved GUI updates! The dashboard message panel now looks much better, with newlines appearing properly, and spacing kept from the raw output. Colours have also been improved making it much easier to distinguish between message sections!
