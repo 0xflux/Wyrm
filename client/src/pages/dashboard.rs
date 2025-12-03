@@ -6,7 +6,10 @@ use leptos::{IntoView, component, html, prelude::*, reactive::spawn_local, view}
 use shared::tasks::AdminCommand;
 
 use crate::{
-    controller::dashboard::update_connected_agents,
+    controller::{
+        dashboard::update_connected_agents, get_item_from_browser_store,
+        wyrm_chat_history_browser_key,
+    },
     models::dashboard::{
         ActiveTabs, Agent, AgentC2MemoryNotifications, AgentIdSplit, TabConsoleMessages,
         get_agent_tab_name, get_info_from_agent_id, resolve_tab_to_agent_id,
@@ -240,7 +243,7 @@ fn MessagePanel() -> impl IntoView {
     let tabs: RwSignal<ActiveTabs> =
         use_context().expect("could not get tabs context in MessagePanel()");
 
-    let messages = Signal::derive(move || {
+    let messages = create_memo(move |_| {
         let map = agent_map.get();
         let Some(agent_id) = tabs
             .read()
@@ -254,6 +257,20 @@ fn MessagePanel() -> impl IntoView {
         let Some(agent_sig) = map.get(&agent_id) else {
             return Vec::new();
         };
+
+        if agent_sig.with(|agent| agent.output_messages.is_empty()) {
+            if let Ok(stored) = get_item_from_browser_store::<Vec<TabConsoleMessages>>(
+                &wyrm_chat_history_browser_key(&agent_id),
+            ) {
+                if !stored.is_empty() {
+                    agent_sig.update(|agent| {
+                        if agent.output_messages.is_empty() {
+                            agent.output_messages = stored.clone();
+                        }
+                    });
+                }
+            }
+        }
 
         agent_sig.with(|agent| {
             agent
