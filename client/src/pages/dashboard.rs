@@ -93,7 +93,7 @@ fn ConnectedAgents(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
         use_context::<RwSignal<HashMap<String, RwSignal<Agent>>>>().expect("no agent map found");
 
     view! {
-        <div id="connected-agent-container" class="container-fluid">
+        <div id="connected-agent-container" class="container-fluid jetbrains-gui-smaller">
 
             <div id="agents-header" class="row">
                 <div class="col-2">Hostname</div>
@@ -114,6 +114,7 @@ fn ConnectedAgents(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
                     let:(agent)
                 >
                     <a href="#"
+                        class="jetbrains-gui-smallest"
                         class=("agent-stale", move || agent.get().is_stale)
                         on:click=move |_| {
                             let mut guard = tabs.write();
@@ -163,9 +164,9 @@ fn MiddleTabBar() -> impl IntoView {
     view! {
         <div class="tabbar">
             <ul id="tab-bar-ul" class="nav nav-tabs flex-nowrap text-nowrap m-0 px-20">
-                <li class="nav-item d-flex align-items-center">
+                <li class="nav-item d-flex align-items-center jetbrains-gui-smaller">
                     <a
-                        class="nav-link"
+                        class="nav-link jetbrains-gui-smaller"
                         class:active=move || tabs.read().active_id.is_none()
                         href="#"
                         on:click=move |_| {
