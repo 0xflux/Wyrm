@@ -6,6 +6,10 @@ pulling updates.
 
 **IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
 
+## v 0.5.3
+
+- Potential bug fix for the UI very occasionally not showing messages in the UI. Seems to be fixed.. but the bug happens so little it can be hard to diagnose.
+
 ## v 0.5.2
 
 - DLL internals now allow for a better loading mechanism which ensures if run via rundll32, and from DLL Search Order Hijacking, without early termination.

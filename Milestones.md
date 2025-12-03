@@ -13,7 +13,6 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] Logrotate setup
 7) [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
 8) [ ] Max upload size set on C2 from profile
-9) [ ] Implant should dispatch task BEFORE checking back in / sleep, rather than on next wake up?
  
 ### v1.0 - Whelpfire
 
