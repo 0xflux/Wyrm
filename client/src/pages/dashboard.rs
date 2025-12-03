@@ -103,7 +103,7 @@ fn ConnectedAgents(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
                 <div class="col-2">Username</div>
                 <div class="col-1">Integrity</div>
                 <div class="col-1">PID</div>
-                <div class="col-2">Last check-in</div>
+                <div class="col-2">Checked-in</div>
                 <div class="col-4">Process name</div>
             </div>
 
