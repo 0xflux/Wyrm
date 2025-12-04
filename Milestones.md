@@ -45,6 +45,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 8) [ ] Separate URIs for POST and GET
 9) [ ] Multiple URLs / IPs for C2
 10) [ ] Round robin and different styles for URI & URL rotation
+11) [ ] Can I tidy wyrm.rs, maybe dynamic dispatch and traits for main dispatch fn?
 
 ### v1.1
 
