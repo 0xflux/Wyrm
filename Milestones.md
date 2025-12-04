@@ -10,6 +10,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 3) [ ] Image hashes in autoloot.
 4) [ ] Runtime obfuscation, sleep masking.
 5) [ ] **Entire** website clone, and serve download from named page.
+6) [ ] Ransomware **SIMULATION** for Business
 
 ### 0.6
 
