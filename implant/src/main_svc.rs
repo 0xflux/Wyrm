@@ -25,6 +25,7 @@ use crate::{
 mod anti_sandbox;
 mod comms;
 mod entry;
+mod execute;
 mod native;
 mod utils;
 mod wyrm;
