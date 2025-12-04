@@ -3,18 +3,15 @@
 Any item with a (L) tag is a contribution which will not be live (or requires further decision making) as this is intended to be
 developed as a premium or otherwise private feature. These will be few and far between.
 
-### 0.6
+## (L) Features (locked currently for public consumption)
 
-1) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
-2) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
-3) [ ] Multiple URLs / IPs for C2
-4) [ ] Separate URIs for POST and GET
-5) [ ] Round robin and different styles for URI & URL rotation
-6) [ ] Logrotate setup
-7) [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
-8) [ ] Max upload size set on C2 from profile
- 
-### v1.0 - Whelpfire
+1) [ ] NG Proxy Bypass (NGPB).
+2) [ ] Additional loaders, maybe things like early bird, syscalls, etc.
+3) [ ] Image hashes in autoloot.
+4) [ ] Runtime obfuscation, sleep masking.
+5) [ ] **Entire** website clone, and serve download from named page.
+
+### 0.6
 
 1) [ ] Move to new basic model with stagers, the exports, etc can also apply to those, but we would produce:
    1) [ ] DLL, Exe, Svc of the 'virgin' payload
@@ -25,66 +22,68 @@ developed as a premium or otherwise private feature. These will be few and far b
       2) [ ] Exe
       3) [ ] Svc
    5) [ ] No fancy techniques under the hood, that will come with a (L) version
-      1) [ ] Need to think about what the L version will include and look like
-      2) [ ] Maybe early bird and other similar techniques, syscalls, etc?
    6) [ ] Malleable encryption byte in profile
-2) [ ] NG Proxy Bypass (NGPB) (L)
-3) [ ] Internal proxy resolution for HTTP requests
-4) [ ] `execute-bin` (non-dotnet)
-5) [ ] `execute-dotnet`
+2) [ ] Internal proxy resolution for HTTP requests
+3) [ ] `execute-bin` (non-dotnet)
+4) [ ] `execute-dotnet`
    1) [ ] AMSI patching option in profile 
-6) [ ] `jump psexec`
+5) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
+6) [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
+ 
+### v1.0 - Whelpfire
+
+1) [ ] `jump psexec`
+2) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
+3) [ ] `ps` needs testing in an AD lab; as well as anything else which may rely on kerb / AD config (e.g. the hostname/domain or smth?)
+4) [ ] Max upload size set on C2 from profile
+5) [ ] Logrotate setup
+6) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
 7) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
-8) [ ] Profile option for mutex
-9) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
-10) [ ] `ps` needs testing in an AD lab; as well as anything else which may rely on kerb / AD config (e.g. the hostname/domain or smth?)
+8) [ ] Separate URIs for POST and GET
+9) [ ] Multiple URLs / IPs for C2
+10) [ ] Round robin and different styles for URI & URL rotation
 
 ### v1.1
 
 These are to be split out further as required for more manageable releases.
 
-1) [ ] Stager & reflective DLL injector (L).
-   1) [ ] The base payload should move from an exe/dll to a RDLL or similar so the entry becomes a bootstrapper
-   2) [ ] Don't forget ETW & anti_sandbox strategies here - they are in the 2nd stage but may need moving to the 1st stage (aka the bootstrapper)
-2) [ ] Long running tasks which have a specified integrity level, so any task set under this scheme can execute at a given integrity level for that machine
-3) [ ] `spawn` + malleable options
-4) [ ] `inject` + malleable options
-5) [ ] Killing the agent should support from thread as well as from process (in the case of an injected process).
-6) [ ] Agent & C2 supports multiple endpoints (selectable in build process from cli) / c2 profiles
+1) [ ] Long running tasks which have a specified integrity level, so any task set under this scheme can execute at a given integrity level for that machine
+2) [ ] `spawn` + malleable options
+3) [ ] `inject` + malleable options
+4) [ ] Killing the agent should support from thread as well as from process (in the case of an injected process).
+5) [ ] Agent & C2 supports multiple endpoints (selectable in build process from cli) / c2 profiles
    1) This needs to be implemented in the wizard also
-7)  [ ] `zip` command to natively zip a folder
-8)  [ ] Improve pillage function
-9)  [ ] Concurrent removable media scanner - runs when main thread is sleeping between calls and looks for a removable disk being added. Auto-pillage.
+6)  [ ] `zip` command to natively zip a folder
+7)  [ ] Improve pillage function
+8)  [ ] Concurrent removable media scanner - runs when main thread is sleeping between calls and looks for a removable disk being added. Auto-pillage.
    1)  [ ] The auto pillage file extensions should be specified in the profile toml
-10) [ ] Auto Escalator (this could be done a separate project that can be used by others, but also compiles into this):
+9)  [ ] Auto Escalator (this could be done a separate project that can be used by others, but also compiles into this):
     1)  [ ] User -> SYSTEM (service paths etc)
     2)  [ ] Local user -> Local Admin
     3)  [ ] Local Admin -> SYSTEM
-11) [ ] Improved anti-sandbox checks
-12) [ ] Additional lateral movement options
-13) [ ] C2 junk padding response size (needs to play nice with NGPB)
-14) [ ] Export agent db info for reporting
-15) [ ] Read users clipboard continuously and upload to C2
-16) [ ] Multiple C2 implementations on the agent. This could be a task which orders the creation on the implant itself.
-17) [ ] Capture screenshots
-18) [ ] Autoloot:
+10) [ ] Improved anti-sandbox checks
+11) [ ] Additional lateral movement options
+12) [ ] C2 junk padding response size (needs to play nice with NGPB)
+13) [ ] Export agent db info for reporting
+14) [ ] Read users clipboard continuously and upload to C2
+15) [ ] Multiple C2 implementations on the agent. This could be a task which orders the creation on the implant itself.
+16) [ ] Capture screenshots
+17) [ ] Autoloot:
     1)  [ ] SSH keys
-    2)  [ ] Image hashes (L)
-    3)  [ ] Filenames of office docs, .pdf, .jpg, .mov, .kdbx
-19) [ ] Builds agent that can use APIs via hells/halos gate, etc.
+    2)  [ ] Filenames of office docs, .pdf, .jpg, .mov, .kdbx
+18) [ ] Builds agent that can use APIs via hells/halos gate, etc.
     1)  [ ] Look at FreshyCalls as an alternate
-20) [ ] Pool Party
-21) [ ] C2 rotation strategy from profile
-22) [ ] `cat`
-23) [ ] `tasks` and `task_kill`
-24) [ ] SOCKS proxy
-25) [ ] Shellcode loader
-26) [ ] C2 configurable so it is hosted on TOR, with C2 fronted redirectors into the TOR network
-27) [ ] `drives` search for additional drive volumes
-28) [ ] Scope / date / time checks
-29) [ ] Add a note to an implant
-30) [ ] Runtime obfuscation, sleep masking and covert loading (L?)
-31) [ ] Some UAC bypasses?
+19) [ ] Pool Party
+20) [ ] C2 rotation strategy from profile
+21) [ ] `cat`
+22) [ ] `tasks` and `task_kill`
+23) [ ] SOCKS proxy
+24) [ ] Shellcode loader
+25) [ ] C2 configurable so it is hosted on TOR, with C2 fronted redirectors into the TOR network
+26) [ ] `drives` search for additional drive volumes
+27) [ ] Scope / date / time checks
+28) [ ] Add a note to an implant
+29) [ ] Some UAC bypasses?
 
 ### Voidheart - v2.0
 
@@ -104,7 +103,6 @@ These are to be split out further as required for more manageable releases.
 11) [ ] Post Quantum Encryption for below TLS implant comms
 12) [ ] Create multiple users 
     1)  [ ] Make implant multiplayer - this may need a bit of rearchitecting
-13) [ ] **Entire** website clone, and serve download from named page (L).
 
 ### Ashen Crown - v3.0
 
