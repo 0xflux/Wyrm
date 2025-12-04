@@ -26,8 +26,10 @@ developed as a premium or otherwise private feature. These will be few and far b
    6) [ ] Malleable encryption byte in profile
 2) [ ] Internal proxy resolution for HTTP requests
 3) [ ] `execute-bin` (non-dotnet)
+   1) [ ] Needs long running polling & keep alive (handle to sacrificial if a sacra is used?)
 4) [ ] `execute-dotnet`
    1) [ ] AMSI patching option in profile 
+   2) [ ] Needs long running polling & keep alive (handle to sacrificial if a sacra is used?)
 5) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
 6) [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
  
