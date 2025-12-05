@@ -8,6 +8,7 @@ use entry::start_wyrm;
 mod anti_sandbox;
 mod comms;
 mod entry;
+mod evasion;
 mod execute;
 mod native;
 mod utils;

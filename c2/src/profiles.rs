@@ -50,6 +50,7 @@ pub struct AntiSandbox {
 #[derive(Deserialize, Debug, Default, Clone)]
 pub struct Evasion {
     pub patch_etw: Option<bool>,
+    pub patch_amsi: Option<bool>,
     pub timestomp: Option<String>,
 }
 
@@ -81,6 +82,7 @@ impl Profile {
 
         let build_debug = implant.debug.unwrap_or_default();
         let patch_etw = implant.evasion.patch_etw.unwrap_or_default();
+        let patch_amsi = implant.evasion.patch_amsi.unwrap_or_default();
 
         // Unwrap a sleep time from either profile specific, a higher order key, or if none found, use
         // a default of 1 hr (3600 seconds).
@@ -148,6 +150,7 @@ impl Profile {
             build_debug,
             useragent,
             patch_etw,
+            patch_amsi,
             jitter: implant.network.jitter,
             timestomp: implant.evasion.timestomp.clone(),
             exports: implant.exports.clone(),

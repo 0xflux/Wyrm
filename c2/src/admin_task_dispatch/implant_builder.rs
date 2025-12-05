@@ -142,6 +142,9 @@ pub async fn build_agent(
         if data.patch_etw {
             string_builder.push_str("patch_etw,");
         }
+        if data.patch_etw {
+            string_builder.push_str("patch_amsi,");
+        }
 
         builder.push(string_builder);
 

