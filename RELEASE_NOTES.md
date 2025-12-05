@@ -6,6 +6,13 @@ pulling updates.
 
 **IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
 
+## v0.6
+
+### Non-breaking changes
+
+- AMSI patching available in the implant via the malleable profile (only runs in the agent when necessary).
+- You can now execute dotnet programs remotely in the agent, all in memory! Simply run `dotex`
+
 ## v 0.5.3
 
 - Potential bug fix for the UI very occasionally not showing messages in the UI. Seems to be fixed.. but the bug happens so little it can be hard to diagnose.
