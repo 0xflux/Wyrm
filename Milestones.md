@@ -15,6 +15,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 ### 0.6
 
 1) [ ] Implant able to push messages to operator (not sure how to best do this with the current task pushing architecture...);
+   1) [ ] Maybe some kind of msg packet that is a str that we can push to completed tasks, but then it wont be linear potentially hmm
 2) [ ] Move to new basic model with stagers, the exports, etc can also apply to those, but we would produce:
    1) [ ] DLL, Exe, Svc of the 'virgin' payload
    2) [ ] NoStd loader (stageless) - encrypted 2nd stage shipped in binary
