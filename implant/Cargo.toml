@@ -58,6 +58,7 @@ windows-sys = {version = "0.61", features = [
     "Win32_System_Diagnostics_ToolHelp",
     "Win32_System_Ole",
     "Win32_System_Variant",
+    "Win32_System_ClrHosting",
 ]}
 rand = "0.9"
 windows-registry = "0.6"
