@@ -18,6 +18,7 @@ use shared_c2_client::{AgentC2MemoryNotifications, MapToMitre, TaskExport};
 use tokio::{fs, io::AsyncWriteExt};
 
 pub mod dispatch_table;
+mod execute;
 pub mod implant_builder;
 
 async fn remove_dir(save_path: impl AsRef<Path>) -> Result<(), String> {

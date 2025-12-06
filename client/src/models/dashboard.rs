@@ -172,6 +172,7 @@ fn command_to_string(cmd: &Command) -> String {
         Command::RegDelete => "reg del",
         Command::RmFile => "RmFile",
         Command::RmDir => "RmDir",
+        Command::DotEx => "DotEx",
     };
 
     c.into()
@@ -467,6 +468,29 @@ impl FormatOutput for NotificationForAgent {
                     return print_wyrm_result_string(response);
                 } else {
                     return vec![format!("Unknown error. Got: {:#?}", self.result)];
+                }
+            }
+            Command::DotEx => {
+                if let Some(response) = &self.result {
+                    let deser = match serde_json::from_str::<WyrmResult<String>>(response) {
+                        Ok(i) => i,
+                        Err(e) => {
+                            return vec![format!(
+                                "Could not deserialise response, {e}. Got raw: {response:?}"
+                            )];
+                        }
+                    };
+
+                    match deser {
+                        WyrmResult::Ok(msg) => {
+                            return vec![msg];
+                        }
+                        WyrmResult::Err(e) => {
+                            return vec![format!("Error whilst trying to execute dotex: {e}")];
+                        }
+                    }
+                } else {
+                    return vec!["No data.".to_string()];
                 }
             }
         }

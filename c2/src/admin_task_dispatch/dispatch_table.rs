@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     admin_task_dispatch::{
-        delete_staged_resources, drop_file_handler, export_completed_tasks_to_json,
+        delete_staged_resources, drop_file_handler, execute::dotex, export_completed_tasks_to_json,
         implant_builder::stage_file_upload_from_users_disk, list_agents, list_staged_resources,
         remove_agent_from_list, show_server_time, task_agent, task_agent_sleep,
     },
@@ -134,6 +134,7 @@ pub async fn admin_dispatch(
         },
         AdminCommand::ExportDb => export_completed_tasks_to_json(uid.unwrap(), state).await,
         AdminCommand::None => None,
+        AdminCommand::DotEx(dot_ex_inner) => dotex(uid, dot_ex_inner, state.clone()).await,
     };
 
     serde_json::to_vec(&result).unwrap()

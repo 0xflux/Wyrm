@@ -5,7 +5,7 @@ use leptos::prelude::{Read, RwSignal, Update, Write, use_context};
 use shared::{
     pretty_print::print_failed,
     task_types::{RegAddInner, RegQueryInner, RegType},
-    tasks::{AdminCommand, DELIM_FILE_DROP_METADATA, FileDropMetadata, WyrmResult},
+    tasks::{AdminCommand, DELIM_FILE_DROP_METADATA, DotExInner, FileDropMetadata, WyrmResult},
 };
 use thiserror::Error;
 
@@ -695,15 +695,12 @@ pub async fn reg_add(inputs: String, agent: &IsTaskingAgent) -> DispatchResult {
     // the proper options
     //
 
-    let reg_add_options = split_string_slices_to_n(4, &inputs, DiscardFirst::ChopTwo);
-    let mut reg_add_options = match reg_add_options {
-        Some(o) => o,
-        None => {
-            return Err(TaskingError::TaskDispatchError(
-                TaskDispatchError::BadTokens("Could not find options for command".into()),
-            ));
-        }
-    };
+    let mut reg_add_options = split_string_slices_to_n(4, &inputs, DiscardFirst::ChopTwo)
+        .ok_or_else(|| {
+            TaskingError::TaskDispatchError(TaskDispatchError::BadTokens(
+                "Could not find options for command".into(),
+            ))
+        })?;
 
     let reg_type = match reg_add_options[3].as_str() {
         "string" | "String" => RegType::String,
@@ -736,6 +733,42 @@ pub async fn reg_add(inputs: String, agent: &IsTaskingAgent) -> DispatchResult {
     Ok(Some(
         api_request(
             AdminCommand::RegAdd(query_data),
+            agent,
+            None,
+            C2Url::Standard,
+            None,
+        )
+        .await?,
+    ))
+}
+
+pub async fn dotex(inputs: String, agent: &IsTaskingAgent) -> DispatchResult {
+    agent.has_agent_id()?;
+
+    if inputs.is_empty() {
+        print_failed("Please specify options.");
+    }
+
+    let slices = split_string_slices_to_n(0, &inputs, DiscardFirst::DontChop).ok_or_else(|| {
+        TaskingError::TaskDispatchError(TaskDispatchError::BadTokens(
+            "Could not find options for command".into(),
+        ))
+    })?;
+
+    if slices.is_empty() {
+        return Err(TaskingError::TaskDispatchError(
+            TaskDispatchError::BadTokens("Options were empty. Cannot continue.".into()),
+        ));
+    }
+
+    let tool = slices[0].clone();
+    let args = slices[1..].to_vec();
+
+    let inner = DotExInner::from(tool, args);
+
+    Ok(Some(
+        api_request(
+            AdminCommand::DotEx(inner),
             agent,
             None,
             C2Url::Standard,

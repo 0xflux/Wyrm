@@ -51,6 +51,7 @@ pub fn command_to_string(cmd: &Command) -> String {
         Command::RegDelete => "reg del",
         Command::RmFile => "RmFile",
         Command::RmDir => "RmDir",
+        Command::DotEx => "DotEx",
     };
 
     c.into()
@@ -214,6 +215,12 @@ impl<'a> MapToMitre<'a> for Command {
                 "https://attack.mitre.org/techniques/T1112/",
             ),
             Command::Undefined => MitreTTP::from("UNDEFINED", None, "UNDEFINED", "UNDEFINED"),
+            Command::DotEx => MitreTTP::from(
+                "T1620",
+                None,
+                "Reflective Code Loading",
+                "https://attack.mitre.org/techniques/T1620/",
+            ),
         }
     }
 }

