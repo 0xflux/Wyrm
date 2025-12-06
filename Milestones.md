@@ -34,6 +34,7 @@ developed as a premium or otherwise private feature. These will be few and far b
    2) [ ] Needs long running polling & keep alive (handle to sacrificial if a sacra is used?)
 6) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
 7) [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
+8) [ ] Bug with Mutex when not turned on: "Failed to generate mutex with CreateMutexA. Last error: 0x7B"
  
 ### v1.0 - Whelpfire
 
