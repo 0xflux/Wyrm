@@ -12,7 +12,7 @@ pulling updates.
 
 - AMSI patching available in the implant via the malleable profile (only runs in the agent when necessary).
 - You can now execute dotnet programs remotely in the agent, all in memory! Simply run `dotex`
-- This update introduces the `c2_transfer` dir in the root which is used for staging files to be internally used by the C2 during operations such as `doxtex` where the payload is sent as bytes to the agent through C2.
+- This update introduces the `c2_transfer` dir in the root which is used for staging files to be internally used by the C2 during operations such as `dotex` where the payload is sent as bytes to the agent through C2. This folder is a bind mount meaning you can drop files in ad-hoc whilst the server is running and it should be able to read them. If you drop tools in here in a folder, make sure you include that in the path to the tool.
 
 ## v 0.5.3
 
