@@ -320,7 +320,8 @@ impl Wyrm {
                     self.push_completed_task(&task, result);
                 }
                 Command::DotEx => {
-                    execute_dotnet_current_process(&task.metadata);
+                    let result = Some(execute_dotnet_current_process(&task.metadata));
+                    self.push_completed_task(&task, result);
                 }
             }
         }
