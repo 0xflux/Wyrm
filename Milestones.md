@@ -17,6 +17,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 1) [ ] Implant able to push messages to operator (not sure how to best do this with the current task pushing architecture...);
    1) [ ] Maybe some kind of msg packet that is a str that we can push to completed tasks, but then it wont be linear potentially hmm
+   2) [ ] Hide console beginning of process, print ln, have a loop that reads from this in a thread, and pass it into dotnet
 2) [ ] Move to new basic model with stagers, the exports, etc can also apply to those, but we would produce:
    1) [ ] DLL, Exe, Svc of the 'virgin' payload
    2) [ ] NoStd loader (stageless) - encrypted 2nd stage shipped in binary
@@ -33,6 +34,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 5) [ ] `dotex`
    1) [x] AMSI patching option in profile 
    2) [ ] Needs long running polling & keep alive (handle to sacrificial if a sacra is used?)
+   3) [ ] Pipe names in custom profile
 6) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
 7) [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
 8) [ ] Bug with Mutex when not turned on: "Failed to generate mutex with CreateMutexA. Last error: 0x7B"
