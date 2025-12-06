@@ -35,7 +35,7 @@ services:
     ports: 
       - "13371:13371"
     volumes:
-      - c2_data:/data
+      - ./c2_data:/data
 
   nginx:
     image: nginx:latest
@@ -47,5 +47,4 @@ services:
       - ./nginx/certs:/etc/nginx/certs:ro
 
 volumes:
-  c2_data:
   c2_pgdata:
