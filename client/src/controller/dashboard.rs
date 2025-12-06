@@ -74,12 +74,21 @@ pub fn update_connected_agents(
             agent.is_stale = is_stale;
             agent.process_name = process_image.clone();
 
-            // Hydrate from store when empty or when the store has more messages
+            // Hydrate from store; merge in any messages we don't yet have.
             if let Ok(stored) = get_item_from_browser_store::<Vec<TabConsoleMessages>>(
                 &wyrm_chat_history_browser_key(&uid),
             ) {
-                if agent.output_messages.is_empty() || stored.len() > agent.output_messages.len() {
+                if agent.output_messages.is_empty() {
                     agent.output_messages = stored;
+                } else {
+                    let mut seen: HashSet<i32> =
+                        agent.output_messages.iter().map(|m| m.completed_id).collect();
+
+                    for msg in stored {
+                        if seen.insert(msg.completed_id) {
+                            agent.output_messages.push(msg);
+                        }
+                    }
                 }
             }
 
