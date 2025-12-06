@@ -91,6 +91,7 @@ These are to be split out further as required for more manageable releases.
 27) [ ] Scope / date / time checks
 28) [ ] Add a note to an implant
 29) [ ] Some UAC bypasses?
+30) [ ] Specify specific proxy for agent to use
 
 ### Voidheart - v2.0
 
