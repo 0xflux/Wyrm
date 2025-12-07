@@ -438,6 +438,7 @@ pub async fn show_help(agent: &IsTaskingAgent) -> DispatchResult {
         "reg query <path_to_key> <value> (for more info, type help reg)".into(),
         "reg add <path_to_key> <value name> <value data> <data type> (for more info, type help reg)".into(),
         "reg del <path_to_key> <Optional: value name> (for more info, type help reg)".into(),
+        "dotex <bin> <args> (execute a dotnet binary in memory in the implant, for more info type help dotex)".into(),
     ];
 
     if let IsTaskingAgent::Yes(agent_id) = agent {
@@ -500,6 +501,18 @@ pub async fn show_help_for_command(agent: &IsTaskingAgent, command: &str) -> Dis
             "reg del".into(),
             "Usage: reg del <path_to_key> <Optional: value name>".into(),
             "Deletes a registry key, or value, based on above args. Deleting the key will delete all sub-keys under it, so take care.".into(),
+        ],
+        "dotex" => vec![
+            "dotex <binary> <args>".into(),
+            "Executes a dotnet binary in memory within the implant, without having it drop to disk! currently, this only executes within the implants".into(),
+            "process, meaning if you run a never ending dotnet binary, you will (probably) lose that beacon.".into(),
+            "".into(),
+            "To stage a dotnet binary, where the C2 is installed (outside of docker) you will find a folder in the Wyrm root called c2_transfer.".into(),
+            "Simply drag a file into this directory and it will be auto-copied into the C2 without needing a restart. Whatever you call".into(),
+            "that binary, you can then invoke it with dotex. For example, if you drop Rubeus.exe into c2_transfer, you can run Rubeus in the".into(),
+            "agent via: dotex Rubeus.exe klist.".into(),
+            "".into(),
+            "The results of the execution will then be shown in your output terminal in the GUI.".into(),
         ],
         _ => vec!["No help pages available for this command, or it does not exist.".into()],
     };
