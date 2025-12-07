@@ -4,6 +4,8 @@ Wyrm (pronounced 'worm', an old English word for 'serpent' or 'dragon') is a pos
 Penetration Testers, and general infosec hobbyists. This project is fully built in Rust, with extra effort going into obfuscating artifacts which
 could be present in memory. Project created and maintained by [flux](https://github.com/0xflux/), for **legal authorised security testing only**.
 
+![Wyrm C2](resources/splash_example.png)
+
 Read the docs at https://docs.wyrm-c2.com/ for quick setup instructions. Or jump in to read about [customisable profiles](https://docs.wyrm-c2.com/implant/profiles/), 
 [evasion](https://docs.wyrm-c2.com/implant/profiles/evasion.html), and [obfuscation](https://docs.wyrm-c2.com/implant/profiles/obfuscation.html). The docs
 will be updated as the project grows and gains more capabilities.
