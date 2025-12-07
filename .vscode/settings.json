@@ -61,6 +61,7 @@
         "macroise",
         "minreq",
         "msvc",
+        "MSVCRT",
         "nanos",
         "NGBP",
         "NGPB",

@@ -12,6 +12,9 @@ pulling updates.
 - You can now execute dotnet programs remotely in the agent, all in memory - does not write anything to disk! Simply run `dotex` and pass your args after, e.g. `dotex Rubeus.exe klist` (see below point as to how to get the binary sent to the agent)!
 - This update introduces the `c2_transfer` dir in the root which is used for staging files to be internally used by the C2 during operations such as `dotex` where the payload is sent as bytes to the agent through C2. This folder is a bind mount meaning you can drop files in ad-hoc whilst the server is running and it should be able to read them. If you drop tools in here in a folder, make sure you include that in the path to the tool.
 - Agent prints get sent to the server - meaning if you build in debug mode you can see the debug output in the terminal on the c2. This is mainly due to now removing the console window from the application.
+- The CRT (C Runtime) is now statically linked into the binary so it can run on machines without the MSVCRT DLLs.
+- Some nice UI changes
+- Bug fix with parsing config on C2, some options were being left out under certain conditions.
 
 ## v 0.5.3
 

@@ -16,10 +16,11 @@ developed as a premium or otherwise private feature. These will be few and far b
 ### 0.6.1
 
 1) [ ] IPs are wrong in the logs, needs NGINX proxy stuff
-2) [ ] Implant able to push messages to operator (not sure how to best do this with the current task pushing architecture...);
+2) [ ] Investigate wtf is going on with the file upload... it works but why is it so slow??
+3) [ ] Implant able to push messages to operator (not sure how to best do this with the current task pushing architecture...);
    1) [ ] Maybe some kind of msg packet that is a str that we can push to completed tasks, but then it wont be linear potentially hmm
    2) [ ] Hide console beginning of process, print ln, have a loop that reads from this in a thread, and pass it into dotnet
-3) [ ] Move to new basic model with stagers, the exports, etc can also apply to those, but we would produce:
+4) [ ] Move to new basic model with stagers, the exports, etc can also apply to those, but we would produce:
    1) [ ] DLL, Exe, Svc of the 'virgin' payload
    2) [ ] NoStd loader (stageless) - encrypted 2nd stage shipped in binary
    3) [ ] NoStd loader (staged) - encrypted 2nd stage
@@ -29,13 +30,13 @@ developed as a premium or otherwise private feature. These will be few and far b
       3) [ ] Svc
    5) [ ] No fancy techniques under the hood, that will come with a (L) version
    6) [ ] Malleable encryption byte in profile
-4) [ ] Internal proxy resolution for HTTP requests
-5) [ ] `execute-bin` (non-dotnet)
+5) [ ] Internal proxy resolution for HTTP requests
+6) [ ] `execute-bin` (non-dotnet)
    1) [ ] Needs long running polling & keep alive (handle to sacrificial if a sacra is used?)
-6) [ ] For dotex, Option to pack some machine code in the binary (note tho this will make it bigger ofc - store encrypted)
-7) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
-8) [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
-9) [ ] Bug with Mutex when not turned on: "Failed to generate mutex with CreateMutexA. Last error: 0x7B"
+7) [ ] For dotex, Option to pack some machine code in the binary (note tho this will make it bigger ofc - store encrypted)
+8) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
+9) [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
+10) [ ] Bug with Mutex when not turned on: "Failed to generate mutex with CreateMutexA. Last error: 0x7B"
  
 ### v1.0 - Whelpfire
 
