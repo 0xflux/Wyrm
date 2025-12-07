@@ -6,7 +6,6 @@ build = "build.rs"
 
 [profile.release]
 opt-level = "z"
-codegen-units = 1
 lto = "fat"
 strip = "symbols"
 panic = "abort"
