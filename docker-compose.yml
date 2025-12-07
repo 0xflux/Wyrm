@@ -32,10 +32,11 @@ services:
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
       POSTGRES_HOST: "c2_db"
       POSTGRES_DB: "${POSTGRES_DB}"
-    ports: 
+    ports:
       - "13371:13371"
     volumes:
       - c2_data:/data
+      - ./c2_transfer:/tools
 
   nginx:
     image: nginx:latest

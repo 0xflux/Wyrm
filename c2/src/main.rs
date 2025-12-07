@@ -66,6 +66,7 @@ const ACCESS_LOG: &str = "access.log";
 const DOWNLOAD: &str = "downloads.log";
 const LOGIN_LOG: &str = "login.log";
 const ERROR_LOG: &str = "error.log";
+const TOOLS_PATH: &str = "/tools";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

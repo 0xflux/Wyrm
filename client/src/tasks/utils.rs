@@ -6,7 +6,7 @@ use shared::task_types::RegType;
 /// Optionally discards the first token, which is useful if the input string begins with a command.
 ///
 /// # Args
-/// * `n` - The expected number of resulting tokens.  
+/// * `n` - The expected number of resulting tokens. If you have no expectation (it is open ended) set `n` to 0.
 /// * `strs` - The input string slice to be tokenised.  
 /// * `discard_first` - Whether the first discovered token should be discarded (`Chop`) or kept (`DontChop`). If you
 ///   wish to chop the first 2 params, select [`DiscardFirst::ChopTwo`]
@@ -82,7 +82,7 @@ pub fn split_string_slices_to_n(
         chunks.remove(0);
     }
 
-    if chunks.len() != n {
+    if chunks.len() != n && n != 0 {
         return None;
     }
 

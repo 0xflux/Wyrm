@@ -1,4 +1,7 @@
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::{HashMap, HashSet},
+    time::Duration,
+};
 
 use chrono::Utc;
 use gloo_timers::future::sleep;
@@ -254,35 +257,54 @@ fn MessagePanel() -> impl IntoView {
             return Vec::new();
         };
 
-        let Some(agent_sig) = map.get(&agent_id) else {
-            return Vec::new();
-        };
+        // Pull any cached messages for the active agent so we can hydrate the UI even if
+        // the in-memory signal missed the first server responses.
+        let stored = get_item_from_browser_store::<Vec<TabConsoleMessages>>(
+            &wyrm_chat_history_browser_key(&agent_id),
+        )
+        .ok();
 
-        if agent_sig.with(|agent| agent.output_messages.is_empty()) {
-            if let Ok(stored) = get_item_from_browser_store::<Vec<TabConsoleMessages>>(
-                &wyrm_chat_history_browser_key(&agent_id),
-            ) {
-                if !stored.is_empty() {
-                    agent_sig.update(|agent| {
-                        if agent.output_messages.is_empty() {
-                            agent.output_messages = stored.clone();
+        if let Some(agent_sig) = map.get(&agent_id) {
+            // If the cache contains messages we don't have in memory yet, merge them in by ID.
+            if let Some(stored) = &stored {
+                agent_sig.update(|agent| {
+                    let mut seen: HashSet<i32> = agent
+                        .output_messages
+                        .iter()
+                        .map(|m| m.completed_id)
+                        .collect();
+
+                    for msg in stored {
+                        if seen.insert(msg.completed_id) {
+                            agent.output_messages.push(msg.clone());
                         }
-                    });
-                }
+                    }
+                });
             }
-        }
 
-        agent_sig.with(|agent| {
-            agent
-                .output_messages
-                .iter()
+            agent_sig.with(|agent| {
+                agent
+                    .output_messages
+                    .iter()
+                    .enumerate()
+                    .map(|(idx, msg)| {
+                        let key = format!("{agent_id}-{}-{idx}", msg.completed_id);
+                        (key, msg.clone())
+                    })
+                    .collect::<Vec<_>>()
+            })
+        } else {
+            // Fallback: no live agent signal, but we still have cached messages to show.
+            stored
+                .unwrap_or_default()
+                .into_iter()
                 .enumerate()
                 .map(|(idx, msg)| {
                     let key = format!("{agent_id}-{}-{idx}", msg.completed_id);
-                    (key, msg.clone())
+                    (key, msg)
                 })
                 .collect::<Vec<_>>()
-        })
+        }
     });
 
     let message_panel_ref = NodeRef::<html::Div>::new();

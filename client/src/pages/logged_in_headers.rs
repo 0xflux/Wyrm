@@ -48,7 +48,7 @@ pub fn LoggedInHeaders() -> impl IntoView {
     view! {
     <nav class="navbar navbar-expand-lg">
     <div class="container-fluid">
-        <a class="navbar-brand plain" href="#">Wyrm C2</a>
+        <a class="navbar-brand plain" href="/dashboard">Wyrm C2</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
         </button>

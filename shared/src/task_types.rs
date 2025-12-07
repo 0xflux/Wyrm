@@ -27,3 +27,7 @@ pub enum RegType {
 /// - the data
 /// - the type (as a [`RegType`]).
 pub type RegAddInner = (String, String, String, RegType);
+
+/// The metadata for executing a dotnet binary. Consisting of the raw IL bytes and
+/// a vec of args to pass
+pub type DotExDataForImplant = (Vec<u8>, Vec<String>);

@@ -5,4 +5,5 @@ rustflags = [
     "-C", "panic=abort",
     "-C", "link-arg=-s",
     "-C", "link-arg=/DEBUG:NONE",
+    "-C", "target-feature=+crt-static",
 ]

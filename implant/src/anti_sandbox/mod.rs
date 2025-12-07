@@ -22,9 +22,6 @@ pub fn anti_sandbox() {
             #[cfg(debug_assertions)]
             use shared::pretty_print::print_info;
 
-            #[cfg(debug_assertions)]
-            print_info("Waiting on trig test completion...");
-
             // N.b. this could block for a period of time; but will not panic. See function for more details.
             trig_mouse_movements();
 
