@@ -10,6 +10,7 @@ use crate::{
     anti_sandbox::anti_sandbox,
     comms::configuration_connection,
     evasion::run_evasion,
+    utils::console::init_agent_console,
     wyrm::{Wyrm, calculate_sleep_seconds},
 };
 
@@ -21,6 +22,8 @@ pub static APPLICATION_RUNNING: AtomicBool = AtomicBool::new(true);
 /// Literally just the entry function into the payload allowing flexibility to call from either
 /// an exe, or dll
 pub fn start_wyrm() {
+    init_agent_console();
+
     #[cfg(debug_assertions)]
     print_info("Starting Wyrm post exploitation framework in debug mode..");
 

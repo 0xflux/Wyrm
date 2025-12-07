@@ -174,12 +174,12 @@ impl Wyrm {
             // This is quite noisy in debug builds, enable only if needed
             #[cfg(debug_assertions)]
             {
-                use shared::pretty_print::print_info;
+                // use shared::pretty_print::print_info;
 
-                print_info(format!(
-                    "Dispatching task: {}, meta: {:?}, id: {}",
-                    task.command, task.metadata, task.id
-                ));
+                // print_info(format!(
+                //     "Dispatching task: {}, meta: {:?}, id: {}",
+                //     task.command, task.metadata, task.id
+                // ));
             }
 
             match task.command {

