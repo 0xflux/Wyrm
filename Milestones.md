@@ -31,11 +31,9 @@ developed as a premium or otherwise private feature. These will be few and far b
 3) [ ] Internal proxy resolution for HTTP requests
 4) [ ] `execute-bin` (non-dotnet)
    1) [ ] Needs long running polling & keep alive (handle to sacrificial if a sacra is used?)
-5) [ ] `dotex`
+5) [x] `dotex`
    1) [x] AMSI patching option in profile 
-   2) [ ] Needs long running polling & keep alive (handle to sacrificial if a sacra is used?)
-   3) [ ] Pipe names in custom profile
-   4) [ ] Option to pack some machine code in the binary (note tho this will make it bigger ofc - store encrypted)
+   2) [ ] Option to pack some machine code in the binary (note tho this will make it bigger ofc - store encrypted)
 6) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
 7) [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
 8) [ ] Bug with Mutex when not turned on: "Failed to generate mutex with CreateMutexA. Last error: 0x7B"
