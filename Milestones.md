@@ -6,7 +6,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 ## (L) Features (locked currently for public consumption)
 
 1) [ ] NG Proxy Bypass (NGPB).
-2) [ ] Additional loaders, maybe things like early bird, syscalls, etc.
+2) [ ] Additional loaders / start from RDLL - configurable, maybe things like early bird, syscalls, etc.
 3) [ ] Image hashes in autoloot.
 4) [ ] Runtime obfuscation, sleep masking.
 5) [ ] **Entire** website clone, and serve download from named page.
