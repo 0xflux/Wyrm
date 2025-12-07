@@ -129,7 +129,7 @@ pub async fn build_agent(
     let pe_name = validate_extension(&data.pe_name, stage_type);
 
     // Check for any feature flags
-    let features: Vec<String> = if data.antisandbox_ram || data.antisandbox_trig {
+    let features: Vec<String> = {
         let mut builder = vec!["--features".to_string()];
         let mut string_builder = String::new();
 
@@ -142,15 +142,16 @@ pub async fn build_agent(
         if data.patch_etw {
             string_builder.push_str("patch_etw,");
         }
-        if data.patch_etw {
+        if data.patch_amsi {
             string_builder.push_str("patch_amsi,");
         }
 
-        builder.push(string_builder);
-
-        builder
-    } else {
-        vec![]
+        if !string_builder.is_empty() {
+            builder.push(string_builder);
+            builder
+        } else {
+            vec![]
+        }
     };
 
     let build_as_flags = match stage_type {
