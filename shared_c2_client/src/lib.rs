@@ -52,6 +52,7 @@ pub fn command_to_string(cmd: &Command) -> String {
         Command::RmFile => "RmFile",
         Command::RmDir => "RmDir",
         Command::DotEx => "DotEx",
+        Command::ConsoleMessages => "Agent console messages",
     };
 
     c.into()
@@ -220,6 +221,12 @@ impl<'a> MapToMitre<'a> for Command {
                 None,
                 "Reflective Code Loading",
                 "https://attack.mitre.org/techniques/T1620/",
+            ),
+            Command::ConsoleMessages => MitreTTP::from(
+                "TA0011",
+                None,
+                "Command and Control",
+                "https://attack.mitre.org/tactics/TA0011/",
             ),
         }
     }

@@ -8,13 +8,13 @@ pub const ORANGE: &str = "\x1B[38;5;208m";
 pub const LIGHT_GRAY: &str = "\x1B[90m";
 
 pub fn print_success(msg: impl Display) {
-    println!("{GREEN}[+]{RESET} {msg}");
+    println!("[+] {msg}");
 }
 
 pub fn print_info(msg: impl Display) {
-    println!("{YELLOW}[i]{RESET} {msg}");
+    println!("[i] {msg}");
 }
 
 pub fn print_failed(msg: impl Display) {
-    println!("{RED}[-]{RESET} {msg}");
+    println!("[-] {msg}");
 }

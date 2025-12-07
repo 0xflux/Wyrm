@@ -50,6 +50,8 @@ pub enum Command {
     RegDelete,
     /// Execute dotnet in current process
     DotEx,
+    /// Messages we intercepted from the console to be sent to the c2
+    ConsoleMessages,
     // This should be totally unreachable; but keeping to make sure we don't get any weird UB, and
     // make sure it is itemised last in the enum
     Undefined,
@@ -186,6 +188,7 @@ impl Display for Command {
             Command::RmFile => "RmFile",
             Command::RmDir => "RmDir",
             Command::DotEx => "DotEx",
+            Command::ConsoleMessages => "Agent console messages",
         };
 
         write!(f, "{choice}")

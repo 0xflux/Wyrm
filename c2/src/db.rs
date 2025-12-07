@@ -191,19 +191,22 @@ impl Db {
         uid: &String,
         command: Command,
         metadata: Option<String>,
-    ) -> Result<(), sqlx::Error> {
-        let _ = sqlx::query(
+    ) -> Result<i32, sqlx::Error> {
+        let row = sqlx::query(
             r#"
             INSERT into tasks (command_id, data, agent_id, fetched)
-            VALUES ($1, $2, $3, FALSE)"#,
+            VALUES ($1, $2, $3, FALSE)
+            RETURNING id"#,
         )
         .bind(command as i32)
         .bind(metadata)
         .bind(uid)
-        .execute(&self.pool)
+        .fetch_one(&self.pool)
         .await?;
 
-        Ok(())
+        let id: i32 = row.get("id");
+
+        Ok(id)
     }
 
     pub async fn update_agent_sleep_time(

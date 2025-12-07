@@ -97,9 +97,6 @@ pub fn first_check_in(implant: &mut Wyrm) {
             implant.tasks.push_back(task);
         }
 
-        #[cfg(debug_assertions)]
-        print_info("Dispatching first run tasks.");
-
         implant.dispatch_tasks();
 
         break;

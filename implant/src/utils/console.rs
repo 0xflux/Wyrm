@@ -1,10 +1,8 @@
 use std::{
     ffi::c_void,
-    fs::File,
-    io::Write,
     ptr::null_mut,
     sync::{
-        Once,
+        Mutex, Once,
         atomic::{AtomicPtr, Ordering},
     },
     thread::spawn,
@@ -22,6 +20,7 @@ use windows_sys::Win32::{
 
 static INIT_PIPE: Once = Once::new();
 pub static CONSOLE_PIPE_HANDLE: AtomicPtr<c_void> = AtomicPtr::new(null_mut());
+pub static CONSOLE_LOG: Mutex<Vec<u8>> = Mutex::new(Vec::new());
 
 pub fn init_agent_console() {
     INIT_PIPE.call_once(|| {
@@ -88,15 +87,9 @@ fn start_stdout_reader_thread() {
             }
 
             if !buf.is_empty() {
-                let mut f = File::options()
-                    .write(true)
-                    .append(true)
-                    .open(r"C:\Users\ian\Documents\write_test.txt")
-                    .unwrap();
-
-                let _ = f.write(&buf[..bytes_read as usize]);
+                let mut log = CONSOLE_LOG.lock().unwrap();
+                log.extend_from_slice(&buf[..bytes_read as usize]);
             }
-            // log.extend_from_slice(&buf[..bytes_read as usize]);
         }
     });
 }

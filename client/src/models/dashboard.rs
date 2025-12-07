@@ -173,6 +173,7 @@ fn command_to_string(cmd: &Command) -> String {
         Command::RmFile => "RmFile",
         Command::RmDir => "RmDir",
         Command::DotEx => "DotEx",
+        Command::ConsoleMessages => "Agent console messages",
     };
 
     c.into()
@@ -490,7 +491,14 @@ impl FormatOutput for NotificationForAgent {
                         }
                     }
                 } else {
-                    return vec!["No data.".to_string()];
+                    return vec!["No data.".to_owned()];
+                }
+            }
+            Command::ConsoleMessages => {
+                if let Some(ser) = &self.result {
+                    let deser = serde_json::from_str::<Vec<u8>>(&ser).unwrap();
+                    let s = String::from_utf8_lossy(&deser);
+                    return vec![s.to_string()];
                 }
             }
         }
