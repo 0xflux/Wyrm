@@ -13,6 +13,11 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] Ransomware **SIMULATION** for Business
 7) [ ] Execute dotnet in sacrificial process
 
+### 0.6.0.1
+
+1) [ ] Investigate upload slowness from client UI to C2, shouldn't be so horrible
+2) [ ] Investigate strange bug with DLL proxying with strange char that appears in position [0]
+
 ### 0.6.1
 
 1) [ ] IPs are wrong in the logs, needs NGINX proxy stuff
