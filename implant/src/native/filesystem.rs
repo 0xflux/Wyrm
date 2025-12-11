@@ -113,9 +113,9 @@ pub fn dir_listing(cwd: &Path) -> Option<impl Serialize + use<>> {
             let label = match entry.metadata() {
                 Ok(metadata) => {
                     if metadata.is_dir() {
-                        "DIR".to_string()
+                        "[DIR] ".to_string()
                     } else {
-                        "FILE".to_string()
+                        "[FILE]".to_string()
                     }
                 }
                 Err(e) => {
@@ -123,7 +123,7 @@ pub fn dir_listing(cwd: &Path) -> Option<impl Serialize + use<>> {
                 }
             };
 
-            entries.push(format!("[{label}]     {}", entry.path().display()));
+            entries.push(format!("{label}     {}", entry.path().display()));
         }
     }
 
