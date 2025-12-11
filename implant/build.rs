@@ -76,7 +76,11 @@ fn write_exports_to_build_dir() {
     }
 
     if let Some(exports) = exports_proxy {
-        for item in exports.split(';').filter(|s| !s.trim().is_empty()) {
+        for item in exports
+            .split(';')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty() && s.is_ascii())
+        {
             println!("cargo:rustc-link-arg=/export:{item}");
         }
     }

