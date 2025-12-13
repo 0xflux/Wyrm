@@ -9,6 +9,7 @@ pulling updates.
 ## v0.6.1
 
 - Fix logging on C2 to log correct IP with NGINX X-Forwarded-For header.
+- Moved implant to reqwest crate for networking from minreq, no real impact on agent size and provides more functionality.
 
 ## v0.6
 
