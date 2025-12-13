@@ -53,6 +53,7 @@ pub fn command_to_string(cmd: &Command) -> String {
         Command::RmDir => "RmDir",
         Command::DotEx => "DotEx",
         Command::ConsoleMessages => "Agent console messages",
+        Command::WhoAmI => "whoami",
     };
 
     c.into()
@@ -227,6 +228,12 @@ impl<'a> MapToMitre<'a> for Command {
                 None,
                 "Command and Control",
                 "https://attack.mitre.org/tactics/TA0011/",
+            ),
+            Command::WhoAmI => MitreTTP::from(
+                "T1033",
+                None,
+                " System Owner/User Discovery ",
+                "https://attack.mitre.org/techniques/T1033/",
             ),
         }
     }

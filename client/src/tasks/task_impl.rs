@@ -790,3 +790,11 @@ pub async fn dotex(inputs: String, agent: &IsTaskingAgent) -> DispatchResult {
         .await?,
     ))
 }
+
+pub async fn whoami(agent: &IsTaskingAgent) -> DispatchResult {
+    agent.has_agent_id()?;
+
+    Ok(Some(
+        api_request(AdminCommand::WhoAmI, agent, None, C2Url::Standard, None).await?,
+    ))
+}

