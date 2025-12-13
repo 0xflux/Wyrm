@@ -5,13 +5,15 @@ use shared::{pretty_print::print_failed, tasks::WyrmResult};
 use str_crypter::{decrypt_string, sc};
 use windows_sys::{
     Win32::{
-        Foundation::{GetLastError, HANDLE, LocalFree},
+        Foundation::{CloseHandle, GetLastError, HANDLE, LUID, LocalFree},
         Globalization::lstrlenW,
         NetworkManagement::NetManagement::UNLEN,
         Security::{
             Authorization::ConvertSidToStringSidW, GetSidSubAuthority, GetSidSubAuthorityCount,
-            GetTokenInformation, LookupAccountSidW, PSID, TOKEN_MANDATORY_LABEL, TOKEN_QUERY,
-            TOKEN_USER, TokenIntegrityLevel, TokenUser,
+            GetTokenInformation, LookupAccountSidW, LookupPrivilegeNameW, PSID,
+            SE_PRIVILEGE_ENABLED, SE_PRIVILEGE_ENABLED_BY_DEFAULT, SE_PRIVILEGE_REMOVED,
+            TOKEN_MANDATORY_LABEL, TOKEN_PRIVILEGES, TOKEN_QUERY, TOKEN_USER, TokenIntegrityLevel,
+            TokenPrivileges, TokenUser,
         },
         System::{
             SystemServices::{
@@ -149,6 +151,7 @@ pub fn whoami() -> Option<impl Serialize> {
             "{}",
             sc!("Failed to get token handle when querying token.", 74).unwrap()
         );
+        unsafe { CloseHandle(h_tok) };
         return Some(WyrmResult::Err(s));
     }
     let mut sz = 0;
@@ -174,6 +177,7 @@ pub fn whoami() -> Option<impl Serialize> {
             unsafe { GetLastError() }
         );
 
+        unsafe { CloseHandle(h_tok) };
         return Some(WyrmResult::Err(s));
     };
 
@@ -187,6 +191,7 @@ pub fn whoami() -> Option<impl Serialize> {
                 sc!("Failed to lookup account sid.", 91).unwrap()
             );
 
+            unsafe { CloseHandle(h_tok) };
             return Some(WyrmResult::Err(s));
         }
     };
@@ -201,6 +206,7 @@ pub fn whoami() -> Option<impl Serialize> {
             unsafe { GetLastError() }
         );
 
+        unsafe { CloseHandle(h_tok) };
         unsafe { LocalFree(p_sid_str_raw as *mut _) };
 
         return Some(WyrmResult::Err(s));
@@ -217,8 +223,112 @@ pub fn whoami() -> Option<impl Serialize> {
     };
 
     unsafe { LocalFree(p_sid_str_raw as *mut _) };
-    let msg = format!(r"{}\{}   {}", domain, user, sid_string);
+    let mut msg = format!("{:<30} SID\n", sc!("Domain\\Username", 81).unwrap());
+    msg.push_str(&format!("{:<30} -----\n", "----------------"));
+
+    let domain_user_concat = format!("{}\\{}", domain, user);
+    msg.push_str(&format!("{:<30} {}\n", domain_user_concat, sid_string));
+
+    let permissions = match format_token_permissions(h_tok) {
+        WyrmResult::Ok(p) => p,
+        WyrmResult::Err(e) => {
+            unsafe { CloseHandle(h_tok) };
+            return Some(WyrmResult::Err(e));
+        }
+    };
+
+    msg.push_str(&permissions);
+
+    unsafe { CloseHandle(h_tok) };
     Some(WyrmResult::Ok(msg))
+}
+
+fn format_token_permissions(h_tok: *mut c_void) -> WyrmResult<String> {
+    let mut sz = 0;
+
+    // purposefully fails
+    let _ = unsafe { GetTokenInformation(h_tok, TokenPrivileges, null_mut(), 0, &mut sz) };
+
+    let buffer: Vec<u8> = Vec::with_capacity(sz as _);
+
+    if unsafe {
+        GetTokenInformation(
+            h_tok,
+            TokenPrivileges,
+            buffer.as_ptr() as *mut c_void,
+            sz,
+            &mut sz,
+        )
+    } == 0
+    {
+        let s = format!(
+            "{}. {:#X}",
+            sc!("Failed to GetTokenInformation", 63).unwrap(),
+            unsafe { GetLastError() }
+        );
+
+        unsafe { CloseHandle(h_tok) };
+        return WyrmResult::Err(s);
+    };
+
+    let tp = buffer.as_ptr() as *const TOKEN_PRIVILEGES;
+    let count = unsafe { (*tp).PrivilegeCount } as usize;
+
+    let base = unsafe { (*tp).Privileges.as_ptr() };
+    let entries = unsafe { std::slice::from_raw_parts(base, count) };
+
+    let mut builder = String::new();
+    builder.push_str(&format!("{:<60}\n", "-"));
+    builder.push_str(&format!("{:<60}\n", "-"));
+    builder.push_str(&format!("{:<60} State\n", "Privilege"));
+    builder.push_str(&format!("{:<60} -------\n", "-----------"));
+
+    for laa in entries {
+        let luid = laa.Luid;
+        let attr = laa.Attributes;
+        let name = luid_to_name(&luid);
+        let state = attrs_to_state(attr);
+        builder.push_str(&format!("{:<60} {}\n", name, state));
+    }
+
+    WyrmResult::Ok(builder)
+}
+
+fn luid_to_name(luid: &LUID) -> String {
+    let mut len: u32 = 0;
+
+    let _ = unsafe { LookupPrivilegeNameW(null_mut(), luid, null_mut(), &mut len) };
+
+    let mut buf: Vec<u16> = vec![0u16; len as usize];
+
+    let res = unsafe { LookupPrivilegeNameW(null_mut(), luid, buf.as_mut_ptr(), &mut len) };
+
+    if res == 0 {
+        return format!("<LookupPrivilegeNameW failed: {:#X}>", unsafe {
+            GetLastError()
+        });
+    }
+
+    let len = unsafe { lstrlenW(buf.as_ptr()) };
+
+    if len > 0 {
+        let slice = unsafe { from_raw_parts(buf.as_ptr(), len as _) };
+        String::from_utf16_lossy(slice)
+    } else {
+        String::from("Error")
+    }
+}
+
+fn attrs_to_state(attrs: u32) -> &'static str {
+    if (attrs & SE_PRIVILEGE_REMOVED) != 0 {
+        "Removed"
+    } else if (attrs & SE_PRIVILEGE_ENABLED) != 0 {
+        "Enabled"
+    } else if (attrs & SE_PRIVILEGE_ENABLED_BY_DEFAULT) != 0 {
+        "Enabled by Default"
+    } else {
+        "Disabled"
+    }
 }
 
 fn lookup_account_sid_w(psid: PSID) -> Result<(String, String), u32> {
@@ -244,8 +354,8 @@ fn lookup_account_sid_w(psid: PSID) -> Result<(String, String), u32> {
     };
 
     if result != 0 {
-        let name = String::from_utf16_lossy(&name_buf);
-        let domain = String::from_utf16_lossy(&domain_buf);
+        let name = String::from_utf16_lossy(&name_buf[..(name_sz as usize)]);
+        let domain = String::from_utf16_lossy(&domain_buf[..(domain_sz as usize)]);
         return Ok((name, domain));
     }
 

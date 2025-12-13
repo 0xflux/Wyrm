@@ -9,7 +9,7 @@ pulling updates.
 ## v0.6.1
 
 - `pull` command now does so buffered in memory, preventing resource exhaustion from the implant.
-- Native support for running `whoami` without needing to touch powershell. Run `whoami` to get info on the domain, user, and SID.
+- Native support for running `whoami` without needing to touch powershell. Run `whoami` to get info on the domain, user, SID and what privileges are assigned.
 - Fix logging on C2 to log correct IP with NGINX X-Forwarded-For header.
 - Moved implant to reqwest crate for networking from minreq, no real impact on agent size and provides more functionality.
 - Fix bug where implant tried to register a mutex when not specified.

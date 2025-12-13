@@ -58,6 +58,8 @@
         "lfanew",
         "locationchange",
         "LPTHREAD",
+        "lstrlen",
+        "luid",
         "macroise",
         "minreq",
         "msvc",
