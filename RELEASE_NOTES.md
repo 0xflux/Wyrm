@@ -6,6 +6,10 @@ pulling updates.
 
 **IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
 
+## v0.6.1
+
+
+
 ## v0.6
 
 - AMSI patching available in the implant via the malleable profile (only runs in the agent when necessary).
