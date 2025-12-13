@@ -16,7 +16,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 ### 0.6.1
 
 1) [ ] Investigate upload slowness from client UI to C2, shouldn't be so horrible
-2) [ ] IPs are wrong in the logs, needs NGINX proxy stuff
+2) [x] IPs are wrong in the logs, needs NGINX proxy stuff
 3) [ ] Scan for auto SOH on filesystem; bonus points if it is running as admin
 4) [ ] Implant able to push messages to operator (not sure how to best do this with the current task pushing architecture...);
    1) [ ] Maybe some kind of msg packet that is a str that we can push to completed tasks, but then it wont be linear potentially hmm
