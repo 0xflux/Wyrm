@@ -8,6 +8,7 @@ pulling updates.
 
 ## v0.6.1
 
+- `pull` command now does so buffered in memory, preventing resource exhaustion from the implant.
 - Fix logging on C2 to log correct IP with NGINX X-Forwarded-For header.
 - Moved implant to reqwest crate for networking from minreq, no real impact on agent size and provides more functionality.
 

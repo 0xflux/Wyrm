@@ -27,7 +27,7 @@ use crate::{
             poll_agent_notifications,
         },
         agent_get::{handle_agent_get, handle_agent_get_with_path},
-        agent_post::{handle_agent_post, handle_agent_post_with_path},
+        agent_post::{agent_post_handler, agent_post_handler_with_path},
     },
     app_state::{AppState, detect_stale_agents},
     db::Db,
@@ -151,7 +151,7 @@ fn build_routes(state: Arc<AppState>) -> Router {
         )
         .route(
             "/",
-            post(handle_agent_post).layer(from_fn_with_state(
+            post(agent_post_handler).layer(from_fn_with_state(
                 state.clone(),
                 authenticate_agent_by_header_token,
             )),
@@ -166,7 +166,7 @@ fn build_routes(state: Arc<AppState>) -> Router {
         )
         .route(
             "/{*endpoint}",
-            post(handle_agent_post_with_path).layer(from_fn_with_state(
+            post(agent_post_handler_with_path).layer(from_fn_with_state(
                 state.clone(),
                 authenticate_agent_by_header_token,
             )),

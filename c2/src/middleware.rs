@@ -14,7 +14,7 @@ use rand::{RngCore, rng};
 use crate::{
     AUTH_COOKIE_NAME,
     app_state::AppState,
-    logging::{log_download_accessed, log_page_accessed_auth, log_page_accessed_no_auth},
+    logging::{log_download_accessed, log_page_accessed_no_auth},
 };
 
 const BCRYPT_HASH_BYTES: usize = 24;

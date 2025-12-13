@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 shared = { path = "../shared" }
-axum = { version = "0.8", features = ["macros"] }
+axum = { version = "0.8", features = ["macros", "multipart"] }
 serde = "1.0"
 tokio = { version = "1.43", features = ["full"] }
 serde_json = "1"

@@ -33,7 +33,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] `execute-bin` (non-dotnet)
    1) [ ] Needs long running polling & keep alive (handle to sacrificial if a sacra is used?)
 7) [ ] For dotex, Option to pack some machine code in the binary (note tho this will make it bigger ofc - store encrypted)
-8) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
+8) [x] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM) (implemented in `pull`)
 9) [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
 10) [ ] Bug with Mutex when not turned on: "Failed to generate mutex with CreateMutexA. Last error: 0x7B"
  
