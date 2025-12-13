@@ -590,6 +590,10 @@ impl WyrmMutex {
     /// Constructs a new [`WyrmMutex`] setting the inner handle if we were successful. This function will
     /// exit the application if the mutex is already registered.
     fn new(mtx_name: &str) -> Self {
+        if mtx_name.is_empty() {
+            return Self { handle: null_mut() };
+        }
+
         // Start off setting this explicitly to null, we can then add a value to it if we successfully create the
         // mutex.
 
