@@ -36,9 +36,16 @@ fn write_exports_to_build_dir() {
     let dest = out_dir.join("custom_exports.rs");
     let mut code = String::new();
 
-    let exports_usr_machine_code = option_env!("EXPORTS_USR_MACHINE_CODE");
-    let exports_jmp_wyrm = option_env!("EXPORTS_JMP_WYRM");
-    let exports_proxy = option_env!("EXPORTS_PROXY");
+    let stage = env::var("STAGE_TYPE").unwrap_or_default();
+    // If we are not a DLL, write an empty file so the compiler is happy
+    if stage.to_lowercase() != "dll" {
+        fs::write(dest, String::new()).unwrap();
+        return;
+    };
+
+    let exports_usr_machine_code = env::var("EXPORTS_USR_MACHINE_CODE").ok();
+    let exports_proxy = env::var("EXPORTS_PROXY").ok();
+    let exports_jmp_wyrm = env::var("EXPORTS_JMP_WYRM").ok();
 
     if let Some(export_str) = exports_jmp_wyrm {
         if export_str.is_empty() {

@@ -47,7 +47,7 @@ pub enum StartType {
 macro_rules! build_dll_export_by_name_start_wyrm {
     ($name:ident) => {
         #[unsafe(no_mangle)]
-        pub extern "system" fn $name() {
+        unsafe extern "system" fn $name() {
             internal_dll_start(StartType::FromExport);
         }
     };
@@ -57,7 +57,7 @@ macro_rules! build_dll_export_by_name_junk_machine_code {
     ($name:ident, $($b:expr),+ $(,)?) => {
         #[unsafe(no_mangle)]
         #[unsafe(naked)]
-        pub unsafe extern "system" fn $name() {
+        unsafe extern "system" fn $name() {
             naked_asm!(
                 $(
                     concat!(".byte ", stringify!($b)),
