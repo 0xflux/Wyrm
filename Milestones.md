@@ -20,7 +20,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 ### 0.6.1
 
 1) [ ] IPs are wrong in the logs, needs NGINX proxy stuff
-2) [ ] Auto SOH include ordinals
+2) [ ] Scan for auto SOH on filesystem; bonus points if it is running as admin
 3) [ ] Investigate wtf is going on with the file upload... it works but why is it so slow??
 4) [ ] Implant able to push messages to operator (not sure how to best do this with the current task pushing architecture...);
    1) [ ] Maybe some kind of msg packet that is a str that we can push to completed tasks, but then it wont be linear potentially hmm
@@ -40,7 +40,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 7) [ ] `execute-bin` (non-dotnet)
    1) [ ] Needs long running polling & keep alive (handle to sacrificial if a sacra is used?)
 8) [ ] For dotex, Option to pack some machine code in the binary (note tho this will make it bigger ofc - store encrypted)
-9) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
+9)  [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
 10) [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
 11) [ ] Bug with Mutex when not turned on: "Failed to generate mutex with CreateMutexA. Last error: 0x7B"
  
