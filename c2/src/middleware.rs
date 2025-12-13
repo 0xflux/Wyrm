@@ -167,13 +167,13 @@ pub async fn authenticate_agent_by_header_token(
 
         if lock.contains(auth_header) {
             // The happy path, token present
-            log_page_accessed_auth(uri, ip).await;
+            // log_page_accessed_auth(uri, ip).await;
             return next.run(request).await.into_response();
         }
     }
 
     // The unhappy path
-    log_page_accessed_auth(uri, ip).await;
+    log_page_accessed_no_auth(uri, ip).await;
     StatusCode::BAD_GATEWAY.into_response()
 }
 

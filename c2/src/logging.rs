@@ -44,7 +44,7 @@ pub async fn log_page_accessed_auth(uri: &str, addr: &str) {
     log(&path, &msg, Some(addr)).await;
 }
 
-pub async fn log_admin_login_attempt(username: &str, password: &str, addr: &str, success: bool) {
+pub async fn log_admin_login_attempt(username: &str, password: &str, ip: &str, success: bool) {
     if let Ok(v) = env::var("DISABLE_LOGIN_LOG")
         && v == "1"
     {
@@ -56,10 +56,9 @@ pub async fn log_admin_login_attempt(username: &str, password: &str, addr: &str,
 
     // check if IP is unique, for size concerns only log those
     let r = tokio::fs::read_to_string(&path).await.unwrap_or_default();
-    let (ip, _) = addr.split_once(":").unwrap();
     let msg = if r.contains(ip) && success {
         format!("Login true. Username: {username}, Password: [REDACTED].")
-    } else if r.contains(addr) && !success {
+    } else if r.contains(ip) && !success {
         format!("[REPEAT ATTEMPT] Login {success}. Username: {username}, Password: REDACTED.")
     } else if !success {
         if let Ok(v) = env::var("DISABLE_PLAINTXT_PW_BAD_LOGIN") {
@@ -75,7 +74,7 @@ pub async fn log_admin_login_attempt(username: &str, password: &str, addr: &str,
         format!("Login {success}. Username: {username}, Password: [REDACTED].")
     };
 
-    log(&path, &msg, Some(addr)).await;
+    log(&path, &msg, Some(ip)).await;
 }
 
 pub fn log_error(message: &str) {
@@ -123,12 +122,11 @@ fn log_sync(path: &PathBuf, message: &str, addr: Option<&str>) {
     }
 }
 
-fn construct_msg(addr: Option<&str>, message: &str) -> String {
+fn construct_msg(ip: Option<&str>, message: &str) -> String {
     let time_now = Utc::now();
     let time_now = time_now.to_rfc3339_opts(SecondsFormat::Secs, true);
 
-    if let Some(addr) = addr {
-        let (ip, _) = addr.split_once(":").unwrap();
+    if let Some(ip) = ip {
         format!("[{time_now}] [{ip}] {message}\n")
     } else {
         format!("[{time_now}] {message}\n")

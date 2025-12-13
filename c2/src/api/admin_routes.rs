@@ -11,7 +11,7 @@ use axum::{
     Json,
     extract::{ConnectInfo, Path, State},
     http::{
-        StatusCode,
+        HeaderMap, StatusCode,
         header::{CONTENT_DISPOSITION, CONTENT_TYPE},
     },
     response::{Html, IntoResponse, Response},
@@ -102,11 +102,11 @@ pub async fn build_all_binaries_handler(
 
 pub async fn admin_login(
     jar: CookieJar,
-    addr: ConnectInfo<SocketAddr>,
     state: State<Arc<AppState>>,
+    headers: HeaderMap,
     Json(body): Json<AdminLoginPacket>,
 ) -> (CookieJar, Response) {
-    let ip = &addr.to_string();
+    let ip = headers.get("X-Forwarded-For").unwrap().to_str().unwrap();
     let username = body.username;
     let password = body.password;
 
