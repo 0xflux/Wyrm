@@ -8,7 +8,7 @@ pulling updates.
 
 ## v0.6.1
 
-
+- Fix logging on C2 to log correct IP with NGINX X-Forwarded-For header.
 
 ## v0.6
 
