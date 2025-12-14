@@ -31,7 +31,6 @@ developed as a premium or otherwise private feature. These will be few and far b
 5) [ ] Internal proxy resolution for HTTP requests
    1) [ ] Consider going native for HTTP anyway and move away from minreq.. maybe
 6) [ ] `execute-bin` (non-dotnet)
-   1) [ ] Needs long running polling & keep alive (handle to sacrificial if a sacra is used?)
 7) [x] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM) (implemented in `pull`)
 8) [x] Native `whoami` command should output more than just the username, should include SID and privs natively.
 9) [x] Bug with Mutex when not turned on: "Failed to generate mutex with CreateMutexA. Last error: 0x7B"
