@@ -35,6 +35,8 @@ pub fn resolve_web_proxy(implant: &Wyrm) -> Result<Option<ProxyConfig>, ProxyErr
     //  Try resolve the proxy the simplest way through WinHttpGetProxyForUrl
     //
 
+    println!("Resolving proxy..");
+
     let ua_wide: Vec<u16> = implant
         .c2_config
         .useragent
@@ -53,6 +55,12 @@ pub fn resolve_web_proxy(implant: &Wyrm) -> Result<Option<ProxyConfig>, ProxyErr
     };
 
     if h_internet.is_null() {
+        #[cfg(debug_assertions)]
+        {
+            use shared::pretty_print::print_failed;
+
+            print_failed("HINTERNET failed..");
+        }
         return Err(ProxyError::HInternetFailed);
     }
 
@@ -76,15 +84,23 @@ pub fn resolve_web_proxy(implant: &Wyrm) -> Result<Option<ProxyConfig>, ProxyErr
         )
     };
 
+    println!("Result of WinHttpGetProxyForUrl: {result}");
+
     if result == FALSE {
+        let gle = unsafe { GetLastError() };
+        #[cfg(debug_assertions)]
+        {
+            use shared::pretty_print::print_failed;
+
+            print_failed(format!("Failed to call WinHttpGetProxyForUrl. {gle:#X}"));
+        }
         unsafe { WinHttpCloseHandle(h_internet) };
-        return Err(ProxyError::WinHttpProxyForUrlFailed(unsafe {
-            GetLastError()
-        }));
+        return Err(ProxyError::WinHttpProxyForUrlFailed(gle));
     }
 
     // If we got a valid proxy URL..
     if !out_proxy_info.lpszProxy.is_null() {
+        println!("GOT PROXY VALID URL");
         let len_proxy = unsafe { lstrlenW(out_proxy_info.lpszProxy) } as usize;
         if len_proxy > 0 {
             let slice = unsafe { std::slice::from_raw_parts(out_proxy_info.lpszProxy, len_proxy) };
@@ -100,6 +116,8 @@ pub fn resolve_web_proxy(implant: &Wyrm) -> Result<Option<ProxyConfig>, ProxyErr
             global_free(out_proxy_info.lpszProxy as *mut _);
 
             let proxy_url = winhttp_proxy_to_url(&proxy_url, target_is_https);
+
+            println!("PROXY URL: {proxy_url:?}");
             return Ok(Some(ProxyConfig {
                 proxy_url: proxy_url,
                 proxy_bypass: None,
@@ -113,6 +131,8 @@ pub fn resolve_web_proxy(implant: &Wyrm) -> Result<Option<ProxyConfig>, ProxyErr
 
     let mut winhttp_proxy_config = WINHTTP_CURRENT_USER_IE_PROXY_CONFIG::default();
     let result = unsafe { WinHttpGetIEProxyConfigForCurrentUser(&mut winhttp_proxy_config) };
+
+    println!("Result of WinHttpGetIEProxyConfigForCurrentUser: {result}");
 
     if result == TRUE {
         //
@@ -135,6 +155,13 @@ pub fn resolve_web_proxy(implant: &Wyrm) -> Result<Option<ProxyConfig>, ProxyErr
                     std::slice::from_raw_parts(winhttp_proxy_config.lpszProxy, len_proxy)
                 };
                 let Ok(proxy_url) = String::from_utf16(slice) else {
+                    #[cfg(debug_assertions)]
+                    {
+                        use shared::pretty_print::print_failed;
+
+                        print_failed(format!("BAD STRING SLICE. {slice:?}"));
+                    }
+
                     unsafe { WinHttpCloseHandle(h_internet) };
                     global_free(winhttp_proxy_config.lpszProxyBypass as *mut _);
                     global_free(winhttp_proxy_config.lpszProxy as *mut _);
@@ -165,6 +192,8 @@ pub fn resolve_web_proxy(implant: &Wyrm) -> Result<Option<ProxyConfig>, ProxyErr
                 global_free(winhttp_proxy_config.lpszProxy as *mut _);
                 global_free(winhttp_proxy_config.lpszAutoConfigUrl as *mut _);
                 unsafe { WinHttpCloseHandle(h_internet) };
+
+                println!("GOT PROXY FROM 2nd branch: {:?}", proxy_config.proxy_url);
                 return Ok(Some(proxy_config));
             }
         }
@@ -176,6 +205,7 @@ pub fn resolve_web_proxy(implant: &Wyrm) -> Result<Option<ProxyConfig>, ProxyErr
     // Check for auto proxy
     //
     if !winhttp_proxy_config.lpszAutoConfigUrl.is_null() {
+        println!("IN AUTO PROXY CHECKER");
         auto_proxy_options.dwFlags = WINHTTP_AUTOPROXY_CONFIG_URL;
         auto_proxy_options.lpszAutoConfigUrl = winhttp_proxy_config.lpszAutoConfigUrl;
         auto_proxy_options.dwAutoDetectFlags = 0;
@@ -209,6 +239,7 @@ pub fn resolve_web_proxy(implant: &Wyrm) -> Result<Option<ProxyConfig>, ProxyErr
                 global_free(out_proxy_info.lpszProxy as *mut _);
 
                 let proxy_url = winhttp_proxy_to_url(&proxy_url, target_is_https);
+                println!("WITH URL: {proxy_url:?}");
                 return Ok(Some(ProxyConfig {
                     proxy_url: proxy_url,
                     proxy_bypass: None,
@@ -216,6 +247,8 @@ pub fn resolve_web_proxy(implant: &Wyrm) -> Result<Option<ProxyConfig>, ProxyErr
             }
         }
     }
+
+    println!("ALL FAILED");
 
     unsafe { WinHttpCloseHandle(h_internet) };
     global_free(out_proxy_info.lpszProxyBypass as *mut _);
