@@ -4,9 +4,9 @@ use windows_sys::Win32::{
     Foundation::{FALSE, GetLastError, GlobalFree, TRUE},
     Globalization::lstrlenW,
     Networking::WinHttp::{
-        WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_AUTO_DETECT_TYPE_DHCP,
-        WINHTTP_AUTO_DETECT_TYPE_DNS_A, WINHTTP_AUTOPROXY_AUTO_DETECT,
-        WINHTTP_AUTOPROXY_CONFIG_URL, WINHTTP_AUTOPROXY_OPTIONS,
+        WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_ACCESS_TYPE_NO_PROXY,
+        WINHTTP_AUTO_DETECT_TYPE_DHCP, WINHTTP_AUTO_DETECT_TYPE_DNS_A,
+        WINHTTP_AUTOPROXY_AUTO_DETECT, WINHTTP_AUTOPROXY_CONFIG_URL, WINHTTP_AUTOPROXY_OPTIONS,
         WINHTTP_CURRENT_USER_IE_PROXY_CONFIG, WINHTTP_PROXY_INFO, WinHttpCloseHandle,
         WinHttpGetIEProxyConfigForCurrentUser, WinHttpGetProxyForUrl, WinHttpOpen,
     },
@@ -47,7 +47,7 @@ pub fn resolve_web_proxy(implant: &Wyrm) -> Result<Option<ProxyConfig>, ProxyErr
     let h_internet = unsafe {
         WinHttpOpen(
             ua_wide.as_ptr(),
-            WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
+            WINHTTP_ACCESS_TYPE_NO_PROXY,
             null_mut(),
             null_mut(),
             0,
