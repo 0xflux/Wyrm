@@ -2,7 +2,7 @@ use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
     extract::{ConnectInfo, Request, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     middleware::Next,
     response::IntoResponse,
 };
@@ -122,10 +122,11 @@ pub async fn create_new_operator(username: &str, password: &str, state: Arc<AppS
 pub async fn authenticate_agent_by_header_token(
     State(state): State<Arc<AppState>>,
     addr: ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     request: Request,
     next: Next,
 ) -> impl IntoResponse {
-    let ip = &addr.to_string();
+    let ip = headers.get("X-Forwarded-For").unwrap().to_str().unwrap();
 
     //
     // First, we need to check whether the request is going to a URI in which a download is staged
