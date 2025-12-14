@@ -13,7 +13,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] Ransomware **SIMULATION** for Business
 7) [ ] Execute dotnet in sacrificial process
 
-### 0.6.1
+### 0.7
 
 1) [ ] Investigate upload slowness from client UI to C2, shouldn't be so horrible
 2) [x] IPs are wrong in the logs, needs NGINX proxy stuff
@@ -37,6 +37,8 @@ developed as a premium or otherwise private feature. These will be few and far b
 9) [x] Bug with Mutex when not turned on: "Failed to generate mutex with CreateMutexA. Last error: 0x7B"
 10) [ ] Update docs both in client and on docs site for new pull
 11) [ ] Same as above for whoami
+12) [ ] The proxy stuff might want to happen per connection not init once (just in case of different sites going to different proxies?)
+13) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
  
 ### v1.0 - Whelpfire
 
@@ -46,11 +48,10 @@ developed as a premium or otherwise private feature. These will be few and far b
 4) [ ] Max upload size set on C2 from profile
 5) [ ] Logrotate setup
 6) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
-7) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
-8) [ ] Separate URIs for POST and GET
-9) [ ] Multiple URLs / IPs for C2
-10) [ ] Round robin and different styles for URI & URL rotation
-11) [ ] Can I tidy wyrm.rs, maybe dynamic dispatch and traits for main dispatch fn?
+7) [ ] Separate URIs for POST and GET
+8) [ ] Multiple URLs / IPs for C2
+9) [ ] Round robin and different styles for URI & URL rotation
+10) [ ] Can I tidy wyrm.rs, maybe dynamic dispatch and traits for main dispatch fn?
 
 ### v1.1
 

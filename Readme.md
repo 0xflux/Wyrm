@@ -1,4 +1,4 @@
-# Wyrm - v0.6.1 Hatchling
+# Wyrm - v0.7 Hatchling
 
 Wyrm (pronounced 'worm', an old English word for 'serpent' or 'dragon') is a post exploitation, open source, Red Team security testing framework framework, written in Rust designed to be used by Red Teams, Purple Teams, 
 Penetration Testers, and general infosec hobbyists. This project is fully built in Rust, with extra effort going into obfuscating artifacts which
@@ -46,6 +46,7 @@ so I will be attentive to anything raised.
 - Execute dotnet binaries in memory
 - Anti-sandbox techniques which are highly configurable by the operator through profiles
 - Backed by a database, fully timestamped to make reporting easier
+- Proxy aware
 
 This project is not currently accepting contributions, please **raise issues** or use **GitHub Discussions** and I will look into them, and help
 answer any questions.
