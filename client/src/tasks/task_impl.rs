@@ -439,6 +439,7 @@ pub async fn show_help(agent: &IsTaskingAgent) -> DispatchResult {
         "reg add <path_to_key> <value name> <value data> <data type> (for more info, type help reg)".into(),
         "reg del <path_to_key> <Optional: value name> (for more info, type help reg)".into(),
         "dotex <bin> <args> (execute a dotnet binary in memory in the implant, for more info type help dotex)".into(),
+        "whoami (natively, without powershell/cmd, retrieves your SID, domain\\username and token privileges".into(),
     ];
 
     if let IsTaskingAgent::Yes(agent_id) = agent {
@@ -475,9 +476,8 @@ pub async fn show_help_for_command(agent: &IsTaskingAgent, command: &str) -> Dis
             "Usage: pull <file path>".into(),
             "Exfiltrates a file to the C2 by its file path, which can be relative or absolute. This will upload the file to the".into(),
             "C2 and save it under: c2/<target hostname>/<file path as per targets full path>.".into(),
-            "If a file already exists at that location, it will be overwritten. Note, using `pull` will cause the file to be read into memory".into(),
-            "on the target machine in full, thus you should only use this on files which are smaller than the amount of available RAM on the machine.".into(),
-            "Streamed `pull` is coming in a future release.".into(),
+            "If a file already exists at that location, it will be overwritten. Note, using `pull` will cause the file to be uploaded as a buffered stream".into(),
+            "meaning you can exfiltrate files of any size without causing the device to go out of memory.".into(),
         ],
         "reg query" => vec![
             "Usage: reg query <path_to_key> <OPTIONAL: value>".into(),

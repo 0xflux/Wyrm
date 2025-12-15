@@ -34,8 +34,8 @@ developed as a premium or otherwise private feature. These will be few and far b
 7) [x] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM) (implemented in `pull`)
 8) [x] Native `whoami` command should output more than just the username, should include SID and privs natively.
 9) [x] Bug with Mutex when not turned on: "Failed to generate mutex with CreateMutexA. Last error: 0x7B"
-10) [ ] Update docs both in client and on docs site for new pull
-11) [ ] Same as above for whoami
+10) [x] Update docs both in client and on docs site for new pull
+11) [x] Same as above for whoami
 12) [x] The proxy stuff might want to happen per connection not init once (just in case of different sites going to different proxies?)
 13) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
  
