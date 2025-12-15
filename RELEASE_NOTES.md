@@ -10,7 +10,7 @@ pulling updates.
 
 - `pull` command now does so buffered in memory, preventing resource exhaustion from the implant.
 - Native support for running `whoami` without needing to touch powershell. Run `whoami` to get info on the domain, user, SID and what privileges are assigned.
-- Implant is now **proxy aware**! This means it will attempt to use a corporate proxy if set up for making connections. If none exists, then none will be used! This is done at implant boot time and done only once.
+- Implant is now **proxy aware**! This means it will attempt to use a corporate proxy if set up for making connections. If none exists, then none will be used! This is done per request to ensure the correct proxy settings are applied to the correct C2 address if using multiple.
 - Fix logging on C2 to log correct IP with NGINX X-Forwarded-For header.
 - Moved implant to reqwest crate for networking from minreq, no real impact on agent size and provides more functionality.
 - Fix bug where implant tried to register a mutex when not specified.

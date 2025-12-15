@@ -36,7 +36,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 9) [x] Bug with Mutex when not turned on: "Failed to generate mutex with CreateMutexA. Last error: 0x7B"
 10) [ ] Update docs both in client and on docs site for new pull
 11) [ ] Same as above for whoami
-12) [ ] The proxy stuff might want to happen per connection not init once (just in case of different sites going to different proxies?)
+12) [x] The proxy stuff might want to happen per connection not init once (just in case of different sites going to different proxies?)
 13) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
  
 ### v1.0 - Whelpfire
