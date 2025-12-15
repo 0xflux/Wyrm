@@ -22,7 +22,7 @@ use shared::{
 use crate::{
     api::{
         admin_routes::{
-            admin_login, build_all_binaries_handler, handle_admin_commands_on_agent,
+            admin_login, admin_upload, build_all_binaries_handler, handle_admin_commands_on_agent,
             handle_admin_commands_without_agent, is_adm_logged_in, logout,
             poll_agent_notifications,
         },
@@ -179,6 +179,11 @@ fn build_routes(state: Arc<AppState>) -> Router {
         .route(
             "/logout_admin",
             post(logout).layer(from_fn_with_state(state.clone(), logout_middleware)),
+        )
+        // Uploading a file via the GUI
+        .route(
+            "/admin_upload",
+            post(admin_upload).layer(from_fn_with_state(state.clone(), authenticate_admin)),
         )
         // Build all binaries path
         .route(
