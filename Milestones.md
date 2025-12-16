@@ -15,10 +15,12 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 ### 0.7
 
-1) [ ] Investigate upload slowness from client UI to C2, shouldn't be so horrible
-2) [x] IPs are wrong in the logs, needs NGINX proxy stuff
-3) [ ] Scan for auto SOH on filesystem; bonus points if it is running as admin
-4) [ ] Move to new basic model with stagers, the exports, etc can also apply to those, but we would produce:
+1) [ ] Use catch_panic on C2 instead of current handler
+2) [ ] Look into amsi.dll and ensuring it is patched / properly managed (binary ninja problem..)
+3) [x] Investigate upload slowness from client UI to C2, shouldn't be so horrible
+4) [x] IPs are wrong in the logs, needs NGINX proxy stuff
+5) [ ] Scan for auto SOH on filesystem; bonus points if it is running as admin
+6) [ ] Move to new basic model with stagers, the exports, etc can also apply to those, but we would produce:
    1) [ ] DLL, Exe, Svc of the 'virgin' payload
    2) [ ] NoStd loader (stageless) - encrypted 2nd stage shipped in binary
    3) [ ] NoStd loader (staged) - encrypted 2nd stage
@@ -28,16 +30,16 @@ developed as a premium or otherwise private feature. These will be few and far b
       3) [ ] Svc
    5) [ ] No fancy techniques under the hood, that will come with a (L) version
    6) [ ] Malleable encryption byte in profile
-5) [ ] Internal proxy resolution for HTTP requests
+7) [ ] Internal proxy resolution for HTTP requests
    1) [ ] Consider going native for HTTP anyway and move away from minreq.. maybe
-6) [ ] `execute-bin` (non-dotnet)
-7) [x] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM) (implemented in `pull`)
-8) [x] Native `whoami` command should output more than just the username, should include SID and privs natively.
-9) [x] Bug with Mutex when not turned on: "Failed to generate mutex with CreateMutexA. Last error: 0x7B"
-10) [x] Update docs both in client and on docs site for new pull
-11) [x] Same as above for whoami
-12) [x] The proxy stuff might want to happen per connection not init once (just in case of different sites going to different proxies?)
-13) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
+8) [ ] `execute-bin` (non-dotnet)
+9) [x] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM) (implemented in `pull`)
+10) [x] Native `whoami` command should output more than just the username, should include SID and privs natively.
+11) [x] Bug with Mutex when not turned on: "Failed to generate mutex with CreateMutexA. Last error: 0x7B"
+12) [x] Update docs both in client and on docs site for new pull
+13) [x] Same as above for whoami
+14) [x] The proxy stuff might want to happen per connection not init once (just in case of different sites going to different proxies?)
+15) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
  
 ### v1.0 - Whelpfire
 
