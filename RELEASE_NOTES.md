@@ -14,7 +14,8 @@ pulling updates.
 - Fix logging on C2 to log correct IP with NGINX X-Forwarded-For header.
 - Moved implant to reqwest crate for networking from minreq, no real impact on agent size and provides more functionality.
 - Fix bug where implant tried to register a mutex when not specified.
-- Fix bug in file upload via GUI to the C2 in that it happens much faster..
+- Fix bug in file upload via GUI to the C2 in that it happens much faster.
+- Improve how the C2 handles panics and unwraps using `catch_panic`, the  C2 should no longer become unresponsive during panics. Using panics and unwraps was by design, so this should add stability.
 
 ## v0.6
 

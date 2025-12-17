@@ -15,7 +15,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 ### 0.7
 
-1) [ ] Use catch_panic on C2 instead of current handler
+1) [x] Use catch_panic on C2 instead of current handler
 2) [ ] Look into amsi.dll and ensuring it is patched / properly managed (binary ninja problem..)
 3) [x] Investigate upload slowness from client UI to C2, shouldn't be so horrible
 4) [x] IPs are wrong in the logs, needs NGINX proxy stuff

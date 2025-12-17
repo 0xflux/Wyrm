@@ -378,7 +378,7 @@ pub async fn write_implant_to_tmp_folder(
         if let Err(e) = tokio::fs::rename(&src, &dest).await {
             let cwd = current_dir().expect("could not get cwd");
             let msg = format!(
-                "Failed to rename built agent, looking for: {}, to rename to: {}. Cwd: {cwd:?} {e}",
+                "Failed to rename built agent - it is *possible* you interrupted the request/page, looking for: {}, to rename to: {}. Cwd: {cwd:?} {e}",
                 src.display(),
                 dest.display()
             );

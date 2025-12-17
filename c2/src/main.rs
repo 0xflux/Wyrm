@@ -1,16 +1,19 @@
 #![feature(map_try_insert)]
 
 use core::panic;
-use std::{net::SocketAddr, panic::set_hook, sync::Arc, time::Duration};
+use std::{any::Any, net::SocketAddr, sync::Arc, time::Duration};
 
 use axum::{
     Router,
+    body::Bytes,
     extract::DefaultBodyLimit,
+    http::{Response, StatusCode, header},
     middleware::from_fn_with_state,
     routing::{get, post},
     serve,
 };
 
+use http_body_util::Full;
 use shared::{
     net::{
         ADMIN_ENDPOINT, ADMIN_HEALTH_CHECK_ENDPOINT, ADMIN_LOGIN_ENDPOINT,
@@ -18,6 +21,7 @@ use shared::{
     },
     pretty_print::{print_info, print_success},
 };
+use tower_http::catch_panic::CatchPanicLayer;
 
 use crate::{
     api::{
@@ -78,7 +82,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //
     // Build the router and serve content
     //
-    let app = build_routes(state.clone());
+    let app = build_routes(state.clone()).layer(CatchPanicLayer::custom(handle_panic));
     let listener = tokio::net::TcpListener::bind(construct_listener_addr()).await?;
 
     print_success(format!(
@@ -119,7 +123,6 @@ async fn init_server_state() -> Arc<AppState> {
 
     print_success("Profiles parsed.");
 
-    set_panic_hook();
     ensure_dirs_and_files();
 
     let pool = Db::new().await;
@@ -236,26 +239,23 @@ fn ensure_dirs_and_files() {
     print_success("Directories and files are in order..");
 }
 
-/// Installs a custom panic handler that logs panics to the a log file in `/data/logs/error.log`.
-fn set_panic_hook() {
-    set_hook(Box::new(|panic_info| {
-        let payload = panic_info
-            .payload()
-            .downcast_ref::<&str>()
-            .map(|s| *s)
-            .or_else(|| {
-                panic_info
-                    .payload()
-                    .downcast_ref::<String>()
-                    .map(String::as_str)
-            })
-            .unwrap_or("Unknown panic payload");
+fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response<Full<Bytes>> {
+    let details = if let Some(s) = err.downcast_ref::<String>() {
+        s.clone()
+    } else if let Some(s) = err.downcast_ref::<&str>() {
+        s.to_string()
+    } else {
+        "Unknown panic message".to_string()
+    };
 
-        let location = panic_info
-            .location()
-            .map(|loc| format!("{}:{}", loc.file(), loc.line()))
-            .unwrap_or_else(|| "Unknown location".to_string());
+    log_error(&format!("PANIC: `{}`", details));
 
-        log_error(&format!("PANIC at {}: `{}`", location, payload));
-    }));
+    let body = serde_json::json!("");
+
+    let body = serde_json::to_string(&body).unwrap();
+    Response::builder()
+        .status(StatusCode::INTERNAL_SERVER_ERROR)
+        .header(header::CONTENT_TYPE, "application/json")
+        .body(Full::from(body))
+        .unwrap()
 }
