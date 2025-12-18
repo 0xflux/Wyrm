@@ -30,8 +30,7 @@ developed as a premium or otherwise private feature. These will be few and far b
       3) [ ] Svc
    5) [ ] No fancy techniques under the hood, that will come with a (L) version
    6) [ ] Malleable encryption byte in profile
-7) [ ] Internal proxy resolution for HTTP requests
-   1) [ ] Consider going native for HTTP anyway and move away from minreq.. maybe
+7) [x] Internal proxy resolution for HTTP requests
 8) [ ] `execute-bin` (non-dotnet)
 9) [x] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM) (implemented in `pull`)
 10) [x] Native `whoami` command should output more than just the username, should include SID and privs natively.
