@@ -8,7 +8,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 1) [ ] NG Proxy Bypass (NGPB).
 2) [ ] Additional loaders / start from RDLL - configurable, maybe things like early bird, syscalls, etc.
 3) [ ] Image hashes in autoloot.
-4) [ ] Runtime obfuscation, sleep masking.
+4) [ ] Runtime obfuscation, sleep masking - should spawn from the RDI bootstrap? Shellcode? Where and how? The RDI alloc for the actual DLL can just be encrypted?
 5) [ ] **Entire** website clone, and serve download from named page.
 6) [ ] Ransomware **SIMULATION** for Business
 7) [ ] Execute dotnet in sacrificial process

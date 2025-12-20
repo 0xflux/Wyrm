@@ -6,11 +6,12 @@ pulling updates.
 
 **IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
 
-## v0.6.1
+## v0.7
 
 - `pull` command now does so buffered in memory, preventing resource exhaustion from the implant.
 - Native support for running `whoami` without needing to touch powershell. Run `whoami` to get info on the domain, user, SID and what privileges are assigned.
 - Implant is now **proxy aware**! This means it will attempt to use a corporate proxy if set up for making connections. If none exists, then none will be used! This is done per request to ensure the correct proxy settings are applied to the correct C2 address if using multiple.
+- Binary size of the postex payload almost HALVED! Down to about 800 kb!
 - Fix logging on C2 to log correct IP with NGINX X-Forwarded-For header.
 - Moved implant to reqwest crate for networking from minreq, no real impact on agent size and provides more functionality.
 - Fix bug where implant tried to register a mutex when not specified.
