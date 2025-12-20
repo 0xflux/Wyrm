@@ -2,14 +2,12 @@
 //! LummaC2 https://outpost24.com/blog/lummac2-anti-sandbox-technique-trigonometry-human-detection/
 
 use core::f32::math::sqrt;
-use std::{
-    thread::sleep,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use cgmath::{Deg, InnerSpace, Vector2};
 use windows_sys::Win32::{
-    Foundation::{FALSE, POINT, TRUE},
+    Foundation::{POINT, TRUE},
+    System::Threading::Sleep,
     UI::WindowsAndMessaging::GetCursorPos,
 };
 
@@ -53,7 +51,9 @@ pub fn trig_mouse_movements() {
         //
         for i in 0..MAX_POINTS_0_IDX {
             get_pos(points.get_mut(i).unwrap(), &timer);
-            sleep(Duration::from_millis(10));
+            unsafe {
+                Sleep(10);
+            }
         }
 
         //
@@ -113,6 +113,8 @@ fn get_pos(point: &mut POINT, live_timer: &(Instant, Duration)) {
             break;
         };
 
-        sleep(Duration::from_millis(200));
+        unsafe {
+            Sleep(200);
+        }
     }
 }

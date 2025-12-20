@@ -17,17 +17,23 @@ use std::{mem::transmute, ptr::null_mut};
 
 use windows_sys::Win32::System::Threading::{CreateThread, LPTHREAD_START_ROUTINE, Sleep};
 
-use crate::entry::{APPLICATION_RUNNING, start_wyrm};
+use crate::{
+    entry::{APPLICATION_RUNNING, start_wyrm},
+    utils::allocate::ProcessHeapAlloc,
+};
 
 pub fn internal_dll_start(start_type: StartType) {
     match start_type {
         StartType::DllMain => start_wyrm_in_os_thread(),
-        StartType::FromExport => loop {
-            if !APPLICATION_RUNNING.load(core::sync::atomic::Ordering::SeqCst) {
-                break;
+        StartType::FromExport => {
+            start_wyrm();
+            loop {
+                if !APPLICATION_RUNNING.load(core::sync::atomic::Ordering::SeqCst) {
+                    break;
+                }
+                unsafe { Sleep(1000) };
             }
-            unsafe { Sleep(1000) };
-        },
+        }
     }
 }
 

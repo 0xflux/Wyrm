@@ -1,3 +1,4 @@
+pub mod allocate;
 pub mod comptime;
 pub mod console;
 pub mod export_comptime;

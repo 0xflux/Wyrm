@@ -2,10 +2,9 @@ use std::{
     ffi::c_void,
     ptr::null_mut,
     sync::{
-        Mutex, Once,
+        Mutex, Once, OnceLock,
         atomic::{AtomicPtr, Ordering},
     },
-    thread::spawn,
 };
 
 use windows_sys::Win32::{
@@ -14,16 +13,23 @@ use windows_sys::Win32::{
     System::{
         Console::{AllocConsole, GetConsoleWindow, STD_OUTPUT_HANDLE, SetStdHandle},
         Pipes::CreatePipe,
+        Threading::CreateThread,
     },
     UI::WindowsAndMessaging::{SW_HIDE, ShowWindow},
 };
 
 static INIT_PIPE: Once = Once::new();
 pub static CONSOLE_PIPE_HANDLE: AtomicPtr<c_void> = AtomicPtr::new(null_mut());
-pub static CONSOLE_LOG: Mutex<Vec<u8>> = Mutex::new(Vec::new());
+pub static CONSOLE_LOG: OnceLock<Mutex<Vec<u8>>> = OnceLock::new();
+
+pub fn get_console_log() -> &'static Mutex<Vec<u8>> {
+    CONSOLE_LOG.get_or_init(|| Mutex::new(Vec::new()))
+}
 
 pub fn init_agent_console() {
     INIT_PIPE.call_once(|| {
+        let _ = get_console_log();
+
         //
         // Hide the window if it exists
         //
@@ -68,7 +74,11 @@ pub fn init_agent_console() {
 }
 
 fn start_stdout_reader_thread() {
-    spawn(|| unsafe {
+    unsafe { CreateThread(null_mut(), 0, Some(thread_loop), null_mut(), 0, null_mut()) };
+}
+
+unsafe extern "system" fn thread_loop(_: *mut c_void) -> u32 {
+    unsafe {
         let mut buf = [0u8; 4096];
         let h_read = CONSOLE_PIPE_HANDLE.load(Ordering::SeqCst);
 
@@ -87,9 +97,11 @@ fn start_stdout_reader_thread() {
             }
 
             if !buf.is_empty() {
-                let mut log = CONSOLE_LOG.lock().unwrap();
+                let mut log = get_console_log().lock().unwrap();
                 log.extend_from_slice(&buf[..bytes_read as usize]);
             }
         }
-    });
+    }
+
+    1
 }

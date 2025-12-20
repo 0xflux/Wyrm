@@ -3,7 +3,10 @@
 #![feature(const_option_ops)]
 #![feature(const_trait_impl)]
 
-use std::sync::atomic::Ordering;
+#[global_allocator]
+static GLOBAL_ALLOC: ProcessHeapAlloc = ProcessHeapAlloc;
+
+use core::sync::atomic::Ordering;
 
 use entry::start_wyrm;
 use windows_sys::{
@@ -19,7 +22,10 @@ use windows_sys::{
 
 use crate::{
     entry::IS_IMPLANT_SVC,
-    utils::svc_controls::{SERVICE_HANDLE, SERVICE_STOP_EVENT, update_service_status},
+    utils::{
+        allocate::ProcessHeapAlloc,
+        svc_controls::{SERVICE_HANDLE, SERVICE_STOP_EVENT, update_service_status},
+    },
 };
 
 mod anti_sandbox;

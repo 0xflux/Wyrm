@@ -8,9 +8,10 @@ build = "build.rs"
 opt-level = "z"
 lto = "fat"
 strip = "symbols"
-panic = "abort"
+# panic = "abort"
 debug = 0
 split-debuginfo = "off"
+codegen-units = 1
 
 [[bin]]
 name = "implant"
@@ -62,8 +63,8 @@ windows-sys = {version = "0.61", features = [
     "Win32_Security_Authorization",
     "Win32_Globalization",
     "Win32_Networking_WinHttp",
+    "Win32_System_Memory",
 ]}
 rand = "0.9"
 windows-registry = "0.6"
-chrono = { version = "0.4", features = ["serde"] }
-reqwest = { version = "0.12.25", features = ["json", "blocking", "stream", "multipart"]}
+ureq = { version = "3.1.4", default-features = false, features = ["json", "multipart", "native-tls"]}

