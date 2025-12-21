@@ -12,7 +12,7 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 }
 
 #[unsafe(no_mangle)]
-pub extern "C" fn main() -> i32 {
+pub extern "C" fn Run() -> i32 {
     inject_current_process();
     0
 }
