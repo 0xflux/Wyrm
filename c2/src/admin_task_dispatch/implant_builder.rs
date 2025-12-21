@@ -25,6 +25,8 @@ use crate::{
     profiles::{Profile, parse_exports_to_string_for_env},
 };
 
+const FULLY_QUAL_PATH_TO_FILE_BUILD: &str = "/app/profiles/tmp";
+
 /// Builds all binaries from a given profile
 ///
 /// On success, this function returns None, otherwise an Error is encoded within a `Value` as a `WyrmResult`
@@ -78,8 +80,7 @@ pub async fn build_all_bins(
     //
     // Now we have the RAW implant in tmp; we need to build the loader
     //
-    for p in raw_dll_names {
-        // let dll_path = r"/app/profiles/tmp/default.dll";
+    for p in &raw_dll_names {
         write_loader_to_tmp(&profile, &save_path, implant_profile_name, p).await?;
     }
 
@@ -135,7 +136,7 @@ async fn write_loader_to_tmp(
     profile: &Profile,
     save_path: &PathBuf,
     implant_profile_name: &str,
-    dll_path: &Path,
+    dll_path: &PathBuf,
 ) -> Result<(), String> {
     let stage_type = StageType::Exe;
 
@@ -225,10 +226,7 @@ async fn compile_loader(
         return Err(io::Error::other("StageType::All not supported"));
     }
 
-    // TODO ?
-    let pe_name = validate_extension(&data.pe_name, stage_type);
-
-    // Check for any feature flags
+    // Check for any feature flags from the profile
     let features: Vec<String> = {
         let mut builder = vec!["--features".to_string()];
         let mut string_builder = String::new();
@@ -293,7 +291,7 @@ async fn compile_loader(
 ///
 /// # Important
 /// The PE name passed into this function should NOT include its extension.
-pub async fn build_agent(
+pub async fn compile_agent(
     data: &NewAgentStaging,
     stage_type: StageType,
 ) -> Result<std::process::Output, std::io::Error> {
@@ -467,7 +465,7 @@ pub async fn write_implant_to_tmp_folder<'a>(
     save_path: &'a PathBuf,
     implant_profile_name: &str,
     state: State<Arc<AppState>>,
-    raw_dll_names: &mut Vec<&'a Path>,
+    raw_dll_names: &mut Vec<PathBuf>,
 ) -> Result<(), String> {
     //
     // Transform the profile into a valid `NewAgentStaging`
@@ -495,7 +493,7 @@ pub async fn write_implant_to_tmp_folder<'a>(
         };
 
         // Actually try build with cargo
-        let cmd_build_output = build_agent(&data, stage_type).await;
+        let cmd_build_output = compile_agent(&data, stage_type).await;
 
         if let Err(e) = cmd_build_output {
             let msg = &format!("Failed to build agent. {e}");
@@ -584,7 +582,8 @@ pub async fn write_implant_to_tmp_folder<'a>(
         post_process_pe_on_disk(&dest, &data, stage_type).await;
 
         if stage_type == StageType::Dll {
-            raw_dll_names.push(&save_path);
+            let p = format!("{}/{}.dll", FULLY_QUAL_PATH_TO_FILE_BUILD, data.pe_name);
+            raw_dll_names.push(PathBuf::from(p));
         }
     }
 
