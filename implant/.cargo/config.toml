@@ -8,5 +8,4 @@ rustflags = [
     "-C", "target-feature=+crt-static",
     "-C", "link-arg=/MERGE:.rdata=.text",
     "-C", "link-arg=/MERGE:.pdata=.text",
-    "-C", "inline-threshold=275",
 ]

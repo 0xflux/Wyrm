@@ -53,35 +53,14 @@ pub async fn build_all_bins(
     //
     // If we are building all binaries, iterate through them, otherwise just build hte specified one
     //
-    let mut raw_dll_names = vec![];
     if implant_profile_name.to_lowercase() == "all" {
         let keys: Vec<String> = profile.implants.keys().cloned().collect();
         for key in keys {
-            write_implant_to_tmp_folder(
-                &profile,
-                &save_path,
-                &key,
-                state.clone(),
-                &mut raw_dll_names,
-            )
-            .await?;
+            write_implant_to_tmp_folder(&profile, &save_path, &key, state.clone()).await?;
         }
     } else {
-        write_implant_to_tmp_folder(
-            &profile,
-            &save_path,
-            implant_profile_name,
-            state.clone(),
-            &mut raw_dll_names,
-        )
-        .await?;
-    }
-
-    //
-    // Now we have the RAW implant in tmp; we need to build the loader
-    //
-    for p in &raw_dll_names {
-        write_loader_to_tmp(&profile, &save_path, implant_profile_name, p).await?;
+        write_implant_to_tmp_folder(&profile, &save_path, implant_profile_name, state.clone())
+            .await?;
     }
 
     //
@@ -206,7 +185,7 @@ async fn write_loader_to_tmp(
     if let Err(e) = tokio::fs::rename(&src, &dest).await {
         let cwd = current_dir().expect("could not get cwd");
         let msg = format!(
-            "Failed to rename built agent - it is *possible* you interrupted the request/page, looking for: {}, to rename to: {}. Cwd: {cwd:?} {e}",
+            "Failed to rename built loader - it is *possible* you interrupted the request/page, looking for: {}, to rename to: {}. Cwd: {cwd:?} {e}",
             src.display(),
             dest.display()
         );
@@ -276,9 +255,7 @@ async fn compile_loader(
         cmd.args(["--target", t]);
     }
 
-    if !data.build_debug {
-        cmd.arg("--release");
-    }
+    cmd.arg("--release");
 
     // TODO
     // cmd.args(build_as_flags);
@@ -465,7 +442,6 @@ pub async fn write_implant_to_tmp_folder<'a>(
     save_path: &'a PathBuf,
     implant_profile_name: &str,
     state: State<Arc<AppState>>,
-    raw_dll_names: &mut Vec<PathBuf>,
 ) -> Result<(), String> {
     //
     // Transform the profile into a valid `NewAgentStaging`
@@ -581,9 +557,21 @@ pub async fn write_implant_to_tmp_folder<'a>(
 
         post_process_pe_on_disk(&dest, &data, stage_type).await;
 
+        //
+        // Build the loader for the DLL
+        //
         if stage_type == StageType::Dll {
             let p = format!("{}/{}.dll", FULLY_QUAL_PATH_TO_FILE_BUILD, data.pe_name);
-            raw_dll_names.push(PathBuf::from(p));
+            let dll_path = PathBuf::from(p);
+
+            if !dll_path.exists() {
+                panic!(
+                    "DLL path for the raw binary did not exist. This is not acceptable. Expected path: {}",
+                    dll_path.display()
+                );
+            }
+
+            write_loader_to_tmp(profile, save_path, implant_profile_name, &dll_path).await?;
         }
     }
 

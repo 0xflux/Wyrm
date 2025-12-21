@@ -15,10 +15,6 @@ fn main() {
         "DLL_PATH",
     ];
 
-    for key in envs {
-        println!("cargo:rerun-if-env-changed={key}");
-    }
-
     for var in envs {
         if let Ok(val) = env::var(var) {
             println!("cargo:rustc-env={var}={val}");
