@@ -21,13 +21,12 @@ developed as a premium or otherwise private feature. These will be few and far b
 4) [ ] Move to new basic model with stagers, the exports, etc can also apply to those, but we would produce:
    1) [x] Wyrm as RDLL
    2) [ ] Wyrm needs the DLL exports, main and svc removing - these need to be applied to the 'deliverable'
-   3) [ ] C2 does not need to build the exe and svc for Wyrm - that is the job now of the 'deliverable'
-   4) [ ] Also serve the unstaged payloads if ppl want to write their own loaders.
-   5) [ ] After building Wyrm it needs to build the actual deliverables:
-      1) [ ] DLL
-      2) [ ] Svc
-      3) [ ] Exe
-   6) [ ] The loader should inherit option for ETW bypass
+   3) [x] Also serve the unstaged payloads if ppl want to write their own loaders.
+   4) [x] After building Wyrm it needs to build the actual deliverables:
+      1) [x] DLL
+      2) [x] Svc
+      3) [x] Exe
+   5) [ ] The loader should inherit option for ETW bypass
 5) [x] Internal proxy resolution for HTTP requests
 6) [x] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM) (implemented in `pull`)
 7)  [x] Native `whoami` command should output more than just the username, should include SID and privs natively.
