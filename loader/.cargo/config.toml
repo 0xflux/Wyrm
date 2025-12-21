@@ -1,0 +1,9 @@
+[target.x86_64-pc-windows-msvc]
+rustflags = [
+    "-Z", "location-detail=none",
+    "-C", "panic=abort",
+    "-C", "target-feature=+crt-static",
+    "-C", "link-arg=/MERGE:.rdata=.text",
+    "-C", "link-arg=/MERGE:.pdata=.text",
+    "-C", "inline-threshold=275",
+]

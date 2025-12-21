@@ -62,6 +62,10 @@ pub async fn build_all_bins(
     }
 
     //
+    // Now we have the RAW implant in tmp; we need to build the deliverable files
+    //
+
+    //
     // Finally zip up the result, and return them back to the user.
     //
     const ZIP_OUTPUT_PATH: &str = "./profiles/tmp.7z";

@@ -1,0 +1,27 @@
+[package]
+name = "loader"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+[profile.release]
+opt-level = "z"
+lto = "fat"
+strip = "symbols"
+debug = 0
+split-debuginfo = "off"
+panic ="abort"
+
+[dependencies]
+windows-sys = {version = "0.61", features = [
+    "Win32",
+    "Win32_Foundation",
+    "Win32_System_SystemServices",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_SystemInformation",
+    "Win32_System_Memory",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Threading",
+    "Win32_System_WindowsProgramming",
+]}
+ 

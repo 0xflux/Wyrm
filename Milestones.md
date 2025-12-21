@@ -22,10 +22,12 @@ developed as a premium or otherwise private feature. These will be few and far b
    1) [x] Wyrm as RDLL
    2) [ ] Wyrm needs the DLL exports, main and svc removing - these need to be applied to the 'deliverable'
    3) [ ] C2 does not need to build the exe and svc for Wyrm - that is the job now of the 'deliverable'
-   4) [ ] After building Wyrm it needs to build the actual deliverables:
+   4) [ ] Also serve the unstaged payloads if ppl want to write their own loaders.
+   5) [ ] After building Wyrm it needs to build the actual deliverables:
       1) [ ] DLL
       2) [ ] Svc
       3) [ ] Exe
+   6) [ ] The loader should inherit option for ETW bypass
 5) [x] Internal proxy resolution for HTTP requests
 6) [x] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM) (implemented in `pull`)
 7)  [x] Native `whoami` command should output more than just the username, should include SID and privs natively.
@@ -47,8 +49,10 @@ developed as a premium or otherwise private feature. These will be few and far b
 9) [ ] Round robin and different styles for URI & URL rotation
 10) [ ] Can I tidy wyrm.rs, maybe dynamic dispatch and traits for main dispatch fn?
 11) [ ] Position independent shellcode stub for the DLL which allows it to be injected into a foreign process
+    1)  [ ] This can be a 4th 'deliverable' maybe called (profile)_shellcode.bin which the user uploads
 12) [ ] Loaders should stomp the MZ and "this program.."
 13) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
+14) [ ] Staging the encrypted payload as opposed to a stageless only build
 
 ### v1.1
 
@@ -56,7 +60,7 @@ These are to be split out further as required for more manageable releases.
 
 1) [ ] Long running tasks which have a specified integrity level, so any task set under this scheme can execute at a given integrity level for that machine
 2) [ ] `spawn` + malleable options
-3) [ ] `inject` + malleable options
+3) [ ] `inject` + malleable options (malleable options for it to inject on spawn from the default loader)
 4) [ ] Killing the agent should support from thread as well as from process (in the case of an injected process).
 5) [ ] Agent & C2 supports multiple endpoints (selectable in build process from cli) / c2 profiles
    1) This needs to be implemented in the wizard also
