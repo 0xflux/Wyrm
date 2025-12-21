@@ -68,6 +68,7 @@ type GetCurrentProcess = unsafe extern "system" fn() -> HANDLE;
 
 /// Function pointers for the Reflective DLL Injector to use.
 #[allow(non_snake_case)]
+#[allow(unused)]
 struct RdiExports {
     LoadLibraryA: LoadLibraryA,
     VirtualAlloc: VirtualAlloc,
@@ -83,6 +84,7 @@ impl RdiExports {
     /// via LoadLibrary or other mechanism to be successful.
     ///
     /// If the function fails to resolve all functions, it will return `None`
+    #[inline(always)]
     fn new() -> Option<Self> {
         //
         // Resolve the function addresses from the respective DLL's, note these should be loaded in the process or this
@@ -166,14 +168,16 @@ pub unsafe extern "system" fn Load(image_base: *mut c_void) -> u32 {
     //
     // Parse the headers
     //
-    let dos_header = unsafe { *(image_base as *const IMAGE_DOS_HEADER) };
+    let dos_header = unsafe { read_unaligned(image_base as *const IMAGE_DOS_HEADER) };
     let nt_offset = dos_header.e_lfanew as usize;
     let p_nt_headers = (image_base as usize + nt_offset) as *mut IMAGE_NT_HEADERS64;
 
     //
     // process image relocations
     //
-    let data_dir = unsafe { *p_nt_headers }.OptionalHeader.DataDirectory;
+    let data_dir = unsafe { read_unaligned(p_nt_headers) }
+        .OptionalHeader
+        .DataDirectory;
 
     let relocations_ptr = ((image_base as usize)
         + data_dir[IMAGE_DIRECTORY_ENTRY_BASERELOC as usize].VirtualAddress as usize)
@@ -222,6 +226,7 @@ pub unsafe extern "system" fn Load(image_base: *mut c_void) -> u32 {
 /// Finds an export for a DLL in memory at the base, given an input name.
 ///
 /// On success returns a function pointer to the function.
+#[inline(always)]
 fn find_export(
     base: *mut c_void,
     nt: *mut IMAGE_NT_HEADERS64,
@@ -240,7 +245,7 @@ fn find_export(
             return None;
         }
 
-        let exp = *exp_dir;
+        let exp = read_unaligned(exp_dir);
 
         let names: *const u32 = get_addr_as_rva(base as _, exp.AddressOfNames as usize);
         let funcs: *const u32 = get_addr_as_rva(base as _, exp.AddressOfFunctions as usize);
@@ -266,6 +271,7 @@ fn find_export(
     }
 }
 
+#[inline(always)]
 fn relocate_and_commit(
     p_base: *mut c_void,
     p_nt_headers: *mut IMAGE_NT_HEADERS64,
@@ -274,7 +280,7 @@ fn relocate_and_commit(
     unsafe {
         // RVA of the first IMAGE_SECTION_HEADER in the PE file
         let section_header_ptr = get_addr_as_rva::<IMAGE_SECTION_HEADER>(
-            &(*p_nt_headers).OptionalHeader as *const _ as _,
+            core::ptr::addr_of!((*p_nt_headers).OptionalHeader) as *const _ as _,
             (*p_nt_headers).FileHeader.SizeOfOptionalHeader as usize,
         );
 
@@ -285,7 +291,7 @@ fn relocate_and_commit(
             let mut protect = 0;
             let mut old_protect = 0;
 
-            let p_section_header = &*(section_header_ptr).add(i as _);
+            let p_section_header = read_unaligned(section_header_ptr.add(i as _));
             // A pointer to where it is actually loaded (base + RVA)
             let p_target = p_base
                 .cast::<u8>()
@@ -341,6 +347,7 @@ fn relocate_and_commit(
     }
 }
 
+#[inline(always)]
 fn process_relocations(
     p_image_base: *mut c_void,
     p_nt_headers: *mut IMAGE_NT_HEADERS64,
@@ -417,6 +424,7 @@ fn process_relocations(
     }
 }
 
+#[inline(always)]
 fn patch_iat(
     base_addr_ptr: *mut c_void,
     mut import_descriptor_ptr: *mut IMAGE_IMPORT_DESCRIPTOR,
@@ -490,6 +498,7 @@ fn patch_iat(
     true
 }
 
+#[inline(always)]
 fn get_addr_as_rva<T>(base_ptr: *mut u8, offset: usize) -> *mut T {
     (base_ptr as usize + offset) as *mut T
 }

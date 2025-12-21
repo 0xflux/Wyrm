@@ -11,7 +11,7 @@ strip = "symbols"
 # panic = "abort"
 debug = 0
 split-debuginfo = "off"
-codegen-units = 1
+# codegen-units = 1
 
 [[bin]]
 name = "implant"

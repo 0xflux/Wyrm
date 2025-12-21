@@ -8,6 +8,7 @@ pulling updates.
 
 ## v0.7
 
+- Wyrm now builds as a reflective DLL, supplying you with a loader DLL, exe and svc in place of the previous raw binary.
 - `pull` command now does so buffered in memory, preventing resource exhaustion from the implant.
 - Native support for running `whoami` without needing to touch powershell. Run `whoami` to get info on the domain, user, SID and what privileges are assigned.
 - Implant is now **proxy aware**! This means it will attempt to use a corporate proxy if set up for making connections. If none exists, then none will be used! This is done per request to ensure the correct proxy settings are applied to the correct C2 address if using multiple.
