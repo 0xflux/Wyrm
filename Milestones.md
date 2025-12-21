@@ -20,7 +20,9 @@ developed as a premium or otherwise private feature. These will be few and far b
 3) [x] IPs are wrong in the logs, needs NGINX proxy stuff
 4) [ ] Move to new basic model with stagers, the exports, etc can also apply to those, but we would produce:
    1) [x] Wyrm as RDLL
-   2) [ ] After building Wyrm it needs to build the actual deliverables:
+   2) [ ] Wyrm needs the DLL exports, main and svc removing - these need to be applied to the 'deliverable'
+   3) [ ] C2 does not need to build the exe and svc for Wyrm - that is the job now of the 'deliverable'
+   4) [ ] After building Wyrm it needs to build the actual deliverables:
       1) [ ] DLL
       2) [ ] Svc
       3) [ ] Exe
