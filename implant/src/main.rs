@@ -16,6 +16,7 @@ mod entry;
 mod evasion;
 mod execute;
 mod native;
+mod rdi_loader;
 mod utils;
 mod wyrm;
 
