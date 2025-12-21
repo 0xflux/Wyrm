@@ -7,23 +7,23 @@ use std::{
 };
 
 fn main() {
-    // let envs = &[
-    //     // "EXPORTS_JMP_WYRM",
-    //     // "EXPORTS_USR_MACHINE_CODE",
-    //     // "EXPORTS_PROXY",
-    //     // // TODO
-    //     // "DLL_PATH",
-    // ];
+    let envs = &[
+        //     // "EXPORTS_JMP_WYRM",
+        //     // "EXPORTS_USR_MACHINE_CODE",
+        //     // "EXPORTS_PROXY",
+        //     // // TODO
+        "DLL_PATH",
+    ];
 
-    // for key in envs {
-    //     println!("cargo:rerun-if-env-changed={key}");
-    // }
+    for key in envs {
+        println!("cargo:rerun-if-env-changed={key}");
+    }
 
-    // for var in envs {
-    //     if let Ok(val) = env::var(var) {
-    //         println!("cargo:rustc-env={var}={val}");
-    //     }
-    // }
+    for var in envs {
+        if let Ok(val) = env::var(var) {
+            println!("cargo:rustc-env={var}={val}");
+        }
+    }
 
     prepare_wyrm_dll();
     // write_exports_to_build_dir();
@@ -31,20 +31,25 @@ fn main() {
 
 /// Reads and encrypts the post-ex Wyrm DLL
 fn prepare_wyrm_dll() {
-    let path = PathBuf::from(env::var("DLL_PATH").unwrap());
+    let buf = if let Some(path) = option_env!("DLL_PATH") {
+        let path = PathBuf::from(path);
+        let mut f = File::open(path).unwrap();
+        let mut buf = Vec::with_capacity(f.metadata().unwrap().len() as usize);
+        f.read_to_end(&mut buf).unwrap();
 
-    let mut f = File::open(path).unwrap();
-    let mut buf = Vec::with_capacity(f.metadata().unwrap().len() as usize);
-    f.read_to_end(&mut buf).unwrap();
+        // overwrite the MZ header but keeping the e_lfanew
+        const MAX_OVERWRITE_END: usize = 50;
+        buf[0..MAX_OVERWRITE_END].fill(0);
 
-    // overwrite the MZ header but keeping the e_lfanew
-    const MAX_OVERWRITE_END: usize = 50;
-    buf[0..MAX_OVERWRITE_END].fill(0);
+        // overwrite the THIS PROGRAM CANNOT BE RUN IN DOS MODE...
+        const RANGE_START: usize = 0x4E;
+        const RANGE_END: usize = 0x73;
+        buf[RANGE_START..RANGE_END].fill(0);
 
-    // overwrite the THIS PROGRAM CANNOT BE RUN IN DOS MODE...
-    const RANGE_START: usize = 0x4E;
-    const RANGE_END: usize = 0x73;
-    buf[RANGE_START..RANGE_END].fill(0);
+        buf
+    } else {
+        vec![]
+    };
 
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
     // TODO take the test path profile name and append
