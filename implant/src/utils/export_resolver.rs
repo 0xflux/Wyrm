@@ -2,14 +2,7 @@
 //! Currently the module cannot depend on certain windows crate, so some FFI may have to be
 //! adjusted by hand in this module. Doing so should also reduce the overall binary size.
 
-use std::{
-    arch::asm,
-    ffi::{OsString, c_void},
-    ops::Add,
-    os::windows::ffi::OsStringExt,
-    ptr::read,
-    slice::from_raw_parts,
-};
+use core::{arch::asm, ffi::c_void, ops::Add, ptr::read, slice::from_raw_parts};
 
 use windows_sys::Win32::System::{
     SystemInformation::IMAGE_FILE_MACHINE,
@@ -65,10 +58,26 @@ fn get_module_base(module_name: &str) -> Option<usize> {
                     module_name_address as *const u16,
                     (module_length / 2) as usize,
                 );
-                let dll_name = OsString::from_wide(dll_name_slice);
+
+                let mut buf = [0u8; 256];
+                let mut buf_len = 0;
 
                 // do we have a match on the module name?
-                if dll_name.to_string_lossy().eq_ignore_ascii_case(module_name) {
+                for i in 0..(module_length / 2) as usize {
+                    if i >= 256 {
+                        break;
+                    }
+
+                    let wide_char = dll_name_slice[i];
+                    buf[i] = (wide_char & 0xFF) as u8;
+                    buf_len = i + 1;
+
+                    if wide_char == 0 {
+                        break;
+                    }
+                }
+
+                if strings_equal_ignore_case(&buf[..buf_len], module_name.as_bytes()) {
                     return Some(dll_base);
                 }
             } else {
@@ -85,6 +94,28 @@ fn get_module_base(module_name: &str) -> Option<usize> {
             }
         }
     }
+}
+
+#[inline]
+fn to_lowercase_ascii(c: u8) -> u8 {
+    if c >= b'A' && c <= b'Z' { c + 32 } else { c }
+}
+
+fn strings_equal_ignore_case(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+
+    for i in 0..a.len() {
+        let char_a = to_lowercase_ascii(a[i]);
+        let char_b = to_lowercase_ascii(b[i]);
+
+        if char_a != char_b {
+            return false;
+        }
+    }
+
+    true
 }
 
 /// Get the function address of a function in a specified DLL from the DLL Base.
@@ -161,10 +192,10 @@ pub fn resolve_address(
                 len += 1;
             }
 
-            std::slice::from_raw_parts(char, len)
+            core::slice::from_raw_parts(char, len)
         };
 
-        let function_name = std::str::from_utf8(function_name).unwrap_or_default();
+        let function_name = core::str::from_utf8(function_name).unwrap_or_default();
         if function_name.is_empty() {
             return Err(ExportResolveError::FnNameNotUtf8);
         }
