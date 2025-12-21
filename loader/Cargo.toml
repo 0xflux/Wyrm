@@ -12,6 +12,11 @@ debug = 0
 split-debuginfo = "off"
 panic ="abort"
 
+[features]
+sandbox_trig = []
+sandbox_mem = []
+patch_etw = []
+
 [dependencies]
 windows-sys = {version = "0.61", features = [
     "Win32",
