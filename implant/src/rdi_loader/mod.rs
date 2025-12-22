@@ -211,15 +211,6 @@ pub unsafe extern "system" fn Load(image_base: *mut c_void) -> u32 {
 
     relocate_and_commit(image_base, p_nt_headers, &exports);
 
-    //
-    // Finally, the the real entrypoint
-    //
-    // if let Some(exp) = find_export(image_base, p_nt_headers, "ToWyrmOnly") {
-    //     unsafe {
-    //         exp();
-    //     }
-    // }
-
     start_wyrm();
 
     RdiErrorCodes::Success as _
