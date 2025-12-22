@@ -20,7 +20,7 @@ use core::{mem::transmute, ptr::null_mut};
 use windows_sys::Win32::Foundation::{CloseHandle, FALSE, HINSTANCE};
 use windows_sys::Win32::Storage::FileSystem::SYNCHRONIZE;
 use windows_sys::Win32::System::SystemServices::DLL_PROCESS_ATTACH;
-use windows_sys::Win32::System::Threading::{CreateThread, LPTHREAD_START_ROUTINE};
+use windows_sys::Win32::System::Threading::{CreateThread, LPTHREAD_START_ROUTINE, Sleep};
 use windows_sys::Win32::System::WindowsProgramming::OpenMutexA;
 
 use crate::injector::inject_current_process;
@@ -36,7 +36,9 @@ pub fn internal_dll_start(start_type: StartType) {
                 start_in_os_thread_no_mutex_check();
             }
 
-            loop {}
+            loop {
+                unsafe { Sleep(1000) };
+            }
         }
     }
 }
@@ -116,14 +118,3 @@ macro_rules! build_dll_export_by_name_junk_machine_code {
 }
 
 include!(concat!(env!("OUT_DIR"), "/custom_exports.rs"));
-
-#[unsafe(no_mangle)]
-#[allow(non_snake_case)]
-unsafe extern "system" fn DllMain(_hmod_instance: HINSTANCE, dw_reason: u32, _: usize) -> i32 {
-    match dw_reason {
-        DLL_PROCESS_ATTACH => internal_dll_start(StartType::DllMain),
-        _ => (),
-    }
-
-    1
-}

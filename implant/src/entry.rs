@@ -1,6 +1,7 @@
 //! Entry module for kicking off the implant, whether from a DLL or an exe.
 
 use core::{sync::atomic::AtomicBool, time::Duration};
+use std::sync::atomic::Ordering;
 
 #[cfg(debug_assertions)]
 use shared::pretty_print::print_failed;
@@ -18,11 +19,12 @@ use crate::{
 /// Determines whether the agent is built as a service, or not
 pub static IS_IMPLANT_SVC: AtomicBool = AtomicBool::new(false);
 /// Is the application currently running - this will be set to false when the exit command is given.
-pub static APPLICATION_RUNNING: AtomicBool = AtomicBool::new(true);
+pub static APPLICATION_RUNNING: AtomicBool = AtomicBool::new(false);
 
 /// Literally just the entry function into the payload allowing flexibility to call from either
 /// an exe, or dll
 pub fn start_wyrm() {
+    APPLICATION_RUNNING.store(true, Ordering::SeqCst);
     init_agent_console();
 
     #[cfg(debug_assertions)]
