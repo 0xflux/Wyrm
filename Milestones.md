@@ -33,8 +33,6 @@ developed as a premium or otherwise private feature. These will be few and far b
 9)  [x] Update docs both in client and on docs site for new pull
 10) [x] Same as above for whoami
 11) [x] The proxy stuff might want to happen per connection not init once (just in case of different sites going to different proxies?)
-12) [ ] Diagram
-13) [ ] Docs
  
 ### v1.0 - Whelpfire
 
@@ -42,7 +40,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 2) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 3) [ ] `ps` needs testing in an AD lab; as well as anything else which may rely on kerb / AD config (e.g. the hostname/domain or smth?)
 4) [ ] Max upload size set on C2 from profile
-5) [ ] Logrotate setup
+5) [ ] Logrotate setup &/ cargo clean?
 6) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
 7) [ ] Separate URIs for POST and GET
 8) [ ] Multiple URLs / IPs for C2
@@ -55,6 +53,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 14) [ ] Staging the encrypted payload as opposed to a stageless only build
 15) [ ] `kill_thread` command (useful for sideloaded DLLs)
 16) [ ] The loader should inherit option for ETW bypass
+17) [ ] When sideloaded no console output coming through
 
 ### v1.1
 
