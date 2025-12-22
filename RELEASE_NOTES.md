@@ -8,7 +8,9 @@ pulling updates.
 
 ## v0.7
 
-- Wyrm now builds as a reflective DLL, supplying you with a loader DLL, exe and svc in place of the previous raw binary.
+- Wyrm now builds as a reflective DLL, supplying you with a loader DLL, exe and svc in place of the previous raw binary. Meaning in your build, for each profile you now get:
+  - Raw binaries for when you wish to use them with your own loaders / toolsets (exe, svc and dll) where the DLL is set up for reflective loading via the `Load` export
+  - A loader using the reflective injector of the DLL, giving you an exe, svc and dll - all which load the rDLL into the **current** process. Support for process injection coming later.
 - `pull` command now does so buffered in memory, preventing resource exhaustion from the implant.
 - Native support for running `whoami` without needing to touch powershell. Run `whoami` to get info on the domain, user, SID and what privileges are assigned.
 - Implant is now **proxy aware**! This means it will attempt to use a corporate proxy if set up for making connections. If none exists, then none will be used! This is done per request to ensure the correct proxy settings are applied to the correct C2 address if using multiple.
@@ -18,6 +20,7 @@ pulling updates.
 - Fix bug where implant tried to register a mutex when not specified.
 - Fix bug in file upload via GUI to the C2 in that it happens much faster.
 - Improve how the C2 handles panics and unwraps using `catch_panic`, the  C2 should no longer become unresponsive during panics. Using panics and unwraps was by design, so this should add stability.
+- Improved stability with the automatic DLL proxying for search order hijacking.
 
 ## v0.6
 

@@ -17,6 +17,7 @@ use windows_sys::{
 };
 
 mod injector;
+mod utils;
 
 #[cfg_attr(not(test), panic_handler)]
 #[allow(unused)]

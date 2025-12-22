@@ -1,22 +1,11 @@
-use std::slice::from_raw_parts;
-
 use windows_sys::Win32::Foundation::MAX_PATH;
-
-/// Converts a WSTR to a String by the **number of chars** NOT the length in bytes.
-///
-/// # Safety
-/// Pointers should be validated before passing into the function
-pub unsafe fn utf_16_to_string_lossy(p_w_str: *const u16, num_chars: usize) -> String {
-    let parts = unsafe { from_raw_parts(p_w_str, num_chars) };
-
-    String::from_utf16_lossy(&parts)
-}
 
 /// Generates a safe system `Global` mutex name given an input string.
 ///
 /// **IMPORTANT NOTE**: This function is copied (for convenience) between loader and implant for generating a matching
 /// mutex name (because of nostd and shared library limits [im being lazy]). **THEREFORE** if there is a change to the
 /// logic in this function it **MUST** !!!!!!!!!!!! be reflected in both crates.
+#[allow(unused)]
 pub fn generate_mutex_name(mutex: &str) -> [u8; MAX_PATH as usize] {
     let mut mtx_name = [0u8; MAX_PATH as usize];
     let mut cursor: usize = 0;

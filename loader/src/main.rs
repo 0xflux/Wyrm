@@ -4,6 +4,7 @@
 use crate::injector::inject_current_process;
 
 mod injector;
+mod utils;
 
 #[cfg_attr(not(test), panic_handler)]
 #[allow(unused)]

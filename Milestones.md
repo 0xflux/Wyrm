@@ -27,6 +27,8 @@ developed as a premium or otherwise private feature. These will be few and far b
       2) [x] Svc
       3) [x] Exe
    5) [ ] The loader should inherit option for ETW bypass
+   6) [ ] Dont call ToWyrmOnly in the rdll.. needs to be an actual fn internally
+   7) [ ] Support new mutex name creation in Wyrm via a shared lib
 5) [x] Internal proxy resolution for HTTP requests
 6) [x] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM) (implemented in `pull`)
 7)  [x] Native `whoami` command should output more than just the username, should include SID and privs natively.
@@ -52,6 +54,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 12) [ ] Loaders should stomp the MZ and "this program.."
 13) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
 14) [ ] Staging the encrypted payload as opposed to a stageless only build
+15) [ ] `kill_thread` command (useful for sideloaded DLLs)
 
 ### v1.1
 
