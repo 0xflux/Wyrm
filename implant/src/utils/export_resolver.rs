@@ -2,17 +2,10 @@
 //! Currently the module cannot depend on certain windows crate, so some FFI may have to be
 //! adjusted by hand in this module. Doing so should also reduce the overall binary size.
 
-use std::{
-    arch::asm,
-    ffi::{OsString, c_void},
-    ops::Add,
-    os::windows::ffi::OsStringExt,
-    ptr::read,
-    slice::from_raw_parts,
-};
+use core::{arch::asm, ffi::c_void, ops::Add, ptr::read_unaligned, slice::from_raw_parts};
 
 use windows_sys::Win32::System::{
-    SystemInformation::IMAGE_FILE_MACHINE,
+    Diagnostics::Debug::IMAGE_NT_HEADERS64,
     SystemServices::{
         IMAGE_DOS_HEADER, IMAGE_DOS_SIGNATURE, IMAGE_EXPORT_DIRECTORY, IMAGE_NT_SIGNATURE,
     },
@@ -31,6 +24,7 @@ pub enum ExportResolveError {
 /// Returns the DLL base address as a Option<usize>
 #[allow(unused_variables)]
 #[allow(unused_assignments)]
+#[inline(always)]
 fn get_module_base(module_name: &str) -> Option<usize> {
     let mut peb: usize;
     let mut ldr: usize;
@@ -54,9 +48,9 @@ fn get_module_base(module_name: &str) -> Option<usize> {
         // iterate the modules searching for
         loop {
             // get the attributes we are after of the current entry
-            let dll_base = *(current_entry.add(0x30) as *const usize);
-            let module_name_address = *(current_entry.add(0x60) as *const usize);
-            let module_length = *(current_entry.add(0x58) as *const u16);
+            let dll_base = read_unaligned(current_entry.add(0x30) as *const usize);
+            let module_name_address = read_unaligned(current_entry.add(0x60) as *const usize);
+            let module_length = read_unaligned(current_entry.add(0x58) as *const u16);
 
             // check if the module name address is valid and not zero
             if module_name_address != 0 && module_length > 0 {
@@ -65,10 +59,26 @@ fn get_module_base(module_name: &str) -> Option<usize> {
                     module_name_address as *const u16,
                     (module_length / 2) as usize,
                 );
-                let dll_name = OsString::from_wide(dll_name_slice);
+
+                let mut buf = [0u8; 256];
+                let mut buf_len = 0;
 
                 // do we have a match on the module name?
-                if dll_name.to_string_lossy().eq_ignore_ascii_case(module_name) {
+                for i in 0..(module_length / 2) as usize {
+                    if i >= 256 {
+                        break;
+                    }
+
+                    let wide_char = dll_name_slice[i];
+                    buf[i] = (wide_char & 0xFF) as u8;
+                    buf_len = i + 1;
+
+                    if wide_char == 0 {
+                        break;
+                    }
+                }
+
+                if strings_equal_ignore_case(&buf[..buf_len], module_name.as_bytes()) {
                     return Some(dll_base);
                 }
             } else {
@@ -87,6 +97,29 @@ fn get_module_base(module_name: &str) -> Option<usize> {
     }
 }
 
+#[inline(always)]
+fn to_lowercase_ascii(c: u8) -> u8 {
+    if c >= b'A' && c <= b'Z' { c + 32 } else { c }
+}
+
+#[inline(always)]
+fn strings_equal_ignore_case(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+
+    for i in 0..a.len() {
+        let char_a = to_lowercase_ascii(a[i]);
+        let char_b = to_lowercase_ascii(b[i]);
+
+        if char_a != char_b {
+            return false;
+        }
+    }
+
+    true
+}
+
 /// Get the function address of a function in a specified DLL from the DLL Base.
 ///
 /// # Parameters
@@ -95,6 +128,7 @@ fn get_module_base(module_name: &str) -> Option<usize> {
 ///
 /// # Returns
 /// Option<*const c_void> -> the function address as a pointer
+#[inline(always)]
 pub fn resolve_address(
     dll_name: &str,
     needle: &str,
@@ -114,14 +148,16 @@ pub fn resolve_address(
 
     // check we match the DOS header, cast as pointer to tell the compiler to treat the memory
     // address as if it were a IMAGE_DOS_HEADER structure
-    let dos_header: IMAGE_DOS_HEADER = unsafe { read(dll_base as *const IMAGE_DOS_HEADER) };
+    let dos_header: IMAGE_DOS_HEADER =
+        unsafe { read_unaligned(dll_base as *const IMAGE_DOS_HEADER) };
     if dos_header.e_magic != IMAGE_DOS_SIGNATURE {
         return Err(ExportResolveError::MagicByteMismatch);
     }
 
     // check the NT headers
-    let nt_headers =
-        unsafe { read(dll_base.offset(dos_header.e_lfanew as isize) as *const IMAGE_NT_HEADERS64) };
+    let nt_headers = unsafe {
+        read_unaligned(dll_base.offset(dos_header.e_lfanew as isize) as *const IMAGE_NT_HEADERS64)
+    };
     if nt_headers.Signature != IMAGE_NT_SIGNATURE {
         return Err(ExportResolveError::MagicByteMismatch);
     }
@@ -132,7 +168,7 @@ pub fn resolve_address(
     let export_dir_rva = nt_headers.OptionalHeader.DataDirectory[0].VirtualAddress;
     let export_offset = unsafe { dll_base.add(export_dir_rva as usize) };
     let export_dir: IMAGE_EXPORT_DIRECTORY =
-        unsafe { read(export_offset as *const IMAGE_EXPORT_DIRECTORY) };
+        unsafe { read_unaligned(export_offset as *const IMAGE_EXPORT_DIRECTORY) };
 
     // get the addresses we need
     let address_of_functions_rva = export_dir.AddressOfFunctions as usize;
@@ -161,10 +197,10 @@ pub fn resolve_address(
                 len += 1;
             }
 
-            std::slice::from_raw_parts(char, len)
+            core::slice::from_raw_parts(char, len)
         };
 
-        let function_name = std::str::from_utf8(function_name).unwrap_or_default();
+        let function_name = core::str::from_utf8(function_name).unwrap_or_default();
         if function_name.is_empty() {
             return Err(ExportResolveError::FnNameNotUtf8);
         }
@@ -183,81 +219,3 @@ pub fn resolve_address(
 
     Err(ExportResolveError::TargetFunctionNotFound)
 }
-
-#[repr(C)]
-#[allow(non_snake_case)]
-pub struct IMAGE_NT_HEADERS64 {
-    pub Signature: u32,
-    pub FileHeader: IMAGE_FILE_HEADER,
-    pub OptionalHeader: IMAGE_OPTIONAL_HEADER64,
-}
-
-#[repr(C)]
-#[allow(non_snake_case)]
-pub struct IMAGE_FILE_HEADER {
-    pub Machine: IMAGE_FILE_MACHINE,
-    pub NumberOfSections: u16,
-    pub TimeDateStamp: u32,
-    pub PointerToSymbolTable: u32,
-    pub NumberOfSymbols: u32,
-    pub SizeOfOptionalHeader: u16,
-    pub Characteristics: IMAGE_FILE_CHARACTERISTICS,
-}
-
-#[repr(C, packed(4))]
-#[allow(non_snake_case)]
-pub struct IMAGE_OPTIONAL_HEADER64 {
-    pub Magic: IMAGE_OPTIONAL_HEADER_MAGIC,
-    pub MajorLinkerVersion: u8,
-    pub MinorLinkerVersion: u8,
-    pub SizeOfCode: u32,
-    pub SizeOfInitializedData: u32,
-    pub SizeOfUninitializedData: u32,
-    pub AddressOfEntryPoint: u32,
-    pub BaseOfCode: u32,
-    pub ImageBase: u64,
-    pub SectionAlignment: u32,
-    pub FileAlignment: u32,
-    pub MajorOperatingSystemVersion: u16,
-    pub MinorOperatingSystemVersion: u16,
-    pub MajorImageVersion: u16,
-    pub MinorImageVersion: u16,
-    pub MajorSubsystemVersion: u16,
-    pub MinorSubsystemVersion: u16,
-    pub Win32VersionValue: u32,
-    pub SizeOfImage: u32,
-    pub SizeOfHeaders: u32,
-    pub CheckSum: u32,
-    pub Subsystem: IMAGE_SUBSYSTEM,
-    pub DllCharacteristics: IMAGE_DLL_CHARACTERISTICS,
-    pub SizeOfStackReserve: u64,
-    pub SizeOfStackCommit: u64,
-    pub SizeOfHeapReserve: u64,
-    pub SizeOfHeapCommit: u64,
-    pub LoaderFlags: u32,
-    pub NumberOfRvaAndSizes: u32,
-    pub DataDirectory: [IMAGE_DATA_DIRECTORY; 16],
-}
-
-#[repr(C)]
-#[allow(non_snake_case)]
-pub struct IMAGE_DATA_DIRECTORY {
-    pub VirtualAddress: u32,
-    pub Size: u32,
-}
-
-#[repr(transparent)]
-#[allow(non_camel_case_types)]
-pub struct IMAGE_DLL_CHARACTERISTICS(pub u16);
-
-#[repr(transparent)]
-#[allow(non_camel_case_types)]
-pub struct IMAGE_SUBSYSTEM(pub u16);
-
-#[repr(transparent)]
-#[allow(non_camel_case_types)]
-pub struct IMAGE_OPTIONAL_HEADER_MAGIC(pub u16);
-
-#[repr(transparent)]
-#[allow(non_camel_case_types)]
-pub struct IMAGE_FILE_CHARACTERISTICS(pub u16);

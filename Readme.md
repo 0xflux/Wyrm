@@ -1,4 +1,4 @@
-# Wyrm - v0.6 Hatchling
+# Wyrm - v0.7 Hatchling
 
 Wyrm (pronounced 'worm', an old English word for 'serpent' or 'dragon') is a post exploitation, open source, Red Team security testing framework framework, written in Rust designed to be used by Red Teams, Purple Teams, 
 Penetration Testers, and general infosec hobbyists. This project is fully built in Rust, with extra effort going into obfuscating artifacts which
@@ -12,10 +12,6 @@ will be updated as the project grows and gains more capabilities.
 
 Pre-release version. If you want to support this project, please give it a star! I will be releasing updates and
 devlogs on my [blog](https://fluxsec.red/) and [YouTube](https://www.youtube.com/@FluxSec) to document progress, so please give me a follow there.
-
-**It is not recommended you use this for production Red Team tests against clients until v1.0 is released. Highly subject to architecture change between now and then.** That said,
-please feel free to test this, this is my most active project and I am working towards the milestones found in the project - there is no doubt in my mind this will be a fully
-capable framework in time. Your input is highly sought, as to usability, bugs, feature requests, etc.
 
 **IMPORTANT**: Before pulling updates, check the [Release Notes](https://github.com/0xflux/Wyrm/blob/master/RELEASE_NOTES.md) for any 
 breaking changes to profiles / configs which you may need to manually adjust or migrate. This is done especially so that updates do not
@@ -35,6 +31,9 @@ so I will be attentive to anything raised.
 ### Features
 
 - Implant uses a configurable profile to customise features and configurations
+- Fully reflective DLL model + a basic loader provided
+- Access to raw binaries as well as ones prepared with a loader if you wish to use your own tooling with Wyrm
+- Intuitive auto-DLL search order hijacking & sideloading features via profiles
 - IOCs encrypted in the payload to assist in anti-analysis and anti-yara hardening
 - Implant transmits data encrypted below TLS, defeating perimeter inspection security tools out the box
 - Dynamic payload generation
@@ -46,9 +45,17 @@ so I will be attentive to anything raised.
 - Execute dotnet binaries in memory
 - Anti-sandbox techniques which are highly configurable by the operator through profiles
 - Backed by a database, fully timestamped to make reporting easier
+- Proxy awareness (usable against clients who use proxies)
 
 This project is not currently accepting contributions, please **raise issues** or use **GitHub Discussions** and I will look into them, and help
 answer any questions.
+
+### Loader
+
+The Wyrm C2 comes with a loader for the reflective DLL component of the toolkit. The loader has the Wyrm postex payload encrypted in its 
+.text section; for more information please see the [docs](https://docs.wyrm-c2.com/implant/rdll.html). Visually the loader runs as follows:
+
+![Wyrm reflective DLL loader](resources/inj.svg)
 
 ### Updates
 

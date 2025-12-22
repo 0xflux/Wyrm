@@ -12,7 +12,7 @@ use crate::{
         clear_terminal, copy_file, dir_listing, dotex, export_db, file_dropper, kill_agent,
         kill_process, list_processes, move_file, pillage, pull_file, pwd, reg_add, reg_query_del,
         remove_agent, remove_file, run_powershell_command, set_sleep, show_help,
-        show_help_for_command, show_server_time, unknown_command,
+        show_help_for_command, show_server_time, unknown_command, whoami,
     },
 };
 
@@ -112,6 +112,7 @@ async fn dispatcher(tokens: Vec<&str>, raw_input: String, agent: IsTaskingAgent)
             reg_query_del(raw_input, &agent, RegOperationDelQuery::Delete).await
         }
         ["dotex", _p @ ..] => dotex(raw_input, &agent).await,
+        ["whoami"] => whoami(&agent).await,
         _ => unknown_command(),
     }
 }

@@ -6,9 +6,12 @@ use std::{
 
 use windows_sys::Win32::{
     Foundation::ERROR_SUCCESS,
-    System::Services::{
-        SERVICE_RUNNING, SERVICE_STATUS, SERVICE_STATUS_CURRENT_STATE, SERVICE_STATUS_HANDLE,
-        SERVICE_STOPPED, SERVICE_WIN32_OWN_PROCESS, SetServiceStatus,
+    System::{
+        Services::{
+            SERVICE_RUNNING, SERVICE_STATUS, SERVICE_STATUS_CURRENT_STATE, SERVICE_STATUS_HANDLE,
+            SERVICE_STOPPED, SERVICE_WIN32_OWN_PROCESS, SetServiceStatus,
+        },
+        Threading::ExitProcess,
     },
 };
 
@@ -41,11 +44,11 @@ pub fn stop_svc_and_exit() -> ! {
 
     unsafe {
         if !IS_IMPLANT_SVC.load(Ordering::SeqCst) || h_svc.is_null() {
-            std::process::exit(-2);
+            ExitProcess(0);
         }
 
         update_service_status(h_svc, SERVICE_STOPPED);
     }
 
-    std::process::exit(0);
+    unsafe { ExitProcess(0) };
 }

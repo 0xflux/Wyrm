@@ -1,70 +1,20 @@
-use js_sys::Uint8Array;
+use gloo_net::http::Request;
+use leptos::task::spawn_local;
 use leptos::wasm_bindgen::JsCast;
 use leptos::{IntoView, component, prelude::*, view};
 use leptos_router::hooks::use_navigate;
-use shared::tasks::{AdminCommand, FileUploadStagingFromClient, WyrmResult};
-use web_sys::{FileReader, HtmlFormElement, HtmlInputElement, js_sys, wasm_bindgen};
-
-use crate::{
-    net::{C2Url, IsTaskingAgent, api_request},
-    pages::logged_in_headers::LoggedInHeaders,
+use web_sys::{
+    FileReader, FormData, HtmlFormElement, HtmlInputElement, RequestCredentials, js_sys,
+    wasm_bindgen,
 };
+
+use crate::controller::get_item_from_browser_store;
+use crate::models::C2_STORAGE_KEY;
+use crate::pages::logged_in_headers::LoggedInHeaders;
 
 #[component]
 pub fn FileUploadPage() -> impl IntoView {
     let submitting = RwSignal::new(false);
-
-    let submit_page = Action::new_local(|data: &FileUploadStagingFromClient| {
-        let data = data.clone();
-        async move {
-            api_request(
-                AdminCommand::StageFileOnC2(data),
-                &IsTaskingAgent::No,
-                None,
-                C2Url::Standard,
-                None,
-            )
-            .await
-        }
-    });
-    let page_response = submit_page.value();
-
-    Effect::new(move |_| {
-        page_response.with(|inner| {
-            if let Some(res) = inner {
-                match res {
-                    Ok(r) => {
-                        let deser: WyrmResult<String> = serde_json::from_slice(r)
-                            .expect("could not get WyrmResult from HTTP response");
-
-                        match deser {
-                            WyrmResult::Ok(_) => {
-                                let navigate = use_navigate();
-                                navigate("/dashboard", Default::default());
-                            }
-                            WyrmResult::Err(e) => {
-                                let _ = web_sys::window()
-                                    .and_then(|w| w.document())
-                                    .and_then(|d| d.get_element_by_id("upload-status"))
-                                    .map(|el| {
-                                        el.set_inner_html(&format!(
-                                            "Failed to upload file, WyrmError: {}",
-                                            e
-                                        ))
-                                    });
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        let _ = web_sys::window()
-                            .and_then(|w| w.document())
-                            .and_then(|d| d.get_element_by_id("upload-status"))
-                            .map(|el| el.set_inner_html(&format!("Failed to upload file. {}", e)));
-                    }
-                }
-            }
-        })
-    });
 
     view! {
         <LoggedInHeaders />
@@ -121,26 +71,75 @@ pub fn FileUploadPage() -> impl IntoView {
                                 let fr_c = file_reader.clone();
                                 let download_name = download_name.clone();
                                 let download_api = download_api.clone();
+
+                                let navigate = use_navigate();
+                                let status_el = web_sys::window()
+                                    .and_then(|w| w.document())
+                                    .and_then(|d| d.get_element_by_id("upload-status"));
+
+                                let c2_addr = get_item_from_browser_store::<String>(C2_STORAGE_KEY)
+                                    .unwrap_or_default()
+                                    .replace("\"", "");
+                                let c2_addr = c2_addr.trim_end_matches('/').to_string();
+
+                                let value = file.clone();
                                 let onload = Closure::wrap(Box::new(move |_e: web_sys::Event| {
                                     let result = fr_c.result().unwrap();
-                                    let array = Uint8Array::new(&result);
-                                    let mut file_data = vec![0u8; array.length() as usize];
-                                    array.copy_to(&mut file_data[..]);
+                                    let _array = js_sys::Uint8Array::new(&result);
 
-                                    let staging_info = FileUploadStagingFromClient {
-                                        download_name: download_name.clone(),
-                                        api_endpoint: download_api.clone(),
-                                        file_data,
-                                    };
-                                    submit_page.dispatch(staging_info);
-                                    submitting.set(false);
+                                    let form = FormData::new().unwrap();
+                                    form.append_with_str("download_name", &download_name).unwrap();
+                                    form.append_with_str("api_endpoint", &download_api).unwrap();
+                                    form.append_with_blob("file", &value).unwrap();
+
+                                    let url = format!("{}/admin_upload", c2_addr);
+
+                                    let status_el = status_el.clone();
+                                    let navigate = navigate.clone();
+
+                                    spawn_local(async move {
+                                        let resp = Request::post(&url)
+                                            .credentials(RequestCredentials::Include)
+                                            .body(form)
+                                            .unwrap()
+                                            .send()
+                                            .await;
+
+                                        match resp {
+                                            Ok(r) if r.status() == 202 => {
+                                                if let Some(el) = status_el.as_ref() {
+                                                    el.set_inner_html("Upload complete.");
+                                                }
+                                                navigate("/dashboard", Default::default());
+                                            }
+                                            Ok(r) => {
+                                                if let Some(el) = status_el.as_ref() {
+                                                    el.set_inner_html(&format!(
+                                                        "Upload failed. Status {}",
+                                                        r.status()
+                                                    ));
+                                                }
+                                            }
+                                            Err(e) => {
+                                                if let Some(el) = status_el.as_ref() {
+                                                    el.set_inner_html(&format!(
+                                                        "Upload failed. {}",
+                                                        e
+                                                    ));
+                                                }
+                                            }
+                                        }
+                                        submitting.set(false);
+                                    });
                                 }) as Box<dyn FnMut(_)>);
+
                                 file_reader.set_onload(onload.as_ref().dyn_ref());
                                 file_reader.read_as_array_buffer(&file).unwrap();
                                 onload.forget();
                             } else {
                                 submitting.set(false);
                             }
+
                         }
                         class="border rounded-3 p-4 shadow-sm"
                         >

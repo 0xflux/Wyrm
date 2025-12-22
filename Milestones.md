@@ -8,41 +8,31 @@ developed as a premium or otherwise private feature. These will be few and far b
 1) [ ] NG Proxy Bypass (NGPB).
 2) [ ] Additional loaders / start from RDLL - configurable, maybe things like early bird, syscalls, etc.
 3) [ ] Image hashes in autoloot.
-4) [ ] Runtime obfuscation, sleep masking.
+4) [ ] Runtime obfuscation, sleep masking - should spawn from the RDI bootstrap? Shellcode? Where and how? The RDI alloc for the actual DLL can just be encrypted?
 5) [ ] **Entire** website clone, and serve download from named page.
 6) [ ] Ransomware **SIMULATION** for Business
 7) [ ] Execute dotnet in sacrificial process
 
-### 0.6.0.1
+### 0.7
 
-1) [ ] Investigate upload slowness from client UI to C2, shouldn't be so horrible
-2) [ ] Investigate strange bug with DLL proxying with strange char that appears in position [0]
-
-### 0.6.1
-
-1) [ ] IPs are wrong in the logs, needs NGINX proxy stuff
-2) [ ] Investigate wtf is going on with the file upload... it works but why is it so slow??
-3) [ ] Implant able to push messages to operator (not sure how to best do this with the current task pushing architecture...);
-   1) [ ] Maybe some kind of msg packet that is a str that we can push to completed tasks, but then it wont be linear potentially hmm
-   2) [ ] Hide console beginning of process, print ln, have a loop that reads from this in a thread, and pass it into dotnet
-4) [ ] Move to new basic model with stagers, the exports, etc can also apply to those, but we would produce:
-   1) [ ] DLL, Exe, Svc of the 'virgin' payload
-   2) [ ] NoStd loader (stageless) - encrypted 2nd stage shipped in binary
-   3) [ ] NoStd loader (staged) - encrypted 2nd stage
-   4) [ ] The NoStds should produce:
-      1) [ ] DLL
-      2) [ ] Exe
-      3) [ ] Svc
-   5) [ ] No fancy techniques under the hood, that will come with a (L) version
-   6) [ ] Malleable encryption byte in profile
-5) [ ] Internal proxy resolution for HTTP requests
-   1) [ ] Consider going native for HTTP anyway and move away from minreq.. maybe
-6) [ ] `execute-bin` (non-dotnet)
-   1) [ ] Needs long running polling & keep alive (handle to sacrificial if a sacra is used?)
-7) [ ] For dotex, Option to pack some machine code in the binary (note tho this will make it bigger ofc - store encrypted)
-8) [ ] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM)
-9)  [ ] Native `whoami` command should output more than just the username, should include GUID and privs natively.
-10) [ ] Bug with Mutex when not turned on: "Failed to generate mutex with CreateMutexA. Last error: 0x7B"
+1) [x] Use catch_panic on C2 instead of current handler
+2) [x] Investigate upload slowness from client UI to C2, shouldn't be so horrible
+3) [x] IPs are wrong in the logs, needs NGINX proxy stuff
+4) [x] Move to new basic model with stagers, the exports, etc can also apply to those, but we would produce:
+   1) [x] Wyrm as RDLL
+   2) [x] Also serve the unstaged payloads if ppl want to write their own loaders.
+   3) [x] After building Wyrm it needs to build the actual deliverables:
+      1) [x] DLL
+      2) [x] Svc
+      3) [x] Exe
+   4) [x] Dont call ToWyrmOnly in the rdll.. needs to be an actual fn internally
+5) [x] Internal proxy resolution for HTTP requests
+6) [x] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM) (implemented in `pull`)
+7)  [x] Native `whoami` command should output more than just the username, should include SID and privs natively.
+8)  [x] Bug with Mutex when not turned on: "Failed to generate mutex with CreateMutexA. Last error: 0x7B"
+9)  [x] Update docs both in client and on docs site for new pull
+10) [x] Same as above for whoami
+11) [x] The proxy stuff might want to happen per connection not init once (just in case of different sites going to different proxies?)
  
 ### v1.0 - Whelpfire
 
@@ -50,13 +40,20 @@ developed as a premium or otherwise private feature. These will be few and far b
 2) [ ] Final OPSEC review on binary indicators to make sure nothing is introduced in this version.
 3) [ ] `ps` needs testing in an AD lab; as well as anything else which may rely on kerb / AD config (e.g. the hostname/domain or smth?)
 4) [ ] Max upload size set on C2 from profile
-5) [ ] Logrotate setup
+5) [ ] Logrotate setup &/ cargo clean?
 6) [ ] Link additional modules at comptime into the C2 or agent (via profiles), e.g. to enable NGPB or other custom toolkits.
-7) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
-8) [ ] Separate URIs for POST and GET
-9) [ ] Multiple URLs / IPs for C2
-10) [ ] Round robin and different styles for URI & URL rotation
-11) [ ] Can I tidy wyrm.rs, maybe dynamic dispatch and traits for main dispatch fn?
+7) [ ] Separate URIs for POST and GET
+8) [ ] Multiple URLs / IPs for C2
+9) [ ] Round robin and different styles for URI & URL rotation
+10) [ ] Can I tidy wyrm.rs, maybe dynamic dispatch and traits for main dispatch fn?
+11) [ ] Position independent shellcode stub for the DLL which allows it to be injected into a foreign process
+    1)  [ ] This can be a 4th 'deliverable' maybe called (profile)_shellcode.bin which the user uploads
+12) [ ] Loaders should stomp the MZ and "this program.."
+13) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
+14) [ ] Staging the encrypted payload as opposed to a stageless only build
+15) [ ] `kill_thread` command (useful for sideloaded DLLs)
+16) [ ] The loader should inherit option for ETW bypass
+17) [ ] When sideloaded no console output coming through
 
 ### v1.1
 
@@ -64,7 +61,7 @@ These are to be split out further as required for more manageable releases.
 
 1) [ ] Long running tasks which have a specified integrity level, so any task set under this scheme can execute at a given integrity level for that machine
 2) [ ] `spawn` + malleable options
-3) [ ] `inject` + malleable options
+3) [ ] `inject` + malleable options (malleable options for it to inject on spawn from the default loader)
 4) [ ] Killing the agent should support from thread as well as from process (in the case of an injected process).
 5) [ ] Agent & C2 supports multiple endpoints (selectable in build process from cli) / c2 profiles
    1) This needs to be implemented in the wizard also

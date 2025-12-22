@@ -2,7 +2,7 @@ use std::{net::SocketAddr, sync::Arc};
 
 use axum::{
     extract::{ConnectInfo, Request, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     middleware::Next,
     response::IntoResponse,
 };
@@ -14,7 +14,7 @@ use rand::{RngCore, rng};
 use crate::{
     AUTH_COOKIE_NAME,
     app_state::AppState,
-    logging::{log_download_accessed, log_page_accessed_auth, log_page_accessed_no_auth},
+    logging::{log_download_accessed, log_page_accessed_no_auth},
 };
 
 const BCRYPT_HASH_BYTES: usize = 24;
@@ -122,10 +122,11 @@ pub async fn create_new_operator(username: &str, password: &str, state: Arc<AppS
 pub async fn authenticate_agent_by_header_token(
     State(state): State<Arc<AppState>>,
     addr: ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     request: Request,
     next: Next,
 ) -> impl IntoResponse {
-    let ip = &addr.to_string();
+    let ip = headers.get("X-Forwarded-For").unwrap().to_str().unwrap();
 
     //
     // First, we need to check whether the request is going to a URI in which a download is staged
@@ -167,13 +168,13 @@ pub async fn authenticate_agent_by_header_token(
 
         if lock.contains(auth_header) {
             // The happy path, token present
-            log_page_accessed_auth(uri, ip).await;
+            // log_page_accessed_auth(uri, ip).await;
             return next.run(request).await.into_response();
         }
     }
 
     // The unhappy path
-    log_page_accessed_auth(uri, ip).await;
+    log_page_accessed_no_auth(uri, ip).await;
     StatusCode::BAD_GATEWAY.into_response()
 }
 

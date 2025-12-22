@@ -45,5 +45,6 @@ COPY --from=builder /app/target/release/c2 .
 COPY --from=builder /app/c2/profiles/ ./profiles
 COPY --from=builder /app/implant/ ./implant/
 COPY --from=builder /app/shared/ ./shared/
+COPY --from=builder /app/loader/ ./loader/
 
 ENTRYPOINT ["/app/c2"]

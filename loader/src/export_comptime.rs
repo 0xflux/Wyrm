@@ -13,22 +13,20 @@
 //
 
 use core::arch::naked_asm;
-use std::{ffi::c_void, mem::transmute, ptr::null_mut, sync::atomic::Ordering};
+use core::ffi::c_void;
+use core::sync::atomic::{AtomicBool, Ordering};
+use core::{mem::transmute, ptr::null_mut};
 
-use windows_sys::Win32::{
-    Foundation::{CloseHandle, FALSE, HINSTANCE},
-    Storage::FileSystem::SYNCHRONIZE,
-    System::{
-        SystemServices::DLL_PROCESS_ATTACH,
-        Threading::{CreateThread, LPTHREAD_START_ROUTINE, Sleep},
-        WindowsProgramming::OpenMutexA,
-    },
-};
+use windows_sys::Win32::Foundation::{CloseHandle, FALSE, HINSTANCE};
+use windows_sys::Win32::Storage::FileSystem::SYNCHRONIZE;
+use windows_sys::Win32::System::SystemServices::DLL_PROCESS_ATTACH;
+use windows_sys::Win32::System::Threading::{CreateThread, LPTHREAD_START_ROUTINE, Sleep};
+use windows_sys::Win32::System::WindowsProgramming::OpenMutexA;
 
-use crate::{
-    entry::{APPLICATION_RUNNING, start_wyrm},
-    utils::{allocate::ProcessHeapAlloc, strings::generate_mutex_name},
-};
+use crate::injector::inject_current_process;
+use crate::utils::generate_mutex_name;
+
+pub static APPLICATION_RUNNING: AtomicBool = AtomicBool::new(false);
 
 pub fn internal_dll_start(start_type: StartType) {
     match start_type {
@@ -56,12 +54,6 @@ fn start_in_os_thread_no_mutex_check() {
     }
 }
 
-unsafe extern "system" fn runpoline(_p1: *mut c_void) -> u32 {
-    start_wyrm();
-
-    0
-}
-
 fn start_in_os_thread_mutex_check() {
     // If the mutex already exists we dont want to continue setting up Wyrm so just return out the DllMain
     if check_mutex().is_some() {
@@ -69,6 +61,18 @@ fn start_in_os_thread_mutex_check() {
     }
 
     start_in_os_thread_no_mutex_check();
+}
+
+unsafe extern "system" fn runpoline(_p1: *mut c_void) -> u32 {
+    inject_current_process();
+
+    0
+}
+
+#[allow(dead_code)]
+pub enum StartType {
+    DllMain,
+    FromExport,
 }
 
 /// Returns `Some(())` if the mutex exists on the system
@@ -88,12 +92,6 @@ fn check_mutex() -> Option<()> {
     }
 
     None
-}
-
-#[allow(dead_code)]
-pub enum StartType {
-    DllMain,
-    FromExport,
 }
 
 macro_rules! build_dll_export_by_name_start_wyrm {

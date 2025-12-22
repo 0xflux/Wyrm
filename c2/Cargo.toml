@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 shared = { path = "../shared" }
-axum = { version = "0.8", features = ["macros"] }
+axum = { version = "0.8", features = ["macros", "multipart"] }
 serde = "1.0"
 tokio = { version = "1.43", features = ["full"] }
 serde_json = "1"
@@ -22,5 +22,5 @@ scc = { version = "2.3.4" }
 futures = "0.3"
 toml = "0.9.6"
 thiserror = "2.0"
-tower-http = { version = "0.6", features = ["cors"]}
+tower-http = { version = "0.6", features = ["cors", "catch-panic"]}
 axum-extra = { version = "0.12.0", features = ["cookie"] }
