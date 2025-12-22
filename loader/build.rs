@@ -6,6 +6,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
+const ENCRYPTION_KEY: u8 = 0x90;
+
 fn main() {
     let envs = &[
         "EXPORTS_JMP_WYRM",
@@ -46,6 +48,14 @@ fn prepare_wyrm_dll() {
         const RANGE_START: usize = 0x4E;
         const RANGE_END: usize = 0x73;
         buf[RANGE_START..RANGE_END].fill(0);
+
+        //
+        // Encrypt using a NOP opcode, given their frequency in a PE this feels like a good
+        // choice
+        //
+        for b in buf.iter_mut() {
+            *b ^= ENCRYPTION_KEY;
+        }
 
         buf
     } else {
