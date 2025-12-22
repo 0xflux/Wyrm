@@ -30,22 +30,19 @@ pub static APPLICATION_RUNNING: AtomicBool = AtomicBool::new(false);
 
 pub fn internal_dll_start(start_type: StartType) {
     match start_type {
-        StartType::DllMain => start_in_os_thread(),
+        StartType::DllMain => start_in_os_thread_mutex_check(),
         StartType::FromExport => {
             if !APPLICATION_RUNNING.load(Ordering::SeqCst) {
-                inject_current_process();
+                start_in_os_thread_no_mutex_check();
             }
+
+            loop {}
         }
     }
 }
 
-fn start_in_os_thread() {
+fn start_in_os_thread_no_mutex_check() {
     unsafe {
-        // If the mutex already exists we dont want to continue setting up Wyrm so just return out the DllMain
-        if check_mutex().is_some() {
-            return;
-        }
-
         let start = transmute::<LPTHREAD_START_ROUTINE, LPTHREAD_START_ROUTINE>(Some(runpoline));
         let handle = CreateThread(null_mut(), 0, start, null_mut(), 0, null_mut());
 
@@ -53,6 +50,15 @@ fn start_in_os_thread() {
             APPLICATION_RUNNING.store(true, Ordering::SeqCst);
         }
     }
+}
+
+fn start_in_os_thread_mutex_check() {
+    // If the mutex already exists we dont want to continue setting up Wyrm so just return out the DllMain
+    if check_mutex().is_some() {
+        return;
+    }
+
+    start_in_os_thread_no_mutex_check();
 }
 
 unsafe extern "system" fn runpoline(_p1: *mut c_void) -> u32 {
