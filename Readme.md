@@ -53,7 +53,7 @@ answer any questions.
 ### Loader
 
 The Wyrm C2 comes with a loader for the reflective DLL component of the toolkit. The loader has the Wyrm postex payload encrypted in its 
-.text section; for more information please see the docs. Visually the loader runs as follows:
+.text section; for more information please see the [docs](https://docs.wyrm-c2.com/implant/rdll.html). Visually the loader runs as follows:
 
 ![Wyrm reflective DLL loader](resources/inj.svg)
 
