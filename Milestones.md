@@ -33,8 +33,6 @@ developed as a premium or otherwise private feature. These will be few and far b
 9)  [x] Update docs both in client and on docs site for new pull
 10) [x] Same as above for whoami
 11) [x] The proxy stuff might want to happen per connection not init once (just in case of different sites going to different proxies?)
-12) [ ] Check its in .text
-13) [ ] maybe change wording to context independent 
  
 ### v1.0 - Whelpfire
 
