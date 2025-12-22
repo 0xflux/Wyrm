@@ -8,9 +8,9 @@ pulling updates.
 
 ## v0.7
 
-- Wyrm now builds as a reflective DLL, supplying you with a loader DLL, exe and svc in place of the previous raw binary. Meaning in your build, for each profile you now get:
-  - Raw binaries for when you wish to use them with your own loaders / toolsets (exe, svc and dll) where the DLL is set up for reflective loading via the `Load` export
-  - A loader using the reflective injector of the DLL, giving you an exe, svc and dll - all which load the rDLL into the **current** process. Support for process injection coming later.
+- Wyrm now builds as a reflective DLL, supplying you with a loader DLL, exe and svc in place of the previous raw binary. Meaning in your build, for each profile you now get
+  - Raw binaries for when you wish to use them with your own loaders / toolsets (exe, svc and dll) where the DLL version is set up for **reflective** loading via the `Load` export. See the [docs](https://docs.wyrm-c2.com/implant/rdll.html) for more info on how to use the reflective loader export.
+  - A loader using the reflective injector of the DLL, giving you an exe, svc and dll - all which load the rDLL into the **current** process. Support for process injection coming later. This is XOR 'encrypted' in the .text section of the loader.
 - `pull` command now does so buffered in memory, preventing resource exhaustion from the implant.
 - Native support for running `whoami` without needing to touch powershell. Run `whoami` to get info on the domain, user, SID and what privileges are assigned.
 - Implant is now **proxy aware**! This means it will attempt to use a corporate proxy if set up for making connections. If none exists, then none will be used! This is done per request to ensure the correct proxy settings are applied to the correct C2 address if using multiple.
