@@ -22,6 +22,10 @@ pulling updates.
 - Improve how the C2 handles panics and unwraps using `catch_panic`, the  C2 should no longer become unresponsive during panics. Using panics and unwraps was by design, so this should add stability.
 - Improved stability with the automatic DLL proxying for search order hijacking.
 
+### Known Issues
+
+- When the DLL is loaded via sideloading, no debug prints or console prints from dotnet tooling are captured.
+
 ## v0.6
 
 - AMSI patching available in the implant via the malleable profile (only runs in the agent when necessary).
