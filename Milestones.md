@@ -18,17 +18,14 @@ developed as a premium or otherwise private feature. These will be few and far b
 1) [x] Use catch_panic on C2 instead of current handler
 2) [x] Investigate upload slowness from client UI to C2, shouldn't be so horrible
 3) [x] IPs are wrong in the logs, needs NGINX proxy stuff
-4) [ ] Move to new basic model with stagers, the exports, etc can also apply to those, but we would produce:
+4) [x] Move to new basic model with stagers, the exports, etc can also apply to those, but we would produce:
    1) [x] Wyrm as RDLL
-   2) [ ] Wyrm needs the DLL exports, main and svc removing - these need to be applied to the 'deliverable'
-   3) [x] Also serve the unstaged payloads if ppl want to write their own loaders.
-   4) [x] After building Wyrm it needs to build the actual deliverables:
+   2) [x] Also serve the unstaged payloads if ppl want to write their own loaders.
+   3) [x] After building Wyrm it needs to build the actual deliverables:
       1) [x] DLL
       2) [x] Svc
       3) [x] Exe
-   5) [ ] The loader should inherit option for ETW bypass
-   6) [ ] Dont call ToWyrmOnly in the rdll.. needs to be an actual fn internally
-   7) [ ] Support new mutex name creation in Wyrm via a shared lib
+   4) [x] Dont call ToWyrmOnly in the rdll.. needs to be an actual fn internally
 5) [x] Internal proxy resolution for HTTP requests
 6) [x] `pull_stream` - Pulls a file as a stream (where the file to exfil is larger than the available RAM) (implemented in `pull`)
 7)  [x] Native `whoami` command should output more than just the username, should include SID and privs natively.
@@ -36,6 +33,8 @@ developed as a premium or otherwise private feature. These will be few and far b
 9)  [x] Update docs both in client and on docs site for new pull
 10) [x] Same as above for whoami
 11) [x] The proxy stuff might want to happen per connection not init once (just in case of different sites going to different proxies?)
+12) [ ] Diagram
+13) [ ] Docs
  
 ### v1.0 - Whelpfire
 
@@ -55,6 +54,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 13) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
 14) [ ] Staging the encrypted payload as opposed to a stageless only build
 15) [ ] `kill_thread` command (useful for sideloaded DLLs)
+16) [ ] The loader should inherit option for ETW bypass
 
 ### v1.1
 

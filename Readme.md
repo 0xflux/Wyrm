@@ -35,6 +35,9 @@ so I will be attentive to anything raised.
 ### Features
 
 - Implant uses a configurable profile to customise features and configurations
+- Fully reflective DLL model + a basic loader provided
+- Access to raw binaries as well as ones prepared with a loader if you wish to use your own tooling with Wyrm
+- Intuitive auto-DLL search order hijacking & sideloading features via profiles
 - IOCs encrypted in the payload to assist in anti-analysis and anti-yara hardening
 - Implant transmits data encrypted below TLS, defeating perimeter inspection security tools out the box
 - Dynamic payload generation
@@ -46,7 +49,7 @@ so I will be attentive to anything raised.
 - Execute dotnet binaries in memory
 - Anti-sandbox techniques which are highly configurable by the operator through profiles
 - Backed by a database, fully timestamped to make reporting easier
-- Proxy aware
+- Proxy awareness (usable against clients who use proxies)
 
 This project is not currently accepting contributions, please **raise issues** or use **GitHub Discussions** and I will look into them, and help
 answer any questions.
