@@ -105,3 +105,22 @@ unsafe extern "system" fn thread_loop(_: *mut c_void) -> u32 {
 
     1
 }
+
+#[macro_export]
+macro_rules! dbgprint {
+    ($($arg:tt)*) => {{
+        use std::ffi::CString;
+        use windows_sys::{
+            Win32::{
+                System::Diagnostics::Debug::{OutputDebugStringA},
+            },
+        };
+        let s = format!($($arg)*);
+
+        if let Ok(cstr) = CString::new(s) {
+            unsafe {
+                OutputDebugStringA(cstr.as_ptr() as _);
+            }
+        }
+    }};
+}

@@ -333,7 +333,7 @@ impl Wyrm {
                 }
                 Command::Spawn => {
                     let path = task.metadata.unwrap();
-                    Spawn::spawn_sibling(&path);
+                    Spawn::spawn_sibling(&path, &self.current_working_directory);
                 }
             }
         }

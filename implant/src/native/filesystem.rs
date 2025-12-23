@@ -357,7 +357,7 @@ pub enum PathParseType {
 
 /// Takes a path which is passed to the implant from the operator, and extracts it into a valid
 /// path which the implant can then use.
-fn parse_path(
+pub fn parse_path(
     new_path_str: &str,
     current_working_dir: &PathBuf,
     parse_type: PathParseType,
