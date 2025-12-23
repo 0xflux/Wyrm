@@ -138,6 +138,13 @@ pub async fn admin_dispatch(
         AdminCommand::WhoAmI => {
             task_agent::<String>(Command::WhoAmI, None, uid.unwrap(), state).await
         }
+        AdminCommand::Spawn(inner) => match serde_json::to_string(&inner) {
+            Ok(s) => task_agent(Command::Spawn, Some(s), uid.unwrap(), state).await,
+            Err(e) => {
+                log_error_async(&e.to_string()).await;
+                None
+            }
+        },
     };
 
     serde_json::to_vec(&result).unwrap()

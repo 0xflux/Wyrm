@@ -798,3 +798,26 @@ pub async fn whoami(agent: &IsTaskingAgent) -> DispatchResult {
         api_request(AdminCommand::WhoAmI, agent, None, C2Url::Standard, None).await?,
     ))
 }
+
+pub async fn spawn(raw_input: String, agent: &IsTaskingAgent) -> DispatchResult {
+    agent.has_agent_id()?;
+    let target_path = match split_string_slices_to_n(1, &raw_input, DiscardFirst::Chop) {
+        Some(mut inner) => take(&mut inner[0]),
+        None => {
+            return Err(TaskingError::TaskDispatchError(
+                TaskDispatchError::BadTokens("Could not get data from tokens in move_file.".into()),
+            ));
+        }
+    };
+
+    Ok(Some(
+        api_request(
+            AdminCommand::Spawn(target_path),
+            agent,
+            None,
+            C2Url::Standard,
+            None,
+        )
+        .await?,
+    ))
+}

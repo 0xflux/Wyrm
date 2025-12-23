@@ -18,6 +18,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 1) [ ] Spawn Wyrm as child process (could aid sideloading with console output?) 
    1) [ ] spawn_{} (-d "path" / -r "{name}")
    2) [ ] Early bird hollowing-ish & APC / cascade
+   3) [ ] Option for spawning as image from profile
 2) [ ] `can_hijack`
    1) [ ] Specify a path to the image, and Wyrm tells you if you can SOH - this would be great for process injection without risking process injection triggers that an EDR could pick up
 3) [ ] Separate profile section for loader specific configs?
@@ -27,6 +28,10 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] `kill_thread` command (useful for sideloaded DLLs)
 7) [ ] The loader should inherit option for ETW bypass
 8) [ ] Reflective injector should dispatch the ETW bypass too I think if set? Or separate profile option?
+9) [ ] Nostd crate:
+   1)  [ ] find_export_address
+   2)  [ ] etc..? reduce code duplication
+   3)  [ ] Change the Load function name to something more unique (update docs) and add as const to crate to prevent duplicates
  
 ### v1.0 - Whelpfire
 

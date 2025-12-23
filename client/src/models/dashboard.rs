@@ -175,6 +175,7 @@ fn command_to_string(cmd: &Command) -> String {
         Command::DotEx => "DotEx",
         Command::ConsoleMessages => "Agent console messages",
         Command::WhoAmI => "whoami",
+        Command::Spawn => "Spawn",
     };
 
     c.into()
@@ -503,6 +504,17 @@ impl FormatOutput for NotificationForAgent {
                 }
             }
             Command::WhoAmI => {
+                if let Some(msg) = &self.result {
+                    let s = serde_json::from_str::<WyrmResult<String>>(msg).unwrap();
+                    match s {
+                        WyrmResult::Ok(s) => return vec![s],
+                        WyrmResult::Err(e) => return vec![format!("Error: {e}")],
+                    }
+                } else {
+                    return vec!["An error occurred. See console output.".to_string()];
+                }
+            }
+            Command::Spawn => {
                 if let Some(msg) = &self.result {
                     let s = serde_json::from_str::<WyrmResult<String>>(msg).unwrap();
                     match s {
