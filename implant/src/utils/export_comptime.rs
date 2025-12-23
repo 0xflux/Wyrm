@@ -27,7 +27,7 @@ use windows_sys::Win32::{
 
 use crate::{
     entry::{APPLICATION_RUNNING, start_wyrm},
-    utils::{allocate::ProcessHeapAlloc, strings::generate_mutex_name},
+    utils::strings::generate_mutex_name,
 };
 
 pub fn internal_dll_start(start_type: StartType) {
