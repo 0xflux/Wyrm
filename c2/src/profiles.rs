@@ -7,6 +7,8 @@ use serde::Deserialize;
 use shared::tasks::{Exports, NewAgentStaging, StageType, StringStomp, WyrmResult};
 use tokio::io;
 
+use crate::logging::log_error;
+
 #[derive(Deserialize, Debug, Default, Clone)]
 pub struct Profile {
     pub server: Server,
@@ -302,6 +304,11 @@ pub fn parse_exports_to_string_for_env(exports: &Exports) -> ParsedExportStrings
     let mut builder_proxy = String::new();
 
     for e in exports {
+        if e.0 == "Start" {
+            log_error("You cannot define an export called Start, this is being skipped.");
+            continue;
+        }
+
         if let Some(machine_code) = &e.1.machine_code {
             // If we have machine code present
             builder_with_machine_code.push_str(format!("{}=", e.0).as_str());
