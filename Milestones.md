@@ -19,8 +19,10 @@ developed as a premium or otherwise private feature. These will be few and far b
    1) [ ] spawn_{} (-d "path" / -r "{name}")
    2) [ ] Early bird hollowing-ish & APC / cascade
    3) [ ] Option for spawning as image from profile
+   4) [ ] Documentation for this feature
 2) [ ] `can_hijack`
    1) [ ] Specify a path to the image, and Wyrm tells you if you can SOH - this would be great for process injection without risking process injection triggers that an EDR could pick up
+   2) [ ] Docs
 3) [ ] Separate profile section for loader specific configs?
 4) [ ] `ps` needs testing in an AD lab; as well as anything else which may rely on kerb / AD config (e.g. the hostname/domain or smth?)
 5) [ ] Position independent shellcode stub for the DLL which allows it to be injected into a foreign process
