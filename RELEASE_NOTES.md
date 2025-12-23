@@ -6,6 +6,11 @@ pulling updates.
 
 **IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
 
+## v0.7.1
+
+- Bug fix for the reflective DLL - it was not fully reflective in v0.7, I left some of the logic in the injector which has been migrated to the rDLL bootstrap mechanism. The rDLL should now be reflective from external tooling (so long as you start execution at the `Load` export).
+- Introduces an **early preview** of the `spawn` command - you can spawn a new Wyrm agent impersonating `svchost`. To use this you must have either the loader or the raw payload (DLL version) on disk (on the target) and you can run it via: `spawn "path/to/dll"`. Bundling this in as there was the above critical update to the rDLL. It is **NOT** recommended you use this as I am still building it, if you want to, feel free - but it may break or trigger AV right now.
+
 ## v0.7
 
 - Wyrm now builds as a reflective DLL, supplying you with a loader DLL, exe and svc in place of the previous raw binary. Meaning in your build, for each profile you now get

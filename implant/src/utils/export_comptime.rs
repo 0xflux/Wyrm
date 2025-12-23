@@ -27,13 +27,22 @@ use windows_sys::Win32::{
 
 use crate::{
     entry::{APPLICATION_RUNNING, start_wyrm},
-    utils::{allocate::ProcessHeapAlloc, strings::generate_mutex_name},
+    utils::strings::generate_mutex_name,
 };
 
 pub fn internal_dll_start(start_type: StartType) {
     match start_type {
         StartType::DllMain => start_in_os_thread_mutex_check(),
         StartType::FromExport => {
+            if !APPLICATION_RUNNING.load(Ordering::SeqCst) {
+                start_in_os_thread_no_mutex_check();
+            }
+
+            loop {
+                unsafe { Sleep(1000) };
+            }
+        }
+        StartType::Rdl => {
             if !APPLICATION_RUNNING.load(Ordering::SeqCst) {
                 start_in_os_thread_no_mutex_check();
             }
@@ -94,6 +103,8 @@ fn check_mutex() -> Option<()> {
 pub enum StartType {
     DllMain,
     FromExport,
+    /// From the reflective loader
+    Rdl,
 }
 
 macro_rules! build_dll_export_by_name_start_wyrm {
