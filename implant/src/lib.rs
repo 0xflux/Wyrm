@@ -37,3 +37,10 @@ unsafe extern "system" fn DllMain(_hmod_instance: HINSTANCE, dw_reason: u32, _: 
 
     TRUE
 }
+
+#[unsafe(no_mangle)]
+#[allow(non_snake_case)]
+/// The start function which is required for the rDLL loader to enter Wyrm
+unsafe extern "system" fn Start() {
+    internal_dll_start(StartType::Rdl);
+}
