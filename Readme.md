@@ -1,4 +1,4 @@
-# Wyrm - v0.7 Hatchling
+# Wyrm - v0.7.1 Hatchling
 
 Wyrm (pronounced 'worm', an old English word for 'serpent' or 'dragon') is a post exploitation, open source, Red Team security testing framework framework, written in Rust designed to be used by Red Teams, Purple Teams, 
 Penetration Testers, and general infosec hobbyists. This project is fully built in Rust, with extra effort going into obfuscating artifacts which
