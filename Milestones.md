@@ -13,9 +13,9 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] Ransomware **SIMULATION** for Business
 7) [ ] Execute dotnet in sacrificial process
 
-### 0.7.1
+### v0.7.2
 
-1) [ ] Spawn Wyrm as child process (could aid sideloading with console output?) 
+1) [ ] Finish implementation of `spawn`
    1) [ ] spawn_{} (-d "path" / -r "{name}")
    2) [ ] Early bird hollowing-ish & APC / cascade
    3) [ ] Option for spawning as image from profile
@@ -32,7 +32,7 @@ developed as a premium or otherwise private feature. These will be few and far b
    1)  [ ] find_export_address
    2)  [ ] etc..? reduce code duplication
    3)  [ ] Change the Load function name to something more unique (update docs) and add as const to crate to prevent duplicates
- 
+
 ### v1.0 - Whelpfire
 
 1) [ ] `jump psexec`
