@@ -15,14 +15,17 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 ### 0.7.1
 
-1) [ ] Spawn Wyrm as child process (could aid sideloading with console output?)
-2) [ ] Separate profile section for loader specific configs?
-3) [ ] `ps` needs testing in an AD lab; as well as anything else which may rely on kerb / AD config (e.g. the hostname/domain or smth?)
-4) [ ] Position independent shellcode stub for the DLL which allows it to be injected into a foreign process
+1) [ ] Spawn Wyrm as child process (could aid sideloading with console output?) 
+   1) [ ] spawn_{} (-d "path" / -r "{name}")
+2) [ ] `can_hijack`
+   1) [ ] Specify a path to the image, and Wyrm tells you if you can SOH - this would be great for process injection without risking process injection triggers that an EDR could pick up
+3) [ ] Separate profile section for loader specific configs?
+4) [ ] `ps` needs testing in an AD lab; as well as anything else which may rely on kerb / AD config (e.g. the hostname/domain or smth?)
+5) [ ] Position independent shellcode stub for the DLL which allows it to be injected into a foreign process
     1)  [ ] This can be a 4th 'deliverable' maybe called (profile)_shellcode.bin which the user uploads
-5) [ ] `kill_thread` command (useful for sideloaded DLLs)
-6) [ ] The loader should inherit option for ETW bypass
-7) [ ] Reflective injector should dispatch the ETW bypass too I think if set? Or separate profile option?
+6) [ ] `kill_thread` command (useful for sideloaded DLLs)
+7) [ ] The loader should inherit option for ETW bypass
+8) [ ] Reflective injector should dispatch the ETW bypass too I think if set? Or separate profile option?
  
 ### v1.0 - Whelpfire
 
