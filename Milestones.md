@@ -17,6 +17,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 1) [ ] Spawn Wyrm as child process (could aid sideloading with console output?) 
    1) [ ] spawn_{} (-d "path" / -r "{name}")
+   2) [ ] Early bird hollowing-ish & APC / cascade
 2) [ ] `can_hijack`
    1) [ ] Specify a path to the image, and Wyrm tells you if you can SOH - this would be great for process injection without risking process injection triggers that an EDR could pick up
 3) [ ] Separate profile section for loader specific configs?
