@@ -78,6 +78,7 @@
         "NGPB",
         "NOACCESS",
         "nonoverlapping",
+        "nostd",
         "ntdll",
         "OPSEC",
         "ords",

