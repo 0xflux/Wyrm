@@ -482,6 +482,7 @@ fn get_addr_as_rva<T>(base_ptr: *mut u8, offset: usize) -> *mut T {
     (base_ptr as usize + offset) as *mut T
 }
 
+#[inline(always)]
 fn write_payload(
     new_base_ptr: *mut c_void,
     old_base_ptr: *mut u8,
