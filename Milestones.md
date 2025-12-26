@@ -17,9 +17,8 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 1) [ ] Finish implementation of `spawn`
    1) [ ] spawn_{} (-d "path" / -r "{name}")
-   2) [ ] Early bird hollowing-ish & APC / cascade
-   3) [ ] Option for spawning as image from profile
-   4) [ ] Documentation for this feature
+   2) [ ] Option for spawning as image from profile
+   3) [ ] Documentation for this feature
 2) [ ] `can_hijack`
    1) [ ] Specify a path to the image, and Wyrm tells you if you can SOH - this would be great for process injection without risking process injection triggers that an EDR could pick up
    2) [ ] Docs
@@ -52,7 +51,8 @@ developed as a premium or otherwise private feature. These will be few and far b
 11) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
 12) [ ] Staging the encrypted payload as opposed to a stageless only build
 13) [ ] When sideloaded no console output coming through
-14) [ ] EDR shim removal?
+14) [ ] EDR shim removal? https://malwaretech.com/2024/02/bypassing-edrs-with-edr-preload.html
+15) [ ] Can I make it x86?
 
 ### v1.1
 
