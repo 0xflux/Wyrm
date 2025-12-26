@@ -34,6 +34,7 @@ developed as a premium or otherwise private feature. These will be few and far b
    1)  [ ] find_export_address
    2)  [ ] etc..? reduce code duplication
    3)  [ ] Change the Load function name to something more unique (update docs) and add as const to crate to prevent duplicates
+10) [ ] dbgprint needs hooking in the printinfo etc
 
 ### v1.0 - Whelpfire
 
@@ -50,6 +51,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 11) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
 12) [ ] Staging the encrypted payload as opposed to a stageless only build
 13) [ ] When sideloaded no console output coming through
+14) [ ] EDR shim removal?
 
 ### v1.1
 
