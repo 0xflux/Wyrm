@@ -9,8 +9,7 @@ use shared::{
 use str_crypter::{decrypt_string, sc};
 use windows_registry::{CLASSES_ROOT, CURRENT_USER, Key, LOCAL_MACHINE, Transaction, USERS, Value};
 
-#[cfg(debug_assertions)]
-use shared::pretty_print::print_failed;
+use crate::utils::console::print_failed;
 
 pub fn reg_query(raw_input: &Option<String>) -> Option<impl Serialize> {
     let input_deser = match raw_input {

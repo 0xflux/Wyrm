@@ -6,14 +6,15 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
-use shared::{
-    pretty_print::{print_failed, print_info, print_success},
-    tasks::{Command, FirstRunData, NewAgentStaging, Task},
-};
-use shared_c2_client::{NotificationForAgent, NotificationsForAgents, StagedResourceData};
+use shared::tasks::{Command, FirstRunData, NewAgentStaging, Task};
+use shared_c2_client::{NotificationsForAgents, StagedResourceData};
 use sqlx::{Pool, Postgres, Row, migrate::Migrator, postgres::PgPoolOptions};
 
-use crate::{agents::Agent, app_state::DownloadEndpointData, logging::log_error_async};
+use crate::{
+    agents::Agent,
+    app_state::DownloadEndpointData,
+    logging::{log_error_async, print_failed, print_info, print_success},
+};
 
 const MAX_DB_CONNECTIONS: u32 = 5;
 static MIGRATOR: Migrator = sqlx::migrate!("./migrations");

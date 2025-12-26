@@ -311,26 +311,12 @@ async fn drop_file_handler(
         );
     }
 
-    //
-    // Check whether we actually have that file available on the server.
-    // If we do not have the file, we want to return `None` as to not task the agent with downloading a file that doesn't
-    // exist. An error message will appear in the server error log.
-    //
-    let mut found = false;
-    {
-        let lock = state.endpoints.read().await;
-
-        for row in lock.download_endpoints.iter() {
-            if row.0.eq(&data.internal_name) {
-                found = true;
-                // The URI doesn't include the leading /, so we add it here
-                data.download_uri = Some(format!("/{}", row.0));
-                break;
-            }
-        }
-    }
-
-    if !found {
+    let Some(download_uri) = state
+        .endpoints
+        .read()
+        .await
+        .find_format_download_endpoint(&data.internal_name)
+    else {
         let msg = format!(
             "Could not find staged file when instructing agent to drop a file to disk. Looking for file name: '{}' \
             but it does not exist in memory.",
@@ -338,7 +324,9 @@ async fn drop_file_handler(
         );
         log_error_async(&msg).await;
         return Some(serde_json::to_value(WyrmResult::Err::<String>(msg)).unwrap());
-    }
+    };
+
+    data.download_uri = Some(download_uri);
 
     task_agent::<String>(Command::Drop, Some(data.into()), uid.unwrap(), state).await
 }

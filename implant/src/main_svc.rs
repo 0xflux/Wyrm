@@ -34,8 +34,8 @@ mod entry;
 mod evasion;
 mod execute;
 mod native;
-mod rdi_loader;
-mod spawn;
+mod spawn_inject;
+mod stubs;
 mod utils;
 mod wyrm;
 

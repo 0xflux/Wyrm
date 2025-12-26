@@ -14,12 +14,9 @@ use axum::{
 };
 
 use http_body_util::Full;
-use shared::{
-    net::{
-        ADMIN_ENDPOINT, ADMIN_HEALTH_CHECK_ENDPOINT, ADMIN_LOGIN_ENDPOINT,
-        NOTIFICATION_CHECK_AGENT_ENDPOINT,
-    },
-    pretty_print::{print_info, print_success},
+use shared::net::{
+    ADMIN_ENDPOINT, ADMIN_HEALTH_CHECK_ENDPOINT, ADMIN_LOGIN_ENDPOINT,
+    NOTIFICATION_CHECK_AGENT_ENDPOINT,
 };
 use tower_http::catch_panic::CatchPanicLayer;
 
@@ -35,7 +32,7 @@ use crate::{
     },
     app_state::{AppState, detect_stale_agents},
     db::Db,
-    logging::log_error,
+    logging::{log_error, print_info, print_success},
     middleware::{authenticate_admin, authenticate_agent_by_header_token, logout_middleware},
     profiles::parse_profile,
 };

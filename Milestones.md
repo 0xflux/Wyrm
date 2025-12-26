@@ -35,6 +35,7 @@ developed as a premium or otherwise private feature. These will be few and far b
    3)  [ ] Change the Load function name to something more unique (update docs) and add as const to crate to prevent duplicates
 10) [ ] dbgprint needs hooking in the printinfo etc
 11) [ ] `inject` + malleable options (malleable options for it to inject on spawn from the default loader)
+12) [ ] Check for xor key in use? Turn that off, not needed with network encryption?
 
 ### v1.0 - Whelpfire
 

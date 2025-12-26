@@ -1,8 +1,8 @@
 use std::process::exit;
 
-#[cfg(debug_assertions)]
-use shared::pretty_print::print_failed;
 use str_crypter::{decrypt_string, sc};
+
+use crate::utils::console::print_failed;
 
 pub type SleepSeconds = u64;
 pub type ApiEndpoint = Vec<String>;

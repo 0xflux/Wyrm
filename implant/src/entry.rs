@@ -3,10 +3,9 @@
 use core::{sync::atomic::AtomicBool, time::Duration};
 use std::sync::atomic::Ordering;
 
-#[cfg(debug_assertions)]
-use shared::pretty_print::print_failed;
-use shared::pretty_print::print_info;
 use windows_sys::Win32::System::Threading::{ExitProcess, Sleep};
+
+use crate::utils::console::{print_failed, print_info};
 
 use crate::{
     anti_sandbox::anti_sandbox,

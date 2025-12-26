@@ -1,7 +1,7 @@
 use std::{ffi::c_void, fmt::Display, mem::transmute, ptr::null_mut, slice::from_raw_parts};
 
 use serde::Serialize;
-use shared::{pretty_print::print_failed, tasks::WyrmResult};
+use shared::tasks::WyrmResult;
 use str_crypter::{decrypt_string, sc};
 use windows_sys::{
     Win32::{
@@ -27,6 +27,8 @@ use windows_sys::{
     },
     core::PWSTR,
 };
+
+use crate::utils::console::print_failed;
 
 pub fn get_logged_in_username() -> Option<impl Serialize> {
     let buf = [0u16; UNLEN as usize];
