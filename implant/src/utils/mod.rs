@@ -2,7 +2,6 @@ pub mod allocate;
 pub mod comptime;
 pub mod console;
 pub mod export_comptime;
-pub mod export_resolver;
 pub mod pe_stomp;
 pub mod proxy;
 pub mod strings;

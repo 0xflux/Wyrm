@@ -34,6 +34,7 @@ patch_amsi = []
 
 [dependencies]
 shared ={ path = "../shared" }
+shared_no_std ={ path = "../shared_no_std" }
 serde = {version = "1.0", features = ["derive"] }
 serde_json = "1"
 str_crypter = "1.0.3"

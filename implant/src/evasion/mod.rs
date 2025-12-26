@@ -1,11 +1,12 @@
 use std::ffi::c_void;
 
+use shared_no_std::export_resolver;
+use shared_no_std::export_resolver::ExportResolveError;
 use str_crypter::{decrypt_string, sc};
 use windows_sys::Win32::System::{
     Diagnostics::Debug::WriteProcessMemory, Threading::GetCurrentProcess,
 };
 
-use crate::utils::export_resolver::{self, ExportResolveError};
 use shared::pretty_print::print_failed;
 use shared::pretty_print::print_info;
 
@@ -28,7 +29,7 @@ pub fn run_evasion() {
 pub fn patch_amsi_if_ft_flag() {
     #[cfg(feature = "patch_amsi")]
     {
-        use crate::utils::export_resolver::resolve_address;
+        use shared_no_std::export_resolver::resolve_address;
 
         print_info(sc!("Patching amsi..", 49).unwrap());
 

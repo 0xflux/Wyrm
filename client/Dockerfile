@@ -6,6 +6,7 @@ COPY c2 /c2
 COPY client /client
 COPY shared /shared
 COPY loader /loader
+COPY shared_no_std /shared_no_std
 COPY shared_c2_client /shared_c2_client
 COPY implant /implant
 RUN cargo chef prepare --recipe-path recipe.json

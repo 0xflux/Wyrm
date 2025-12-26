@@ -228,10 +228,12 @@ pub fn resolve_address(
     Err(ExportResolveError::TargetFunctionNotFound)
 }
 
+#[inline(always)]
 fn get_rva<T>(base_ptr: *mut u8, offset: usize) -> *mut T {
     (base_ptr as usize + offset) as *mut T
 }
 
+#[inline(always)]
 pub fn find_export_address(
     base: *mut c_void,
     nt: *mut IMAGE_NT_HEADERS64,
@@ -276,6 +278,7 @@ pub fn find_export_address(
 }
 
 /// Convert an RVA from the PE into a pointer inside a buffer which came from a file - NOT correctly mapped / relocated memory.
+#[inline(always)]
 unsafe fn rva_from_file<T>(
     file_base: *const u8,
     nt: *const IMAGE_NT_HEADERS64,
@@ -307,6 +310,7 @@ unsafe fn rva_from_file<T>(
     null_mut()
 }
 
+#[inline(always)]
 pub fn find_export_from_unmapped_file(
     file_base: *mut u8,
     nt: *mut IMAGE_NT_HEADERS64,
