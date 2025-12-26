@@ -8,7 +8,7 @@ pulling updates.
 
 ## v0.7.2
 
-- Makes stable the `spawn` command (x64 only) which now uses Early Cascade Injection, which I understand is inherently more stealthy (and modern) than other injection techniques; but this may need validating in the real world against EDR setups :)
+- Makes stable the `spawn` command (x64 only) which now uses Early Cascade Injection to launch a new agent.
 - 
 
 ## v0.7.1
