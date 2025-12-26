@@ -6,6 +6,11 @@ pulling updates.
 
 **IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
 
+## v0.7.2
+
+- Makes stable the `spawn` command (x64 only) which now uses Early Cascade Injection, which I understand is inherently more stealthy (and modern) than other injection techniques; but this may need validating in the real world against EDR setups :)
+- 
+
 ## v0.7.1
 
 - Bug fix for the reflective DLL - it was not fully reflective in v0.7, I left some of the logic in the injector which has been migrated to the rDLL bootstrap mechanism. The rDLL should now be reflective from external tooling (so long as you start execution at the `Load` export).
