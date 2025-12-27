@@ -126,7 +126,11 @@ pub async fn authenticate_agent_by_header_token(
     request: Request,
     next: Next,
 ) -> impl IntoResponse {
-    let ip = headers.get("X-Forwarded-For").unwrap().to_str().unwrap();
+    let ip = if let Some(h) = headers.get("X-Forwarded-For") {
+        h.to_str().unwrap_or("Not Found")
+    } else {
+        "Not found"
+    };
 
     //
     // First, we need to check whether the request is going to a URI in which a download is staged

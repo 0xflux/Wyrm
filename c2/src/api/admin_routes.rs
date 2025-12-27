@@ -106,7 +106,11 @@ pub async fn admin_login(
     headers: HeaderMap,
     Json(body): Json<AdminLoginPacket>,
 ) -> (CookieJar, Response) {
-    let ip = headers.get("X-Forwarded-For").unwrap().to_str().unwrap();
+    let ip = if let Some(h) = headers.get("X-Forwarded-For") {
+        h.to_str().unwrap_or("Not Found")
+    } else {
+        "Not found"
+    };
     let username = body.username;
     let password = body.password;
 
