@@ -81,7 +81,6 @@ impl Endpoints {
         // TODO rm internal_name from the DownloadEndpointData if not needed
         //
         for (k, v) in self.download_endpoints.iter() {
-            println!("K: {k} V: {v:?}");
             if v.file_name == needle {
                 let mut path = PathBuf::from(FILE_STORE_PATH);
                 path.push(&v.file_name);
