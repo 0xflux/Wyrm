@@ -15,6 +15,7 @@ fn main() {
         "EXPORTS_USR_MACHINE_CODE",
         "EXPORTS_PROXY",
         "MUTEX",
+        "DEFAULT_SPAWN_AS",
     ];
 
     for key in envs {

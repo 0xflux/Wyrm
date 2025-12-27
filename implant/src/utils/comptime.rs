@@ -13,6 +13,9 @@ pub type URL = String;
 pub type AgentNameByOperator = String;
 pub type Jitter = u64;
 pub type WinGlobalMutex = String;
+pub type SpawnAs = String;
+
+const SPAWN_AS_IMAGE_FALLBACK: &str = "C:\\Windows\\System32\\svchost.exe";
 
 /// Translates build artifacts passed to the compiler by the build environment variables
 /// taken from the profile
@@ -26,6 +29,7 @@ pub fn translate_build_artifacts() -> (
     AgentNameByOperator,
     Jitter,
     WinGlobalMutex,
+    SpawnAs,
 ) {
     // Note: This doesn't leave traces in the binary (other than unencrypted IOCs to be encrypted in a
     // upcoming small update). We use `option_env!()` to prevent rust-analyzer from having a fit - whilst
@@ -39,6 +43,16 @@ pub fn translate_build_artifacts() -> (
     const USERAGENT: &str = option_env!("USERAGENT").unwrap_or_default();
     let port: u16 = option_env!("C2_PORT").unwrap().parse().unwrap();
     let jitter: Jitter = option_env!("JITTER").unwrap().parse().unwrap();
+
+    let spawn_as_img: &str = option_env!("DEFAULT_SPAWN_AS").unwrap_or_default();
+    let mut spawn_as_img = {
+        if spawn_as_img.is_empty() {
+            SPAWN_AS_IMAGE_FALLBACK.to_string()
+        } else {
+            spawn_as_img.trim().to_string()
+        }
+    };
+    spawn_as_img.push('\0');
 
     // to make the compiler comply, we have to construct the above including a default
     // value if the env var was not present, we want to check for those default values
@@ -96,5 +110,6 @@ pub fn translate_build_artifacts() -> (
         agent_name_by_operator,
         jitter,
         mutex,
+        spawn_as_img,
     )
 }

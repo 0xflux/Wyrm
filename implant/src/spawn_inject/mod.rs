@@ -21,9 +21,9 @@ pub enum SpawnMethod {
 pub struct Spawn;
 
 impl Spawn {
-    pub fn spawn_child(buf: Vec<u8>, method: SpawnMethod) -> WyrmResult<String> {
+    pub fn spawn_child(buf: Vec<u8>, method: SpawnMethod, spawn_as: &str) -> WyrmResult<String> {
         match method {
-            SpawnMethod::EarlyCascade => early_cascade_spawn_child(buf),
+            SpawnMethod::EarlyCascade => early_cascade_spawn_child(buf, spawn_as),
         }
     }
 }

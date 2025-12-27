@@ -119,8 +119,9 @@ macro_rules! dbgprint {
                     System::Diagnostics::Debug::{OutputDebugStringA},
                 },
             };
-            let s = format!($($arg)*);
+            let mut s = format!($($arg)*);
 
+            s.retain(|c| c != '\0');
             if let Ok(cstr) = CString::new(s) {
                 unsafe {
                     OutputDebugStringA(cstr.as_ptr() as _);

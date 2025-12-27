@@ -362,6 +362,8 @@ pub async fn compile_agent(
         tokio::process::Command::new("cargo")
     };
 
+    let default_spawn_as = data.default_spawn_as.clone().unwrap_or_default();
+
     let c2_endpoints = data
         .c2_endpoints
         .iter()
@@ -389,6 +391,7 @@ pub async fn compile_agent(
         .env("EXPORTS_PROXY", exports.export_proxy)
         .env("SECURITY_TOKEN", &data.agent_security_token)
         .env("STAGE_TYPE", format!("{stage_type}"))
+        .env("DEFAULT_SPAWN_AS", default_spawn_as)
         .env("MUTEX", &data.mutex.clone().unwrap_or_default());
 
     cmd.arg("build");

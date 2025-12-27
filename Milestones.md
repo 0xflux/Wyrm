@@ -16,25 +16,25 @@ developed as a premium or otherwise private feature. These will be few and far b
 ### v0.7.2
 
 1) [ ] Finish implementation of `spawn`
-   1) [ ] spawn_{} (-d "path" / -r "{name}")
-   2) [ ] Option for spawning as image from profile
+   1) [x] `spawn` basic implementation
+   2) [x] Option for spawning as image from profile
    3) [ ] Documentation for this feature
-2) [ ] `can_hijack`
+2) [ ] `inject` + malleable options (malleable options for it to inject on spawn from the default loader)
+3) [ ] `can_hijack`
    1) [ ] Specify a path to the image, and Wyrm tells you if you can SOH - this would be great for process injection without risking process injection triggers that an EDR could pick up
    2) [ ] Docs
-3) [ ] Separate profile section for loader specific configs?
-4) [ ] `ps` needs testing in an AD lab; as well as anything else which may rely on kerb / AD config (e.g. the hostname/domain or smth?)
-5) [ ] Position independent shellcode stub for the DLL which allows it to be injected into a foreign process
+4) [ ] Separate profile section for loader specific configs?
+5) [ ] `ps` needs testing in an AD lab; as well as anything else which may rely on kerb / AD config (e.g. the hostname/domain or smth?)
+6) [ ] Position independent shellcode stub for the DLL which allows it to be injected into a foreign process
     1)  [ ] This can be a 4th 'deliverable' maybe called (profile)_shellcode.bin which the user uploads
-6) [ ] `kill_thread` command (useful for sideloaded DLLs)
-7) [ ] The loader should inherit option for ETW bypass
-8) [ ] Reflective injector should dispatch the ETW bypass too I think if set? Or separate profile option?
-9) [ ] Nostd crate:
+7) [ ] `kill_thread` command (useful for sideloaded DLLs)
+8) [ ] The loader should inherit option for ETW bypass
+9) [ ] Reflective injector should dispatch the ETW bypass too I think if set? Or separate profile option?
+10) [ ] Nostd crate:
    1)  [ ] find_export_address
    2)  [ ] etc..? reduce code duplication
    3)  [ ] Change the Load function name to something more unique (update docs) and add as const to crate to prevent duplicates
-10) [ ] dbgprint needs hooking in the printinfo etc
-11) [ ] `inject` + malleable options (malleable options for it to inject on spawn from the default loader)
+11) [ ] dbgprint needs hooking in the printinfo etc
 12) [ ] Check for xor key in use? Turn that off, not needed with network encryption?
 
 ### v1.0 - Whelpfire

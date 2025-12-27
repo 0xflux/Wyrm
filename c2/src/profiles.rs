@@ -54,6 +54,7 @@ pub struct Evasion {
     pub patch_etw: Option<bool>,
     pub patch_amsi: Option<bool>,
     pub timestomp: Option<String>,
+    pub spawn_as: Option<String>,
 }
 
 impl Profile {
@@ -156,6 +157,7 @@ impl Profile {
             jitter: implant.network.jitter,
             timestomp: implant.evasion.timestomp.clone(),
             exports: implant.exports.clone(),
+            default_spawn_as: implant.evasion.spawn_as.clone(),
             svc_name: implant.svc_name.clone(),
             string_stomp,
             mutex: implant.mutex.clone(),

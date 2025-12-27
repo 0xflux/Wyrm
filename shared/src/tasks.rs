@@ -398,6 +398,7 @@ pub struct NewAgentStaging {
     pub patch_amsi: bool,
     pub jitter: Option<u64>,
     pub timestomp: Option<String>,
+    pub default_spawn_as: Option<String>,
     pub exports: Exports,
     pub svc_name: String,
     pub string_stomp: Option<StringStomp>,
@@ -428,6 +429,7 @@ impl NewAgentStaging {
             svc_name: "-".to_string(),
             string_stomp: None,
             mutex: None,
+            default_spawn_as: None,
         }
     }
 }
