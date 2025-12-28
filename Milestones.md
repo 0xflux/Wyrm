@@ -34,7 +34,7 @@ developed as a premium or otherwise private feature. These will be few and far b
    1)  [ ] find_export_address
    2)  [ ] etc..? reduce code duplication
    3)  [ ] Change the Load function name to something more unique (update docs) and add as const to crate to prevent duplicates
-11) [ ] dbgprint needs hooking in the printinfo etc
+11) [x] dbgprint needs hooking in the printinfo etc
 12) [ ] Check for xor key in use? Turn that off, not needed with network encryption?
 13) [ ] Validate `dotex` actually unloads the memory
 14) [ ] VEH amsi bypass
