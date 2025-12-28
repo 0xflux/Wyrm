@@ -18,7 +18,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 1) [x] Finish implementation of `spawn`
    1) [x] `spawn` basic implementation
    2) [x] Option for spawning as image from profile
-   3) [ ] Documentation for this feature
+   3) [x] Documentation for this feature
 2) [ ] `inject` + malleable options (malleable options for it to inject on spawn from the default loader)
 3) [ ] `can_hijack`
    1) [ ] Specify a path to the image, and Wyrm tells you if you can SOH - this would be great for process injection without risking process injection triggers that an EDR could pick up
@@ -37,8 +37,11 @@ developed as a premium or otherwise private feature. These will be few and far b
 11) [x] dbgprint needs hooking in the printinfo etc
 12) [ ] Check for xor key in use? Turn that off, not needed with network encryption?
 13) [ ] Validate `dotex` actually unloads the memory
-14) [ ] VEH amsi bypass
+14) [x] VEH amsi bypass
 15) [ ] Try get defender POC again..
+16) [ ] Docs
+    1)  [ ] `spawn`
+    2)  [ ] Updated amsi bypass technique
 
 ### v1.0 - Whelpfire
 
