@@ -15,7 +15,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 
 ### v0.7.2
 
-1) [ ] Finish implementation of `spawn`
+1) [x] Finish implementation of `spawn`
    1) [x] `spawn` basic implementation
    2) [x] Option for spawning as image from profile
    3) [ ] Documentation for this feature
@@ -38,6 +38,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 12) [ ] Check for xor key in use? Turn that off, not needed with network encryption?
 13) [ ] Validate `dotex` actually unloads the memory
 14) [ ] VEH amsi bypass
+15) [ ] Try get defender POC again..
 
 ### v1.0 - Whelpfire
 
@@ -56,6 +57,8 @@ developed as a premium or otherwise private feature. These will be few and far b
 13) [ ] When sideloaded no console output coming through
 14) [ ] EDR shim removal? https://malwaretech.com/2024/02/bypassing-edrs-with-edr-preload.html
 15) [ ] Can I make it x86?
+16) [ ] Consider a javascript scripting kit (look at nuclei) (suggestion by @sindhwadrikunj)
+17) [ ] Other spawn / inject options
 
 ### v1.1
 
@@ -105,16 +108,15 @@ These are to be split out further as required for more manageable releases.
 1) [ ] Run tools in memory and send output back to operator
 2) [ ] C2 over DNS / DOH
 3) [ ] SMB agents
-4) [ ] Spawn to / Spawn as (including from malleable configuration)
-5) [ ] Allow multiplayer
-6) [ ] Time-stomping for builds & also agent can stomp files on target
-7) [ ] Any inspiration from [trustedsec's BOFs](https://github.com/trustedsec/CS-Situational-Awareness-BOF) around some sitrep stuff this can do?
+4) [ ] Allow multiplayer
+5) [ ] Time-stomping for builds & also agent can stomp files on target
+6) [ ] Any inspiration from [trustedsec's BOFs](https://github.com/trustedsec/CS-Situational-Awareness-BOF) around some sitrep stuff this can do?
    1)  [ ] `ldapsearch`
-8) [ ] 'Overwatch' system on the C2
-9) [ ] TOPT
-10) [ ] Add ability to protect staged downloads with a header `key=value`, to try prevent mass downloading of an agent in cases where the operator wants it behind a check
-11) [ ] Post Quantum Encryption for below TLS implant comms
-12) [ ] Create multiple users 
+7) [ ] 'Overwatch' system on the C2
+8) [ ] TOPT
+9)  [ ] Add ability to protect staged downloads with a header `key=value`, to try prevent mass downloading of an agent in cases where the operator wants it behind a check
+10) [ ] Post Quantum Encryption for below TLS implant comms
+11) [ ] Create multiple users 
     1)  [ ] Make implant multiplayer - this may need a bit of rearchitecting
 
 ### Ashen Crown - v3.0

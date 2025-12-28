@@ -8,7 +8,7 @@ pulling updates.
 
 ## v0.7.2
 
-- Makes stable the `spawn` command (x64 only) which now uses Early Cascade Injection to launch a new agent.
+- Makes stable the `spawn` command (x64 only) which now uses Early Cascade Injection to launch a new agent. There are question marks over the effectiveness of this thanks to the work of [Smukx](https://x.com/5mukx/). Leaving in as the default now; further options to be explored before v1.0 is released.
 - 
 
 ## v0.7.1
