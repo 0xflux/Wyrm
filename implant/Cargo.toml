@@ -65,6 +65,7 @@ windows-sys = {version = "0.61", features = [
     "Win32_Globalization",
     "Win32_Networking_WinHttp",
     "Win32_System_Memory",
+    "Win32_System_Kernel",
 ]}
 rand = "0.9"
 windows-registry = "0.6"
