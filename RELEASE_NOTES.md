@@ -10,6 +10,8 @@ pulling updates.
 
 - Makes stable the `spawn` command (x64 only) which now uses Early Cascade Injection to launch a new agent. There are question marks over the effectiveness of this against EDR's thanks to the work of [Smukx](https://x.com/5mukx/). Leaving in as the default now; further options to be explored before v1.0 is released.
 - Improves AMSI bypass technique by using [VEH Squared](https://fluxsec.red/vectored-exception-handling-squared-rust) instead of patching the function entry for AmsiScanBuffer.
+- Reflective DLL stub now inherits the ETW patching option if specified in the profile.
+- Internal refactoring, nothing to write home about, but still nice improvements from a code perspective.
 - Debug builds should print output to the debug console (accessible via DebugView) - thanks to [@c5pider](https://x.com/C5pider) and [@RastaMouse](https://x.com/_RastaMouse) for that idea :)
 
 ## v0.7.1
