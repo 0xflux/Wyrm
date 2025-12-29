@@ -41,6 +41,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 15) [ ] Docs
     1)  [ ] `spawn`
     2)  [ ] Updated amsi bypass technique
+16) [ ] BOF
 
 ### v1.0 - Whelpfire
 
