@@ -38,8 +38,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 12) [ ] Check for xor key in use? Turn that off, not needed with network encryption?
 13) [ ] Validate `dotex` actually unloads the memory
 14) [x] VEH amsi bypass
-15) [ ] Try get defender POC again..
-16) [ ] Docs
+15) [ ] Docs
     1)  [ ] `spawn`
     2)  [ ] Updated amsi bypass technique
 
