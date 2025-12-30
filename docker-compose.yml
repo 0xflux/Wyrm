@@ -37,6 +37,7 @@ services:
     volumes:
       - c2_data:/data
       - ./c2_transfer:/tools
+      - ./wofs_static:/wofs_static
 
   nginx:
     image: nginx:latest

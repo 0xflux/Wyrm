@@ -165,6 +165,7 @@
         "Vtbl",
         "Whelpfire",
         "WINHTTP",
+        "wofs",
         "WRITECOPY",
         "wyrm",
         "xored",
@@ -184,4 +185,5 @@
         ],
     },
     "rust-analyzer.cargo.features": "all",  // Enable all features
+    "rust-analyzer.cargo.buildScripts.enable": true,
 }

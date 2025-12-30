@@ -403,6 +403,7 @@ pub struct NewAgentStaging {
     pub svc_name: String,
     pub string_stomp: Option<StringStomp>,
     pub mutex: Option<String>,
+    pub wofs: Option<Vec<String>>,
 }
 
 impl NewAgentStaging {
@@ -430,6 +431,7 @@ impl NewAgentStaging {
             string_stomp: None,
             mutex: None,
             default_spawn_as: None,
+            wofs: None,
         }
     }
 }

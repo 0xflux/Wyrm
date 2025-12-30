@@ -1,13 +1,13 @@
 use std::{
     collections::{BTreeMap, HashSet},
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 use serde::Deserialize;
 use shared::tasks::{Exports, NewAgentStaging, StageType, StringStomp, WyrmResult};
 use tokio::io;
 
-use crate::logging::log_error;
+use crate::{WOFS_PATH, logging::log_error};
 
 #[derive(Deserialize, Debug, Default, Clone)]
 pub struct Profile {
@@ -41,6 +41,7 @@ pub struct Implant {
     pub exports: Exports,
     pub string_stomp: Option<StringStomp>,
     pub mutex: Option<String>,
+    pub wofs: Option<Vec<String>>,
 }
 
 #[derive(Deserialize, Debug, Default, Clone)]
@@ -134,6 +135,12 @@ impl Profile {
             return WyrmResult::Err(String::from("At least 1 URI is required for the server."));
         }
 
+        if let Some(w) = &implant.wofs {
+            if let Err(e) = validate_wof_dirs(w) {
+                return WyrmResult::Err(e);
+            }
+        }
+
         let string_stomp = StringStomp::from(&implant.string_stomp);
 
         WyrmResult::Ok(NewAgentStaging {
@@ -161,6 +168,7 @@ impl Profile {
             svc_name: implant.svc_name.clone(),
             string_stomp,
             mutex: implant.mutex.clone(),
+            wofs: implant.wofs.clone(),
         })
     }
 }
@@ -330,4 +338,16 @@ pub fn parse_exports_to_string_for_env(exports: &Exports) -> ParsedExportStrings
     }
 
     ParsedExportStrings::from(builder_plain, builder_with_machine_code, builder_proxy)
+}
+
+fn validate_wof_dirs(wofs: &Vec<String>) -> Result<(), String> {
+    for w in wofs {
+        let mut p = PathBuf::from(WOFS_PATH);
+        p.push(w);
+        if !p.exists() || !p.is_dir() {
+            return Err(format!("{} is not found as a wof.", p.display()));
+        }
+    }
+
+    Ok(())
 }

@@ -70,3 +70,6 @@ windows-sys = {version = "0.61", features = [
 rand = "0.9"
 windows-registry = "0.6"
 ureq = { version = "3.1.4", default-features = false, features = ["json", "multipart", "native-tls"]}
+
+[build-dependencies]
+cc = "1.2.51"

@@ -123,6 +123,7 @@ async fn write_loader_to_tmp(
         WyrmResult::Err(e) => {
             let _ = remove_dir(&save_path).await?;
             let msg = format!("Error constructing a NewAgentStaging. {e:?}");
+            log_error_async(&msg).await;
             return Err(msg);
         }
     };
@@ -373,6 +374,10 @@ pub async fn compile_agent(
     let jitter = data.jitter.unwrap_or_default();
 
     let exports = parse_exports_to_string_for_env(&data.exports);
+    let wofs = match &data.wofs {
+        Some(w) => w.iter().map(|e| e.to_string() + ";").collect::<String>(),
+        None => String::new(),
+    };
 
     cmd.env("RUSTUP_TOOLCHAIN", toolchain)
         .current_dir("./implant")
@@ -392,6 +397,7 @@ pub async fn compile_agent(
         .env("SECURITY_TOKEN", &data.agent_security_token)
         .env("STAGE_TYPE", format!("{stage_type}"))
         .env("DEFAULT_SPAWN_AS", default_spawn_as)
+        .env("WOF", wofs)
         .env("MUTEX", &data.mutex.clone().unwrap_or_default());
 
     cmd.arg("build");
@@ -476,6 +482,7 @@ pub async fn write_implant_to_tmp_folder<'a>(
         WyrmResult::Err(e) => {
             let _ = remove_dir(&save_path).await?;
             let msg = format!("Error constructing a NewAgentStaging. {e:?}");
+            log_error_async(&msg).await;
             return Err(msg);
         }
     };

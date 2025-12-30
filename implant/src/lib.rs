@@ -22,6 +22,7 @@ mod native;
 mod spawn_inject;
 mod stubs;
 mod utils;
+mod wofs;
 mod wyrm;
 
 #[global_allocator]

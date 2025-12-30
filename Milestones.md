@@ -26,6 +26,8 @@ developed as a premium or otherwise private feature. These will be few and far b
       1)  [ ] `spawn`
       2)  [ ] Updated amsi bypass technique
 6) [ ] Comptime BOF C/C++
+   1) [ ] Could potensh include object files
+   2) [ ] Handle command line args, maybe do an argc and argv instead of just *const x
 7) [ ] `inject` + malleable options (malleable options for it to inject on spawn from the default loader)
 
 ### v0.7.3

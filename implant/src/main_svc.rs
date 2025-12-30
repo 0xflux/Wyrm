@@ -37,6 +37,7 @@ mod native;
 mod spawn_inject;
 mod stubs;
 mod utils;
+mod wofs;
 mod wyrm;
 
 /// Creates a service binary name, based on the malleable profile (or unwrap at comptime). The macro
