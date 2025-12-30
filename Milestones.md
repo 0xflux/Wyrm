@@ -41,8 +41,9 @@ developed as a premium or otherwise private feature. These will be few and far b
 5) [ ] Validate `dotex` actually unloads the memory
 6) [ ] Check for xor key in use? Turn that off, not needed with network encryption?
 7) [ ] Comptime BOF Rust
-8) [ ] Runtime BOF
-9) [ ] The loader should inherit option for ETW bypass
+8) [ ] Runtime BOF 
+9) [ ] Static link bof at comptime
+10) [ ] The loader should inherit option for ETW bypass
 
 ### v1.0 - Whelpfire
 
