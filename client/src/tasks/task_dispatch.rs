@@ -114,7 +114,7 @@ async fn dispatcher(tokens: Vec<&str>, raw_input: String, agent: IsTaskingAgent)
         ["dotex", _p @ ..] => dotex(raw_input, &agent).await,
         ["whoami"] => whoami(&agent).await,
         ["spawn", _p @ ..] => spawn(raw_input, &agent).await,
-        ["wof", name] => run_static_wof(&agent, name).await,
+        ["wof", _p @ ..] => run_static_wof(&agent, raw_input).await,
         _ => unknown_command(),
     }
 }

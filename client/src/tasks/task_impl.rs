@@ -26,7 +26,7 @@ pub enum TaskDispatchError {
     BadTokens(String),
     #[error("Agent ID not present in task dispatch")]
     AgentIdMissing(#[from] IsTaskingAgentErr),
-    #[error("Failed to deserialise data. {0}")]
+    #[error("Failed to serialise/deserialise data. {0}")]
     DeserialisationError(#[from] serde_json::Error),
 }
 
@@ -821,12 +821,40 @@ pub async fn spawn(raw_input: String, agent: &IsTaskingAgent) -> DispatchResult 
     ))
 }
 
-pub async fn run_static_wof(agent: &IsTaskingAgent, name: &&str) -> DispatchResult {
+pub async fn run_static_wof(agent: &IsTaskingAgent, raw_input: String) -> DispatchResult {
     agent.has_agent_id()?;
+
+    let mut builder = vec![];
+    let args = match split_string_slices_to_n(2, &raw_input, DiscardFirst::Chop) {
+        Some(mut inner) => {
+            builder.push(take(&mut inner[0]));
+
+            let mut args = take(&mut inner[1]);
+            args.push('\0'); // add a null byte on for C compat
+            builder.push(args);
+            Some(builder)
+        }
+        None => match split_string_slices_to_n(1, &raw_input, DiscardFirst::Chop) {
+            Some(mut s) => {
+                builder.push(take(&mut s[0]));
+                Some(builder)
+            }
+            None => None,
+        },
+    };
+
+    let ser = match serde_json::to_string(&args) {
+        Ok(s) => s,
+        Err(e) => {
+            return Err(TaskingError::TaskDispatchError(
+                TaskDispatchError::DeserialisationError(e),
+            ));
+        }
+    };
 
     Ok(Some(
         api_request(
-            AdminCommand::StaticWof(name.to_string()),
+            AdminCommand::StaticWof(ser),
             agent,
             None,
             C2Url::Standard,

@@ -21,7 +21,7 @@ fn get_wof_fn_ptr(needle: &str) -> Option<FfiShape> {
     None
 }
 
-pub fn call_static_wof(fn_name: &str) -> WyrmResult<String> {
+pub fn call_static_wof_no_arg(fn_name: &str) -> WyrmResult<String> {
     let Some(f) = get_wof_fn_ptr(fn_name) else {
         let err = format!(
             "{} {fn_name}",
@@ -31,6 +31,21 @@ pub fn call_static_wof(fn_name: &str) -> WyrmResult<String> {
     };
 
     unsafe { f(null()) };
+
+    let msg = sc!("WOF executed", 97).unwrap();
+    return WyrmResult::Ok(msg);
+}
+
+pub fn call_static_wof_with_arg(fn_name: &str, arg: &str) -> WyrmResult<String> {
+    let Some(f) = get_wof_fn_ptr(fn_name) else {
+        let err = format!(
+            "{} {fn_name}",
+            sc!("Could not find WOF function", 175).unwrap()
+        );
+        return WyrmResult::Err(err);
+    };
+
+    unsafe { f(arg.as_ptr() as *const _) };
 
     let msg = sc!("WOF executed", 97).unwrap();
     return WyrmResult::Ok(msg);
