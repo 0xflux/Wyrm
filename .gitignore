@@ -16,6 +16,7 @@ shared_c2_client/target
 /client/dist
 *.pem
 c2_transfer/*
+wofs_static/*
 
 # Ignore user defined profiles, dont want to overwrite those
 c2/profiles/*.toml
