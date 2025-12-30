@@ -439,6 +439,8 @@ pub async fn show_help(agent: &IsTaskingAgent) -> DispatchResult {
         "reg del <path_to_key> <Optional: value name> (for more info, type help reg)".into(),
         "dotex <bin> <args> (execute a dotnet binary in memory in the implant, for more info type help dotex)".into(),
         "whoami (natively, without powershell/cmd, retrieves your SID, domain\\username and token privileges".into(),
+        "spawn <staged name> (spawns a new Wyrm agent through Early Cascade Injection)".into(),
+        "wof <function name> (run's a Wyrm Object File [statically linked only right now] on the agent's main thread)".into(),
     ];
 
     if let IsTaskingAgent::Yes(agent_id) = agent {
