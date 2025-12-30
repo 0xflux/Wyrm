@@ -1,4 +1,11 @@
-use std::{env, fmt::Write, fs, mem::take, path::PathBuf, process::Command};
+use std::{
+    env,
+    fmt::Write,
+    fs,
+    mem::take,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 fn main() {
     let envs = &[
@@ -97,6 +104,12 @@ fn build_static_wofs() {
     let mut ffi_builder = String::new();
     let mut lookup_builder = String::new();
 
+    println!(
+        "cargo:warning=OUT_DIR fs: {:?}",
+        std::fs::metadata(&out_dir)
+    );
+    println!("cargo:warning=TMPDIR: {:?}", std::env::var("TMPDIR").ok());
+
     ffi_builder.push_str("use core::ffi::c_void;\n");
     lookup_builder.push_str("\npub fn all_wofs() -> &'static [(&'static str, *const c_void)] {\n");
     lookup_builder.push_str("&[\n");
@@ -104,9 +117,10 @@ fn build_static_wofs() {
     if let Ok(Some(args)) = parse_wof_directories() {
         ffi_builder.push_str("unsafe extern \"C\" {\n");
 
-        let mut i = 0;
         for arg in args {
             let mut builder = cc::Build::new();
+            builder.out_dir(&out_dir);
+
             //
             // Iterate through the headers and source files
             //
@@ -118,24 +132,26 @@ fn build_static_wofs() {
                 builder.file(a);
             }
 
-            // Compile it
-            builder.compile(&format!("wof_{i}"));
+            // compile to object files only
+            let objects = builder.compile_intermediates();
 
-            //
-            // Grab symbols from the compiled library and add them to our ephemeral build rust file which
-            // will allow us to use it in the main code
-            //
-            if let Some(symbols) = dump_symbols(&format!("{}\\wof_{i}.lib", out_dir.display())) {
-                for s in symbols {
-                    let export_line = format!("fn {s}(_: *const c_void) -> i32;\n");
-                    if !ffi_builder.contains(&export_line) {
-                        ffi_builder.push_str(&export_line);
-                        lookup_builder.push_str(&format!("(\"{s}\", {s} as *const c_void),\n"));
+            for obj in &objects {
+                // Give the .obj to the linker
+                println!("cargo:rustc-link-arg={}", obj.display());
+
+                //
+                // Grab the symbols that we can then access
+                //
+                if let Some(symbols) = dump_symbols(obj) {
+                    for s in symbols {
+                        let export_line = format!("fn {s}(_: *const c_void) -> i32;\n");
+                        if !ffi_builder.contains(&export_line) {
+                            ffi_builder.push_str(&export_line);
+                            lookup_builder.push_str(&format!("(\"{s}\", {s} as *const c_void),\n"));
+                        }
                     }
                 }
             }
-
-            i += 1;
         }
 
         ffi_builder.push_str("}\n\n");
@@ -194,9 +210,10 @@ fn parse_wof_directories() -> std::io::Result<Option<Vec<ArgsPerFolder>>> {
     Ok(None)
 }
 
-fn dump_symbols(lib: &str) -> Option<Vec<String>> {
+fn dump_symbols(lib: &Path) -> Option<Vec<String>> {
     let out = Command::new("llvm-nm")
-        .args(["-U", "-g", "--defined-only", lib])
+        .args(["-U", "-g", "--defined-only"])
+        .arg(lib)
         .output()
         .expect("llvm-nm failed");
 

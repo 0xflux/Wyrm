@@ -144,6 +144,9 @@ pub async fn admin_dispatch(
         AdminCommand::Spawn(inner) => {
             spawn_inject_with_network_resource(uid, inner, state.clone()).await
         }
+        AdminCommand::StaticWof(name) => {
+            task_agent::<String>(Command::StaticWof, Some(name), uid.unwrap(), state).await
+        }
     };
 
     serde_json::to_vec(&result).unwrap()

@@ -48,4 +48,7 @@ COPY --from=builder /app/shared_no_std/ ./shared_no_std/
 COPY --from=builder /app/shared/ ./shared/
 COPY --from=builder /app/loader/ ./loader/
 
+RUN mkdir -p /app/implant/.tmp
+ENV TMPDIR=/app/implant/.tmp
+
 ENTRYPOINT ["/app/c2"]

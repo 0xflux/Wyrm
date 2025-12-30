@@ -21,7 +21,7 @@ fn get_wof_fn_ptr(needle: &str) -> Option<FfiShape> {
     None
 }
 
-fn call_static_wof(fn_name: &str) -> WyrmResult<String> {
+pub fn call_static_wof(fn_name: &str) -> WyrmResult<String> {
     let Some(f) = get_wof_fn_ptr(fn_name) else {
         let err = format!(
             "{} {fn_name}",

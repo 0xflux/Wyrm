@@ -14,7 +14,7 @@ use tokio::{
 };
 
 use crate::{
-    FILE_STORE_PATH,
+    FILE_STORE_PATH, WOFS_PATH,
     admin_task_dispatch::{
         add_api_endpoint_for_staged_resource, is_download_staging_url_error, remove_dir,
         remove_file,
@@ -375,7 +375,10 @@ pub async fn compile_agent(
 
     let exports = parse_exports_to_string_for_env(&data.exports);
     let wofs = match &data.wofs {
-        Some(w) => w.iter().map(|e| e.to_string() + ";").collect::<String>(),
+        Some(w) => w
+            .iter()
+            .map(|folder| format!("{}/{folder};", WOFS_PATH))
+            .collect::<String>(),
         None => String::new(),
     };
 

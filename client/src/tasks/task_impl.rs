@@ -820,3 +820,18 @@ pub async fn spawn(raw_input: String, agent: &IsTaskingAgent) -> DispatchResult 
         .await?,
     ))
 }
+
+pub async fn run_static_wof(agent: &IsTaskingAgent, name: &&str) -> DispatchResult {
+    agent.has_agent_id()?;
+
+    Ok(Some(
+        api_request(
+            AdminCommand::StaticWof(name.to_string()),
+            agent,
+            None,
+            C2Url::Standard,
+            None,
+        )
+        .await?,
+    ))
+}
