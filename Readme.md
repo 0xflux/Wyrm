@@ -31,6 +31,7 @@ so I will be attentive to anything raised.
 ### Features
 
 - Implant uses a configurable profile to customise features and configurations
+- You can customise the Wyrm agent via WOFs (Wyrm Object Files) which are statically linked C code or other language (Rust, etc) object files
 - Fully reflective DLL model + a basic loader provided
 - Access to raw binaries as well as ones prepared with a loader if you wish to use your own tooling with Wyrm
 - Intuitive auto-DLL search order hijacking & sideloading features via profiles
