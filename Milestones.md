@@ -28,7 +28,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [x] Comptime BOF C/C++
    1) [x] Could potensh include object files
 7) [ ] `inject`
-8) [ ] Server hanging
+8) [x] Server hanging
 
 ### v0.7.3
 
@@ -48,6 +48,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 10) [ ] The loader should inherit option for ETW bypass
 11) [ ] `inject` malleable options (malleable options for it to inject on spawn from the default loader)
 12) [ ] `spawn` should take a param (last position) if not in profile to spawn as
+13) [ ] `spawn` should give the operator the pid of the spawned process
 
 ### v1.0 - Whelpfire
 

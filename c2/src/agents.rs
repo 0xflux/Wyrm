@@ -7,10 +7,7 @@ use serde::{Deserialize, Serialize};
 use shared::tasks::{Command, FirstRunData, Task, tasks_contains_kill_agent};
 use tokio::{sync::RwLock, time::timeout};
 
-use crate::{
-    db::Db,
-    logging::{log_crash_trace, log_error_async},
-};
+use crate::{db::Db, logging::log_error_async};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Agent {
@@ -123,9 +120,6 @@ impl AgentList {
         // Get or insert the agent
         //
         let lookup = self.agents.get(&agent_id);
-        if lookup.is_none() {
-            log_crash_trace("agent cache miss");
-        }
 
         let handle: AgentHandle = if let Some(entry) = lookup {
             Arc::clone(&entry)
@@ -164,16 +158,23 @@ impl AgentList {
         //
         // Update in place
         //
-        {
-            let mut lock = handle.write().await;
 
+        let mut agent_for_db = {
+            let mut lock = handle.write().await;
             if let Some(frd) = first_run_data {
                 lock.first_run_data = frd;
             }
+            lock.clone()
+        };
 
-            if let Err(e) = db.update_agent_checkin_time(&mut lock).await {
-                return Err(format!("Failed to update checkin time. {e}"));
-            }
+        if let Err(e) = db.update_agent_checkin_time(&mut agent_for_db).await {
+            return Err(format!("Failed to update checkin time. {e}"));
+        }
+
+        {
+            let mut lock = handle.write().await;
+            lock.last_checkin_time = agent_for_db.last_checkin_time;
+            lock.first_run_data = agent_for_db.first_run_data.clone();
         }
 
         let Ok(mut tasks) = db.get_tasks_for_agent_by_uid(&agent_id).await else {

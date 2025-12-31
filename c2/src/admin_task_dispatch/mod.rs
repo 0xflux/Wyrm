@@ -48,24 +48,23 @@ async fn list_agents(state: State<Arc<AppState>>) -> Option<Value> {
 
     let mut maybe_entry = agents.first_entry_async().await;
     while let Some(row) = maybe_entry {
-        let agent = row.read().await;
+        let (uid, last_check_in, pid, process_name, is_stale) = {
+            let agent = row.read().await;
+            (
+                agent.uid.clone(),
+                agent
+                    .last_checkin_time
+                    .to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
+                agent.first_run_data.b,
+                agent.first_run_data.c.clone(),
+                agent.is_stale,
+            )
+        };
 
-        // time formatting
-        let last_check_in = agent
-            .last_checkin_time
-            .to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
+        let new_messages = pull_notifications_for_agent(uid.clone(), state.clone()).await;
+        let formatted = format!("\t{}\t\t{}\t{}\t{}", uid, last_check_in, pid, process_name);
+        new_agents.push((formatted, is_stale, new_messages));
 
-        // The string we will send back representing the individual agent
-        let formatted = format!(
-            "\t{}\t\t{}\t{}\t{}",
-            agent.uid, last_check_in, agent.first_run_data.b, agent.first_run_data.c,
-        );
-
-        let new_messages = pull_notifications_for_agent(agent.uid.clone(), state.clone()).await;
-
-        new_agents.push((formatted, agent.is_stale, new_messages));
-
-        drop(agent);
         maybe_entry = row.next_async().await;
     }
 

@@ -66,7 +66,6 @@ const DB_EXPORT_PATH: &str = "/data/exports";
 const ACCESS_LOG: &str = "access.log";
 const DOWNLOAD: &str = "downloads.log";
 const LOGIN_LOG: &str = "login.log";
-const CRASH_LOG: &str = "crash.log";
 const ERROR_LOG: &str = "error.log";
 const TOOLS_PATH: &str = "/tools";
 const WOFS_PATH: &str = "/wofs_static";
@@ -234,7 +233,6 @@ fn ensure_dirs_and_files() {
     ensure_log_file_on_disk!(DOWNLOAD);
     ensure_log_file_on_disk!(LOGIN_LOG);
     ensure_log_file_on_disk!(ERROR_LOG);
-    ensure_log_file_on_disk!(CRASH_LOG);
 
     print_success("Directories and files are in order..");
 }
