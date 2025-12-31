@@ -3,6 +3,7 @@
 use std::{
     collections::{HashMap, HashSet},
     env,
+    time::Duration,
 };
 
 use chrono::{DateTime, Utc};
@@ -16,7 +17,9 @@ use crate::{
     logging::{log_error_async, print_failed, print_info, print_success},
 };
 
-const MAX_DB_CONNECTIONS: u32 = 5;
+const MAX_DB_CONNECTIONS: u32 = 30;
+const DB_ACQUIRE_TIMEOUT_SECS: u64 = 3;
+const DB_STATEMENT_TIMEOUT_MS: u64 = 30_000;
 static MIGRATOR: Migrator = sqlx::migrate!("./migrations");
 
 pub struct Db {
@@ -38,6 +41,14 @@ impl Db {
 
         let pool = PgPoolOptions::new()
             .max_connections(MAX_DB_CONNECTIONS)
+            .acquire_timeout(Duration::from_secs(DB_ACQUIRE_TIMEOUT_SECS))
+            .after_connect(|conn, _meta| {
+                Box::pin(async move {
+                    let stmt = format!("SET statement_timeout = {}", DB_STATEMENT_TIMEOUT_MS);
+                    sqlx::query(&stmt).execute(conn).await?;
+                    Ok(())
+                })
+            })
             .connect(&db_string)
             .await
             .map_err(|e| {
