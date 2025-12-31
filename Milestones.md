@@ -47,6 +47,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 9) [ ] Static link bof at comptime
 10) [ ] The loader should inherit option for ETW bypass
 11) [ ] `inject` malleable options (malleable options for it to inject on spawn from the default loader)
+12) [ ] `spawn` should take a param (last position) if not in profile to spawn as
 
 ### v1.0 - Whelpfire
 
