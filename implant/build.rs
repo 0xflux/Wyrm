@@ -104,12 +104,6 @@ fn build_static_wofs() {
     let mut ffi_builder = String::new();
     let mut lookup_builder = String::new();
 
-    println!(
-        "cargo:warning=OUT_DIR fs: {:?}",
-        std::fs::metadata(&out_dir)
-    );
-    println!("cargo:warning=TMPDIR: {:?}", std::env::var("TMPDIR").ok());
-
     ffi_builder.push_str("use core::ffi::c_void;\n");
     lookup_builder.push_str("\npub fn all_wofs() -> &'static [(&'static str, *const c_void)] {\n");
     lookup_builder.push_str("&[\n");

@@ -12,7 +12,10 @@ code inside the process. A richer API can be added later if there is demand for 
 
 **Note**: If you wish anything to be printed to the terminal and to have that visible in the C2, you must write to
 `STD_OUTPUT_HANDLE`. See an example below. **Warning**: Failing to do this correctly could result in output going to the
-(hidden) console window of the agent.
+(hidden) console window of the agent. 
+
+Printing items to the terminal as per the above paragraph is currently the only way to return data / results to the 
+operator.
 
 ## Where WOFs live
 
