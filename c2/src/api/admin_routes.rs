@@ -30,6 +30,7 @@ pub async fn handle_admin_commands_on_agent(
     Path(uid): Path<String>,
     command: Json<AdminCommand>,
 ) -> (StatusCode, Vec<u8>) {
+    println!("[A] Admin command received");
     let response_body_serialised = admin_dispatch(Some(uid), command.0, state).await;
 
     (StatusCode::ACCEPTED, response_body_serialised)
@@ -39,6 +40,7 @@ pub async fn handle_admin_commands_without_agent(
     state: State<Arc<AppState>>,
     command: Json<AdminCommand>,
 ) -> (StatusCode, Vec<u8>) {
+    println!("[A] Admin command received without agent");
     let response_body_serialised = admin_dispatch(None, command.0, state).await;
 
     (StatusCode::ACCEPTED, response_body_serialised)

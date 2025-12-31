@@ -87,6 +87,8 @@ async fn handle_agent_post_standard(
     headers: HeaderMap,
     Json(payload): Json<Vec<Vec<u8>>>,
 ) -> Result<Vec<u8>, String> {
+    println!("Agent post received");
+
     let cl = state.clone();
 
     // We check the payload length later in an assert to make sure there is no incorrect state going on.
