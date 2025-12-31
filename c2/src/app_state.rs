@@ -32,7 +32,7 @@ pub struct AppState {
     sessions: Arc<Mutex<HashMap<String, Instant>>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DownloadEndpointData {
     pub file_name: String,
     pub internal_name: String,
@@ -49,7 +49,7 @@ impl DownloadEndpointData {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Endpoints {
     /// API endpoints which can be polled by the agent to check in / get tasks / POST data
     pub c2_endpoints: HashSet<String>,

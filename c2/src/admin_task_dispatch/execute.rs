@@ -44,9 +44,15 @@ pub async fn spawn_inject_with_network_resource(
     state: State<Arc<AppState>>,
 ) -> Option<Value> {
     let state_cl = state.clone();
-    let lock = state_cl.endpoints.read().await;
+    let endpoints = {
+        let tmp = state_cl.endpoints.read().await;
+        tmp.clone()
+    };
 
-    let file_data = match lock.read_staged_file_by_file_name(&internal_name).await {
+    let file_data = match endpoints
+        .read_staged_file_by_file_name(&internal_name)
+        .await
+    {
         Ok(buf) => buf,
         Err(e) => {
             let msg = format!("Failed to read file data for spawn/inject. {}", e);
@@ -55,7 +61,7 @@ pub async fn spawn_inject_with_network_resource(
         }
     };
 
-    drop(lock);
+    drop(endpoints);
 
     let ser = match serde_json::to_string(&file_data) {
         Ok(s) => s,

@@ -49,12 +49,15 @@ pub async fn handle_agent_get_with_path(
     //
     // First check whether the URI is in the valid GET endpoints for the agent
     //
-    let lock = state_arc.endpoints.read().await;
+    let endpoints = {
+        let tmp = state_arc.endpoints.read().await;
+        tmp.clone()
+    };
 
-    if lock.c2_endpoints.contains(&endpoint) {
+    if endpoints.c2_endpoints.contains(&endpoint) {
         // There is no need to authenticate here, that is done subsequently during
         // `handle_agent_get` where we pull the agent_id from the header
-        drop(lock);
+        drop(endpoints);
         return handle_agent_get(state, request).await.into_response();
     }
 
@@ -62,7 +65,7 @@ pub async fn handle_agent_get_with_path(
     // Now we check whether it was a request to the download URI, if it is, we can serve that content
     // over to them.
     //
-    if let Some(metadata) = lock.download_endpoints.get(&endpoint) {
+    if let Some(metadata) = endpoints.download_endpoints.get(&endpoint) {
         if let Err(e) = state.db_pool.update_download_count(&endpoint).await {
             log_error_async(&format!("Could not update download count. {e}")).await;
         };
