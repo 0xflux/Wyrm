@@ -246,7 +246,7 @@ fn MessagePanel() -> impl IntoView {
     let tabs: RwSignal<ActiveTabs> =
         use_context().expect("could not get tabs context in MessagePanel()");
 
-    let messages = create_memo(move |_| {
+    let messages = Memo::new(move |_| {
         let map = agent_map.get();
         let Some(agent_id) = tabs
             .read()
