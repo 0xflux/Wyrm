@@ -9,7 +9,7 @@ use crate::{
 };
 use axum::{
     Json,
-    extract::{ConnectInfo, Multipart, Path, State},
+    extract::{Multipart, Path, State},
     http::{
         HeaderMap, StatusCode,
         header::{CONTENT_DISPOSITION, CONTENT_TYPE},

@@ -169,6 +169,7 @@ pub async fn authenticate_agent_by_header_token(
             return StatusCode::BAD_GATEWAY.into_response();
         }
     };
+
     let auth_header = match h.to_str() {
         Ok(head) => head,
         Err(_) => {
@@ -182,6 +183,7 @@ pub async fn authenticate_agent_by_header_token(
         let lock = state.agent_tokens.read().await;
         lock.contains(auth_header)
     };
+
     let tokens_lock_wait_ms = tokens_lock_start.elapsed().as_millis();
     if tokens_lock_wait_ms > LOCK_WAIT_WARN_MS {
         log_error_async(&format!(

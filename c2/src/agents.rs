@@ -1,4 +1,3 @@
-use core::panic;
 use std::sync::Arc;
 
 use axum::http::HeaderMap;
@@ -6,9 +5,12 @@ use chrono::{DateTime, Duration, Utc};
 use scc::HashMap;
 use serde::{Deserialize, Serialize};
 use shared::tasks::{Command, FirstRunData, Task, tasks_contains_kill_agent};
-use tokio::sync::RwLock;
+use tokio::{sync::RwLock, time::timeout};
 
-use crate::{db::Db, logging::log_error_async};
+use crate::{
+    db::Db,
+    logging::{log_crash_trace, log_error_async},
+};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Agent {
@@ -26,21 +28,20 @@ impl Agent {
         id: &str,
         db: &Db,
         frd: FirstRunData,
-    ) -> (Agent, Option<Vec<Task>>) {
+    ) -> Result<(Agent, Option<Vec<Task>>), String> {
         match db.get_agent_with_tasks_by_id(id, frd.clone()).await {
-            Ok((agent, tasks)) => (agent, tasks),
+            Ok((agent, tasks)) => Ok((agent, tasks)),
             Err(e) => match e {
                 sqlx::Error::RowNotFound => {
                     // Add the new agent into the db, and also return with it an empty vec
-                    return (
-                        db.insert_new_agent(id, frd)
-                            .await
-                            .expect("failed to insert new agent"),
-                        None,
-                    );
+                    let new_agent = db
+                        .insert_new_agent(id, frd)
+                        .await
+                        .map_err(|e| e.to_string())?;
+                    return Ok((new_agent, None));
                 }
                 _ => {
-                    panic!("{}", e);
+                    return Err(e.to_string());
                 }
             },
         }
@@ -112,32 +113,51 @@ impl AgentList {
         headers: &HeaderMap,
         db: &Db,
         first_run_data: Option<FirstRunData>,
-    ) -> (Agent, Option<Vec<Task>>) {
+    ) -> Result<(Agent, Option<Vec<Task>>), String> {
         // Lookup the agent ID by extracting it from the headers
-        let agent_id = extract_agent_id(headers);
+        let agent_id = extract_agent_id(headers)?;
 
         let mut re_request_frd: bool = false;
 
         //
         // Get or insert the agent
         //
-        let handle: AgentHandle = if let Some(entry) = self.agents.get(&agent_id) {
+        let lookup = self.agents.get(&agent_id);
+        if lookup.is_none() {
+            log_crash_trace("agent cache miss");
+        }
+
+        let handle: AgentHandle = if let Some(entry) = lookup {
             Arc::clone(&entry)
         } else {
-            let (new_agent, _) = Agent::from_first_run_data(
-                &agent_id,
-                db,
-                first_run_data.clone().unwrap_or_default(),
+            let Ok(db_call) = timeout(
+                tokio::time::Duration::from_secs(5),
+                Agent::from_first_run_data(
+                    &agent_id,
+                    db,
+                    first_run_data.clone().unwrap_or_default(),
+                ),
             )
-            .await;
+            .await
+            else {
+                return Err("DB timeout in critical path".to_string());
+            };
+
+            let (new_agent, _) = match db_call {
+                Ok(result) => result,
+                Err(e) => {
+                    return Err(format!("Failed to complete from_first_run_data. {e}"));
+                }
+            };
 
             re_request_frd = first_run_data.is_none();
 
             let arc = Arc::new(RwLock::new(new_agent));
             if let Err((k, _)) = self.agents.insert(agent_id.clone(), arc.clone()) {
-                panic!("Failed to insert new agent into active agents. Agent: {k}");
+                return Err(format!(
+                    "Failed to insert new agent into active agents. Agent: {k}"
+                ));
             };
-
             arc
         };
 
@@ -151,15 +171,14 @@ impl AgentList {
                 lock.first_run_data = frd;
             }
 
-            db.update_agent_checkin_time(&mut lock)
-                .await
-                .expect("failed to update checkin time");
+            if let Err(e) = db.update_agent_checkin_time(&mut lock).await {
+                return Err(format!("Failed to update checkin time. {e}"));
+            }
         }
 
-        let mut tasks = db
-            .get_tasks_for_agent_by_uid(&agent_id)
-            .await
-            .expect("could not look up tasks for agent");
+        let Ok(mut tasks) = db.get_tasks_for_agent_by_uid(&agent_id).await else {
+            return Err("Failed to get tasks for agent by UID.".to_string());
+        };
 
         // Here is where we handle the case of needing to task first run data again
         if re_request_frd {
@@ -183,7 +202,7 @@ impl AgentList {
             agent_guard.clone()
         };
 
-        (snapshot, tasks)
+        Ok((snapshot, tasks))
     }
 
     pub fn contains_agent_by_id(&self, id: &str) -> bool {
@@ -200,12 +219,16 @@ impl AgentList {
 /// # Panics
 /// This function will panic the request should the agent ID (or any WWW-Authenticate header) not be found.
 /// This is acceptable as we don't want to handle these requests..
-pub fn extract_agent_id(headers: &HeaderMap) -> String {
-    let result = headers.get("WWW-Authenticate").expect("no agent id found");
-    let result = result
-        .to_str()
-        .expect("could not convert agent header to str");
-    result.to_string()
+pub fn extract_agent_id(headers: &HeaderMap) -> Result<String, String> {
+    let Some(result) = headers.get("WWW-Authenticate") else {
+        return Err("No agent id found in request".to_string());
+    };
+
+    let Ok(result) = result.to_str() else {
+        return Err("Could not convert agent header to str".to_string());
+    };
+
+    Ok(result.to_string())
 }
 
 /// Checks whether the agent has the kill command as part of its tasks.
@@ -220,8 +243,10 @@ pub async fn handle_kill_command(
         return;
     }
 
-    if tasks_contains_kill_agent(tasks.as_ref().unwrap()) {
-        agent_list.remove_agent(&agent.uid).await;
+    if let Some(t) = tasks.as_ref() {
+        if tasks_contains_kill_agent(t) {
+            agent_list.remove_agent(&agent.uid).await;
+        }
     }
 }
 

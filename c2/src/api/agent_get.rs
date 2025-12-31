@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::{
     agents::handle_kill_command,
     app_state::AppState,
+    logging::log_error_async,
     net::{serialise_tasks_for_agent, serve_file},
 };
 use axum::{
@@ -15,17 +16,24 @@ use axum::{
 ///
 /// This is very much the 'end destination' for the inbound connection.
 #[axum::debug_handler]
-pub async fn handle_agent_get(state: State<Arc<AppState>>, request: Request) -> Vec<u8> {
+pub async fn handle_agent_get(state: State<Arc<AppState>>, request: Request) -> Response {
     // Get the agent by its header, and fetch tasks from the db
-    let (agent, tasks) = state
+    let (agent, tasks) = match state
         .connected_agents
         .get_agent_and_tasks_by_header(request.headers(), &state.clone().db_pool, None)
-        .await;
+        .await
+    {
+        Ok((a, t)) => (a, t),
+        Err(e) => {
+            log_error_async(&e).await;
+            return StatusCode::BAD_GATEWAY.into_response();
+        }
+    };
 
     // Check whether the kill command is present and the agent needs removing from the live list..
     handle_kill_command(state.connected_agents.clone(), &agent, &tasks).await;
 
-    serialise_tasks_for_agent(tasks).await
+    serialise_tasks_for_agent(tasks).await.into_response()
 }
 
 /// Handles the inbound connection when the URI contains a path. The function will check to see if the path
@@ -55,11 +63,10 @@ pub async fn handle_agent_get_with_path(
     // over to them.
     //
     if let Some(metadata) = lock.download_endpoints.get(&endpoint) {
-        state
-            .db_pool
-            .update_download_count(&endpoint)
-            .await
-            .expect("could not update download count.");
+        if let Err(e) = state.db_pool.update_download_count(&endpoint).await {
+            log_error_async(&format!("Could not update download count. {e}")).await;
+        };
+
         let filename = &metadata.file_name;
         return serve_file(filename, metadata.xor_key).await.into_response();
     }

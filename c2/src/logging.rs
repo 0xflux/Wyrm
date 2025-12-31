@@ -3,7 +3,7 @@ use std::{env, fmt::Display, io::Write, path::PathBuf};
 use chrono::{SecondsFormat, Utc};
 use tokio::io::AsyncWriteExt;
 
-use crate::{ACCESS_LOG, DOWNLOAD, ERROR_LOG, LOG_PATH, LOGIN_LOG};
+use crate::{ACCESS_LOG, CRASH_LOG, DOWNLOAD, ERROR_LOG, LOG_PATH, LOGIN_LOG};
 
 pub async fn log_download_accessed(uri: &str, addr: &str) {
     let mut path = PathBuf::from(LOG_PATH);
@@ -89,6 +89,13 @@ pub async fn log_error_async(message: &str) {
     path.push(ERROR_LOG);
 
     log(&path, message, None).await
+}
+
+pub fn log_crash_trace(message: &str) {
+    let mut path = PathBuf::from(LOG_PATH);
+    path.push(CRASH_LOG);
+
+    log_sync(&path, message, None)
 }
 
 /// An internal function to log an event to a given log file.

