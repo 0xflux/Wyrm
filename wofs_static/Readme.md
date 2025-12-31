@@ -12,10 +12,25 @@ code inside the process. A richer API can be added later if there is demand for 
 
 **Note**: If you wish anything to be printed to the terminal and to have that visible in the C2, you must write to
 `STD_OUTPUT_HANDLE`. See an example below. **Warning**: Failing to do this correctly could result in output going to the
-(hidden) console window of the agent. 
+(hidden) console window of the agent.
 
 Printing items to the terminal as per the above paragraph is currently the only way to return data / results to the 
 operator.
+
+## Safety note
+
+Generally, WOF's are memory safe to use in a freestanding Wyrm process loaded by the loader. However, when using this in processes
+which are spawned via non-traditional techniques (for example, early cascade injection) using anything which depends on the C Runtime
+is considered unsafe and not recommended. It is my advice to avoid things like printf, malloc, etc, in favour of using linkable Windows API
+routines.
+
+In early/atypical execution contexts, CRT-dependent calls can fail because the CRT's per-thread/per-process state may not be 
+initialised for the current thread.
+
+For example (see below), instead of `printf` use `WriteFile`. Instead of `malloc` call `HeapAlloc`. Etc.
+
+In Rust, you are free to use **any** function within the core library, seeing as it is freestanding with no requirement on a runtime, incidently
+making Rust more expressive to write WOFs. See below examples.
 
 ## Where WOFs live
 
@@ -120,8 +135,6 @@ Example usage for C (also applicable with Rust, etc):
 
 ```C
 int my_function(char* msg) {
-    printf("%s\n", msg);
-
     int result = MessageBoxA(
         0,
         msg,
@@ -182,7 +195,7 @@ pub extern "system" fn rust_bof() -> u32 {
 }
 ```
 
-Note that you can include external crates as normal; but they should be no-std compliant. If you want to interact
+Note that you can include external crates as normal; but they **must be no-std compliant**. If you want to interact
 with the Windows API easily, I would recommend the [windows_sys](https://crates.io/crates/windows-sys) crate.
 
 You can then compile this to a .o file:
@@ -193,6 +206,54 @@ cargo rustc --lib --target x86_64-pc-windows-msvc --release -- --emit=obj -C cod
 
 And now you can move the output `.o` file into `wofs_static` under a directory name for it to link up to your profile 
 toml on the C2.
+
+### More Rust examples
+
+Another few examples here showcase using the core library which is freestanding, with some llvm intrinsics, and these examples
+show using the pointer in the WOF function:
+
+```Rust
+#![no_std]
+#![no_main]
+
+use core::{ffi::CStr, ptr::null_mut};
+
+use windows_sys::Win32::UI::WindowsAndMessaging::{MB_OK, MessageBoxA};
+
+#[cfg_attr(not(test), panic_handler)]
+#[allow(unused)]
+fn panic(_info: &core::panic::PanicInfo) -> ! {
+    loop {}
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn msg_box_checked(user_input: *const u8) -> u32 {
+
+    if !user_input.is_null() {
+        let safe_input = unsafe { CStr::from_ptr(user_input as _) };
+        
+        unsafe {
+            MessageBoxA(null_mut(), safe_input.as_ptr() as _, safe_input.as_ptr() as _, MB_OK);
+        }
+
+    }
+
+    0
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn msg_box_unchecked(user_input: *const u8) -> u32 {
+
+    if !user_input.is_null() {       
+        unsafe {
+            MessageBoxA(null_mut(), user_input, user_input, MB_OK);
+        }
+
+    }
+
+    0
+}
+```
 
 ## Wiring WOFs via a profile
 
