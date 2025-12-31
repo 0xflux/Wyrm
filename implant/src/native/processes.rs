@@ -252,14 +252,14 @@ pub fn kill_process(pid: &Task) -> Option<WyrmResult<String>> {
 
     let handle = unsafe { OpenProcess(PROCESS_TERMINATE, FALSE, pid as _) };
     if handle.is_null() {
-        return Some(WyrmResult::Err(format!("Error code: {}", unsafe {
+        return Some(WyrmResult::Err(format!("Error code: {:#X}", unsafe {
             GetLastError()
         })));
     }
 
     if unsafe { TerminateProcess(handle, 0) } == FALSE {
         let _ = unsafe { CloseHandle(handle) };
-        return Some(WyrmResult::Err(format!("Error code: {}", unsafe {
+        return Some(WyrmResult::Err(format!("Error code: {:#X}", unsafe {
             GetLastError()
         })));
     }
@@ -275,16 +275,6 @@ pub fn kill_process(pid: &Task) -> Option<WyrmResult<String>> {
 
     Some(WyrmResult::Ok(pid.to_string()))
 }
-
-// fn sort_processes(processes: Vec<Process>) {
-//     let mut sp = SortedProcesses(vec![]);
-//     for p in processes {
-//         if sp.0.is_empty() {
-//             sp.0.insert(p.pid as usize, SortedProcess::from(p.clone()));
-//             continue;
-//         }
-//     }
-// }
 
 fn enum_all_processes() -> Option<Vec<Process>> {
     let h_snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPALL, 0) };
