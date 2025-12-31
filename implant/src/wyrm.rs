@@ -373,6 +373,10 @@ impl Wyrm {
 
                     self.push_completed_task(&task, Some(result));
                 }
+                Command::Inject => {
+                    // todo
+                    self.push_completed_task::<String>(&task, None);
+                }
             }
         }
     }

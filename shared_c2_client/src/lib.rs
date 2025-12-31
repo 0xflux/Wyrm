@@ -56,6 +56,7 @@ pub fn command_to_string(cmd: &Command) -> String {
         Command::WhoAmI => "whoami",
         Command::Spawn => "Spawn",
         Command::StaticWof => "Static WOF",
+        Command::Inject => "Inject",
     };
 
     c.into()
@@ -243,12 +244,17 @@ impl<'a> MapToMitre<'a> for Command {
                 "Process Injection",
                 "https://attack.mitre.org/techniques/T1055/",
             ),
-            // This was the closest I could find for a WOF
             Command::StaticWof => MitreTTP::from(
                 "T1027",
                 None,
-                " Obfuscated Files or Information",
+                "Obfuscated Files or Information",
                 "https://attack.mitre.org/techniques/T1027/",
+            ),
+            Command::Inject => MitreTTP::from(
+                "T1055",
+                None,
+                "Process Injection",
+                "https://attack.mitre.org/techniques/T1055/",
             ),
         }
     }

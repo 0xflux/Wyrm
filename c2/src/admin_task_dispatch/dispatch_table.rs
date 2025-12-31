@@ -147,6 +147,10 @@ pub async fn admin_dispatch(
         AdminCommand::StaticWof(name) => {
             task_agent::<String>(Command::StaticWof, Some(name), uid.unwrap(), state).await
         }
+        AdminCommand::Inject(inject_inner) => {
+            let ser = serde_json::to_string(&inject_inner).unwrap();
+            task_agent::<String>(Command::StaticWof, Some(ser), uid.unwrap(), state).await
+        }
     };
 
     serde_json::to_vec(&result).unwrap()

