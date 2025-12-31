@@ -66,6 +66,9 @@ developed as a premium or otherwise private feature. These will be few and far b
 15) [ ] Can I make it x86?
 16) [ ] Consider a javascript scripting kit (look at nuclei) (suggestion by @sindhwadrikunj)
 17) [ ] Other spawn / inject options
+18) [ ] WOF API's
+    1)  [ ] C2 download file
+    2)  [ ] C2 print info / print fail
 
 ### v1.1
 
