@@ -300,11 +300,11 @@ impl Db {
             r#"
             SELECT ct.id
             FROM completed_tasks ct
-            JOIN tasks t
-                ON ct.task_id = t.id
             WHERE
-                t.agent_id = $1
+                ct.agent_id = $1
                 AND ct.client_pulled_update = FALSE
+                AND ct.command_id IS NOT NULL
+            LIMIT 1
         "#,
         )
         .bind(uid)
@@ -331,16 +331,15 @@ impl Db {
             SELECT
                 ct.id AS completed_id,
                 ct.task_id,
-                t.command_id,
-                t.agent_id,
+                ct.command_id,
+                ct.agent_id,
                 ct.result,
                 ct.time_completed_ms
             FROM completed_tasks ct
-            JOIN tasks t
-                ON ct.task_id = t.id
             WHERE
                 ct.client_pulled_update = FALSE
-                AND t.agent_id = $1
+                AND ct.agent_id = $1
+                AND ct.command_id IS NOT NULL
             ORDER BY ct.task_id ASC
         "#,
         )
@@ -646,3 +645,4 @@ impl Db {
         Ok(())
     }
 }
+

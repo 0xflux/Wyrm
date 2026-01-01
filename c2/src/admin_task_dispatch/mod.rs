@@ -42,30 +42,21 @@ async fn remove_file(file_path: impl AsRef<Path>) -> Result<(), String> {
 }
 
 async fn list_agents(state: State<Arc<AppState>>) -> Option<Value> {
-    let agents = state.connected_agents.list_agents();
-
     let mut new_agents: Vec<AgentC2MemoryNotifications> = Vec::new();
 
-    let mut maybe_entry = agents.first_entry_async().await;
-    while let Some(row) = maybe_entry {
-        let (uid, last_check_in, pid, process_name, is_stale) = {
-            let agent = row.read().await;
-            (
-                agent.uid.clone(),
-                agent
-                    .last_checkin_time
-                    .to_rfc3339_opts(chrono::SecondsFormat::Secs, true),
-                agent.first_run_data.b,
-                agent.first_run_data.c.clone(),
-                agent.is_stale,
-            )
-        };
+    let agents = state.connected_agents.snapshot_agents().await;
+    for agent in agents {
+        let last_check_in = agent
+            .last_checkin_time
+            .to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
 
-        let new_messages = pull_notifications_for_agent(uid.clone(), state.clone()).await;
-        let formatted = format!("\t{}\t\t{}\t{}\t{}", uid, last_check_in, pid, process_name);
-        new_agents.push((formatted, is_stale, new_messages));
+        let formatted = format!(
+            "\t{}\t\t{}\t{}\t{}",
+            agent.uid, last_check_in, agent.first_run_data.b, agent.first_run_data.c,
+        );
 
-        maybe_entry = row.next_async().await;
+        let new_messages = pull_notifications_for_agent(agent.uid.clone(), state.clone()).await;
+        new_agents.push((formatted, agent.is_stale, new_messages));
     }
 
     Some(serde_json::to_value(&new_agents).expect("could not serialise"))
@@ -132,20 +123,27 @@ async fn pull_notifications_for_agent(uid: String, state: State<Arc<AppState>>) 
             }
         }
         Err(e) => {
-            panic!("Could not pull notifications for agent {uid}. {e}");
+            log_error_async(&format!(
+                "Could not pull notifications for agent {uid}. {e}"
+            ))
+            .await;
+            return None;
         }
     };
 
     // At this point the notifications have been pulled, but they are still set in teh database.
     // So we need to set them as pulled so we don't duplicate tasking.
 
-    // assert_eq!(ids.is_empty(), false);
+    if ids.is_empty() {
+        return agent_notifications;
+    }
 
-    state
-        .db_pool
-        .mark_agent_notification_completed(&ids)
-        .await
-        .unwrap();
+    if let Err(e) = state.db_pool.mark_agent_notification_completed(&ids).await {
+        log_error_async(&format!(
+            "Could not mark notifications pulled for agent {uid}. {e}"
+        ))
+        .await;
+    }
 
     agent_notifications
 }

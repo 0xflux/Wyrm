@@ -17,7 +17,6 @@ use axum::{
 /// This is very much the 'end destination' for the inbound connection.
 #[axum::debug_handler]
 pub async fn handle_agent_get(state: State<Arc<AppState>>, request: Request) -> Response {
-    println!("Agent get");
     // Get the agent by its header, and fetch tasks from the db
     let (agent, tasks) = match state
         .connected_agents

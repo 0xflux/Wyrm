@@ -1,8 +1,7 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use axum::http::HeaderMap;
 use chrono::{DateTime, Duration, Utc};
-use scc::HashMap;
 use serde::{Deserialize, Serialize};
 use shared::tasks::{Command, FirstRunData, Task, tasks_contains_kill_agent};
 use tokio::{sync::RwLock, time::timeout};
@@ -67,35 +66,49 @@ type AgentHandle = Arc<RwLock<Agent>>;
 /// to the C2.
 pub struct AgentList {
     // Each agent is represented by a HashMap where the Key is the ID, and the value is the Agent
-    agents: scc::HashMap<String, AgentHandle>,
+    agents: RwLock<HashMap<String, AgentHandle>>,
 }
 
 impl AgentList {
     pub fn default() -> Self {
         Self {
-            agents: HashMap::new(),
+            agents: RwLock::new(HashMap::new()),
         }
     }
 
-    pub fn list_agents(&self) -> &HashMap<String, AgentHandle> {
-        &self.agents
+    async fn snapshot_handles(&self) -> Vec<AgentHandle> {
+        let lock = self.agents.read().await;
+        lock.values().cloned().collect()
+    }
+
+    pub async fn snapshot_agents(&self) -> Vec<Agent> {
+        let handles = self.snapshot_handles().await;
+        let mut agents = Vec::with_capacity(handles.len());
+
+        for handle in handles {
+            let agent = handle.read().await;
+            agents.push(agent.clone());
+        }
+
+        agents
     }
 
     /// Enumerates over all agents, determines whether an it is stale by calculating if we have
     /// gone past the expected check-in time of the agent by some time, `n` (where `n` is in seconds).
     pub async fn mark_agents_stale(&self) {
-        let mut maybe_agents = self.agents.first_entry_async().await;
-        while let Some(entry) = maybe_agents {
+        let handles = self.snapshot_handles().await;
+
+        for handle in handles {
+            let (sleep, last_checkin_time) = {
+                let lock = handle.read().await;
+                (lock.sleep, lock.last_checkin_time)
+            };
+
+            let margin = Duration::seconds(calculate_max_time_till_stale(sleep).await);
             let now: DateTime<Utc> = Utc::now();
-            let mut lock = entry.write().await;
 
-            let margin = Duration::seconds(calculate_max_time_till_stale(lock.sleep).await);
-
-            lock.is_stale =
-                lock.last_checkin_time + Duration::seconds(lock.sleep as _) + margin < now;
-
-            drop(lock);
-            maybe_agents = entry.next_async().await;
+            let mut lock = handle.write().await;
+            lock.is_stale = last_checkin_time + Duration::seconds(sleep as _) + margin < now;
         }
     }
 
@@ -119,10 +132,13 @@ impl AgentList {
         //
         // Get or insert the agent
         //
-        let lookup = self.agents.get(&agent_id);
+        let existing = {
+            let lock = self.agents.read().await;
+            lock.get(&agent_id).cloned()
+        };
 
-        let handle: AgentHandle = if let Some(entry) = lookup {
-            Arc::clone(&entry)
+        let handle: AgentHandle = if let Some(entry) = existing {
+            entry
         } else {
             let Ok(db_call) = timeout(
                 tokio::time::Duration::from_secs(5),
@@ -144,15 +160,15 @@ impl AgentList {
                 }
             };
 
-            re_request_frd = first_run_data.is_none();
-
             let arc = Arc::new(RwLock::new(new_agent));
-            if let Err((k, _)) = self.agents.insert(agent_id.clone(), arc.clone()) {
-                return Err(format!(
-                    "Failed to insert new agent into active agents. Agent: {k}"
-                ));
-            };
-            arc
+            let mut lock = self.agents.write().await;
+            if let Some(existing) = lock.get(&agent_id) {
+                Arc::clone(existing)
+            } else {
+                re_request_frd = first_run_data.is_none();
+                lock.insert(agent_id.clone(), arc.clone());
+                arc
+            }
         };
 
         //
@@ -206,12 +222,14 @@ impl AgentList {
         Ok((snapshot, tasks))
     }
 
-    pub fn contains_agent_by_id(&self, id: &str) -> bool {
-        self.agents.contains(id)
+    pub async fn contains_agent_by_id(&self, id: &str) -> bool {
+        let lock = self.agents.read().await;
+        lock.contains_key(id)
     }
 
     pub async fn remove_agent(&self, id: &str) {
-        let _ = self.agents.remove_async(id).await;
+        let mut lock = self.agents.write().await;
+        lock.remove(id);
     }
 }
 

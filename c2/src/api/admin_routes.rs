@@ -30,7 +30,6 @@ pub async fn handle_admin_commands_on_agent(
     Path(uid): Path<String>,
     command: Json<AdminCommand>,
 ) -> (StatusCode, Vec<u8>) {
-    println!("[A] Admin command received");
     let response_body_serialised = admin_dispatch(Some(uid), command.0, state).await;
 
     (StatusCode::ACCEPTED, response_body_serialised)
@@ -40,7 +39,6 @@ pub async fn handle_admin_commands_without_agent(
     state: State<Arc<AppState>>,
     command: Json<AdminCommand>,
 ) -> (StatusCode, Vec<u8>) {
-    println!("[A] Admin command received without agent");
     let response_body_serialised = admin_dispatch(None, command.0, state).await;
 
     (StatusCode::ACCEPTED, response_body_serialised)
@@ -52,7 +50,7 @@ pub async fn poll_agent_notifications(
 ) -> (StatusCode, String) {
     match state.db_pool.agent_has_pending_notifications(&uid).await {
         Ok(has_pending) => {
-            if has_pending || state.connected_agents.contains_agent_by_id(&uid) {
+            if has_pending || state.connected_agents.contains_agent_by_id(&uid).await {
                 (StatusCode::OK, has_pending.to_string())
             } else {
                 (StatusCode::NOT_FOUND, has_pending.to_string())

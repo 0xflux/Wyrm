@@ -85,6 +85,7 @@
         "NOACCESS",
         "nonoverlapping",
         "nostd",
+        "notif",
         "ntdll",
         "OPSEC",
         "ords",
