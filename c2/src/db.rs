@@ -1,4 +1,4 @@
-//! All database related functions
+﻿//! All database related functions
 
 use std::{
     collections::{HashMap, HashSet},
@@ -116,11 +116,17 @@ impl Db {
     ) -> Result<Option<Vec<Task>>, sqlx::Error> {
         let rows = sqlx::query(
             r#"
-            SELECT id, command_id, data
-            FROM tasks
-            WHERE agent_id=$1
-                AND fetched = FALSE
-            ORDER BY id ASC
+            UPDATE tasks
+            SET fetched = TRUE
+            WHERE id IN (
+                SELECT id
+                FROM tasks
+                WHERE agent_id = $1
+                    AND fetched IS NOT TRUE
+                ORDER BY id ASC
+                FOR UPDATE SKIP LOCKED
+            )
+            RETURNING id, command_id, data
             "#,
         )
         .bind(uid)
@@ -154,19 +160,10 @@ impl Db {
                     .expect("Could not add task to completed");
             }
 
-            //
-            // Mark the task as fetched - so we don't double poll
-            //
-            if let Err(e) = self.mark_task_fetched(&task).await {
-                log_error_async(&format!(
-                    "Could not mark task ID {} as fetched. {e}",
-                    task.id
-                ))
-                .await;
-            };
-
             tasks.push(task);
         }
+
+        tasks.sort_by_key(|task| task.id);
 
         Ok(Some(tasks))
     }
@@ -326,21 +323,29 @@ impl Db {
         &self,
         uid: &String,
     ) -> Result<Option<NotificationsForAgents>, sqlx::Error> {
-        let rows: NotificationsForAgents = sqlx::query_as(
+        let mut rows: NotificationsForAgents = sqlx::query_as(
             r#"
-            SELECT
+            WITH pending AS (
+                SELECT id
+                FROM completed_tasks
+                WHERE
+                    client_pulled_update = FALSE
+                    AND agent_id = $1
+                    AND command_id IS NOT NULL
+                ORDER BY task_id ASC
+                FOR UPDATE SKIP LOCKED
+            )
+            UPDATE completed_tasks ct
+            SET client_pulled_update = TRUE
+            FROM pending
+            WHERE ct.id = pending.id
+            RETURNING
                 ct.id AS completed_id,
                 ct.task_id,
                 ct.command_id,
                 ct.agent_id,
                 ct.result,
                 ct.time_completed_ms
-            FROM completed_tasks ct
-            WHERE
-                ct.client_pulled_update = FALSE
-                AND ct.agent_id = $1
-                AND ct.command_id IS NOT NULL
-            ORDER BY ct.task_id ASC
         "#,
         )
         .bind(uid)
@@ -351,25 +356,9 @@ impl Db {
             return Ok(None);
         }
 
+        rows.sort_by_key(|row| row.task_id);
+
         Ok(Some(rows))
-    }
-
-    pub async fn mark_agent_notification_completed(
-        &self,
-        completed_ids: &[i32],
-    ) -> Result<(), sqlx::Error> {
-        let _ = sqlx::query(
-            r#"
-            UPDATE completed_tasks
-            SET client_pulled_update = TRUE
-            WHERE id = ANY($1::int4[])
-            "#,
-        )
-        .bind(completed_ids)
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
     }
 
     /// Updates the agents last check-in time, both in the database, and the in memory copy of the agent.
@@ -645,4 +634,3 @@ impl Db {
         Ok(())
     }
 }
-

@@ -1,4 +1,4 @@
-use std::{
+﻿use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -110,6 +110,10 @@ async fn pull_notifications_for_agent(uid: String, state: State<Arc<AppState>>) 
     // pulled.
     let mut ids = Vec::new();
 
+    //
+    // Pulling the notifications will also mark as complete; so grab them and return
+    //
+
     let agent_notifications = match state.db_pool.pull_notifications_for_agent(&uid).await {
         Ok(inner) => {
             let inner = inner.map(|t| {
@@ -130,21 +134,6 @@ async fn pull_notifications_for_agent(uid: String, state: State<Arc<AppState>>) 
             return None;
         }
     };
-
-    // At this point the notifications have been pulled, but they are still set in teh database.
-    // So we need to set them as pulled so we don't duplicate tasking.
-
-    if ids.is_empty() {
-        return agent_notifications;
-    }
-
-    if let Err(e) = state.db_pool.mark_agent_notification_completed(&ids).await {
-        log_error_async(&format!(
-            "Could not mark notifications pulled for agent {uid}. {e}"
-        ))
-        .await;
-    }
-
     agent_notifications
 }
 
