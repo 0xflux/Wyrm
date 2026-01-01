@@ -314,6 +314,7 @@ pub enum ExportError {
     ImageTooSmall,
     ImageUnaligned,
     ExportNotFound,
+    BadImageDelta,
 }
 
 #[inline(always)]
@@ -383,4 +384,21 @@ pub fn calculate_memory_delta(buf_start_address: usize, fn_ptr_address: usize) -
     }
 
     Some(res)
+}
+
+pub fn find_entrypoint_from_unmapped_image(
+    buf: &[u8],
+    p_alloc: *const c_void,
+    export_name: &str,
+) -> Result<*const c_void, ExportError> {
+    match find_export_from_unmapped_file(buf, export_name) {
+        Ok(p) => {
+            let Some(addr) = calculate_memory_delta(buf.as_ptr() as usize, p as usize) else {
+                return Err(ExportError::BadImageDelta);
+            };
+            let addr_calculated = unsafe { p_alloc.add(addr) };
+            Ok(addr_calculated)
+        }
+        Err(e) => return Err(e),
+    }
 }

