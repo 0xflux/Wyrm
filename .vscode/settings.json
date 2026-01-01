@@ -95,6 +95,7 @@
         "PCSTR",
         "PCWSTR",
         "PFNSE",
+        "pider",
         "PLAINTXT",
         "popstate",
         "postex",
