@@ -14,7 +14,7 @@ use sqlx::{Pool, Postgres, Row, migrate::Migrator, postgres::PgPoolOptions};
 use crate::{
     agents::Agent,
     app_state::DownloadEndpointData,
-    logging::{log_error_async, print_failed, print_info, print_success},
+    logging::{print_failed, print_info, print_success},
 };
 
 const MAX_DB_CONNECTIONS: u32 = 30;
@@ -242,22 +242,6 @@ impl Db {
             r#"
             UPDATE tasks
             SET completed = TRUE
-            WHERE id = $1
-        "#,
-        )
-        .bind(task.id)
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
-    }
-
-    /// Marks a task as fetched in the db
-    pub async fn mark_task_fetched(&self, task: &Task) -> Result<(), sqlx::Error> {
-        let _ = sqlx::query(
-            r#"
-            UPDATE tasks
-            SET fetched = TRUE
             WHERE id = $1
         "#,
         )
