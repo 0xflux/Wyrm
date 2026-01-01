@@ -72,6 +72,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 18) [ ] WOF API's
     1)  [ ] C2 download file
     2)  [ ] C2 print info / print fail
+19) [ ] Stack spoofing for unbacked memory
 
 ### v1.1
 
