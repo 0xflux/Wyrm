@@ -443,6 +443,7 @@ pub async fn show_help(agent: &IsTaskingAgent) -> DispatchResult {
         "dotex <bin> <args> (execute a dotnet binary in memory in the implant, for more info type help dotex)".into(),
         "whoami (natively, without powershell/cmd, retrieves your SID, domain\\username and token privileges".into(),
         "spawn <staged name> (spawns a new Wyrm agent through Early Cascade Injection)".into(),
+        "inject <staged name> <target pid>".into(),
         "wof <function name> (run's a Wyrm Object File [statically linked only right now] on the agent's main thread)".into(),
     ];
 
