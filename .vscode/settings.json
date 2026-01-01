@@ -13,6 +13,7 @@
         "canonicalised",
         "checkin",
         "chrono",
+        "clippy",
         "comptime",
         "conout",
         "creds",

@@ -310,22 +310,37 @@ unsafe fn rva_from_file<T>(
     null_mut()
 }
 
+pub enum ExportError {
+    ImageTooSmall,
+    ImageUnaligned,
+    ExportNotFound,
+}
+
 #[inline(always)]
 pub fn find_export_from_unmapped_file(
-    file_base: *mut u8,
-    nt: *mut IMAGE_NT_HEADERS64,
+    file_base: &[u8],
     name: &str,
-) -> Option<unsafe extern "system" fn()> {
+) -> Result<unsafe extern "system" fn(), ExportError> {
+    // Check we are being safe
+    if file_base.len() < size_of::<IMAGE_DOS_HEADER>() {
+        return Err(ExportError::ImageTooSmall);
+    }
+
+    let file_base = file_base.as_ptr();
+
+    let dos = unsafe { read_unaligned(file_base as *const IMAGE_DOS_HEADER) };
+    let nt = unsafe { file_base.add(dos.e_lfanew as usize) } as *mut IMAGE_NT_HEADERS64;
+
     unsafe {
         let dir = (*nt).OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT as usize];
         if dir.VirtualAddress == 0 || dir.Size == 0 {
-            return None;
+            return Err(ExportError::ImageUnaligned);
         }
 
         let exp_dir: *mut IMAGE_EXPORT_DIRECTORY = rva_from_file(file_base, nt, dir.VirtualAddress);
 
         if exp_dir.is_null() {
-            return None;
+            return Err(ExportError::ImageUnaligned);
         }
 
         let exp = read_unaligned(exp_dir);
@@ -335,7 +350,7 @@ pub fn find_export_from_unmapped_file(
         let ords: *const u16 = rva_from_file(file_base, nt, exp.AddressOfNameOrdinals);
 
         if names.is_null() || funcs.is_null() || ords.is_null() {
-            return None;
+            return Err(ExportError::ImageUnaligned);
         }
 
         for i in 0..exp.NumberOfNames {
@@ -352,10 +367,20 @@ pub fn find_export_from_unmapped_file(
                 let func_rva = read_unaligned(funcs.add(ord_index)) as u32;
                 let func_ptr = rva_from_file::<u8>(file_base, nt, func_rva) as usize;
 
-                return Some(transmute::<usize, unsafe extern "system" fn()>(func_ptr));
+                return Ok(transmute::<usize, unsafe extern "system" fn()>(func_ptr));
             }
         }
 
-        None
+        Err(ExportError::ExportNotFound)
     }
+}
+
+pub fn calculate_memory_delta(buf_start_address: usize, fn_ptr_address: usize) -> Option<usize> {
+    let res = fn_ptr_address.saturating_sub(buf_start_address);
+
+    if res == 0 {
+        return None;
+    }
+
+    Some(res)
 }

@@ -5,8 +5,8 @@ use leptos::prelude::{Read, RwSignal, Update, Write, use_context};
 use shared::{
     task_types::{RegAddInner, RegQueryInner, RegType},
     tasks::{
-        AdminCommand, DELIM_FILE_DROP_METADATA, DotExInner, FileDropMetadata, InjectInner,
-        WyrmResult,
+        AdminCommand, DELIM_FILE_DROP_METADATA, DotExInner, FileDropMetadata, InjectInnerForAdmin,
+        InjectInnerForPayload, WyrmResult,
     },
 };
 use thiserror::Error;
@@ -890,7 +890,10 @@ pub async fn inject(agent: &IsTaskingAgent, raw_input: String) -> DispatchResult
         ));
     };
 
-    let inner = InjectInner { payload, pid };
+    let inner = InjectInnerForAdmin {
+        download_name: payload,
+        pid,
+    };
 
     Ok(Some(
         api_request(

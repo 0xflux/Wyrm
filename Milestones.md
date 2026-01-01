@@ -49,6 +49,8 @@ developed as a premium or otherwise private feature. These will be few and far b
 11) [ ] `inject` malleable options (malleable options for it to inject on spawn from the default loader)
 12) [ ] `spawn` should take a param (last position) if not in profile to spawn as
 13) [ ] `spawn` should give the operator the pid of the spawned process
+14) [ ] Go back and refactor `wyrm.rs` to use `task.deserialise_metadata::<InjectInnerForPayload>()` generics
+15) [ ] Cargo clippy
 
 ### v1.0 - Whelpfire
 

