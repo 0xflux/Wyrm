@@ -379,8 +379,11 @@ impl Wyrm {
                     let Some(Ok(metadata)) = task.deserialise_metadata::<InjectInnerForPayload>()
                     else {
                         let msg = sc!("Could not parse metadata for inject.", 97).unwrap();
-                        print_failed(msg);
-                        self.push_completed_task::<String>(&task, None);
+                        print_failed(&msg);
+                        self.push_completed_task::<WyrmResult<String>>(
+                            &task,
+                            Some(WyrmResult::Err(msg)),
+                        );
                         continue;
                     };
 
@@ -390,7 +393,7 @@ impl Wyrm {
                         metadata.pid,
                     );
 
-                    self.push_completed_task::<String>(&task, None);
+                    self.push_completed_task(&task, Some(result));
                 }
             }
         }

