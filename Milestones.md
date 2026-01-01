@@ -25,9 +25,10 @@ developed as a premium or otherwise private feature. These will be few and far b
 5) [ ] Docs
       1)  [ ] `spawn`
       2)  [ ] Updated amsi bypass technique
+      3)  [ ] Inject + warning on evasion
 6) [x] Comptime BOF C/C++
    1) [x] Could potensh include object files
-7) [ ] `inject`
+7) [x] `inject`
 8) [x] Server hanging
 
 ### v0.7.3
