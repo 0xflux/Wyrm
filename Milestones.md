@@ -13,24 +13,6 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] Ransomware **SIMULATION** for Business
 7) [ ] Execute dotnet in sacrificial process
 
-### v0.7.2
-
-1) [x] Finish implementation of `spawn`
-   1) [x] `spawn` basic implementation
-   2) [x] Option for spawning as image from profile
-   3) [x] Documentation for this feature
-2) [x] Reflective injector should dispatch the ETW bypass too I think if set? Or separate profile option?
-3) [x] dbgprint needs hooking in the printinfo etc
-4) [x] VEH amsi bypass
-5) [ ] Docs
-      1)  [ ] `spawn`
-      2)  [ ] Updated amsi bypass technique
-      3)  [ ] Inject + warning on evasion
-6) [x] Comptime BOF C/C++
-   1) [x] Could potensh include object files
-7) [x] `inject`
-8) [x] Server hanging
-
 ### v0.7.3
 
 1) [ ] `can_hijack`
