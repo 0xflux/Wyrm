@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, sync::Arc, time::Instant};
 
 use axum::{
     extract::{ConnectInfo, Request, State},
@@ -14,12 +14,13 @@ use rand::{RngCore, rng};
 use crate::{
     AUTH_COOKIE_NAME,
     app_state::AppState,
-    logging::{log_download_accessed, log_page_accessed_no_auth},
+    logging::{log_download_accessed, log_error_async, log_page_accessed_no_auth},
 };
 
 const BCRYPT_HASH_BYTES: usize = 24;
 const BCRYPT_COST: u32 = 12;
 const SALT_BYTES: usize = 16;
+const LOCK_WAIT_WARN_MS: u128 = 500;
 
 /// Authenticates access to an admin route via the `Authorization` header present with the request. This includes
 /// encoded username/password which will be validated.
@@ -126,7 +127,11 @@ pub async fn authenticate_agent_by_header_token(
     request: Request,
     next: Next,
 ) -> impl IntoResponse {
-    let ip = headers.get("X-Forwarded-For").unwrap().to_str().unwrap();
+    let ip = if let Some(h) = headers.get("X-Forwarded-For") {
+        h.to_str().unwrap_or("Not Found")
+    } else {
+        "Not found"
+    };
 
     //
     // First, we need to check whether the request is going to a URI in which a download is staged
@@ -135,13 +140,22 @@ pub async fn authenticate_agent_by_header_token(
 
     let uri = request.uri().to_string();
     let uri = &uri[1..];
-    {
+    let endpoints_lock_start = Instant::now();
+    let is_download = {
         let lock = state.endpoints.read().await;
+        lock.download_endpoints.contains_key(uri)
+    };
+    let endpoints_lock_wait_ms = endpoints_lock_start.elapsed().as_millis();
+    if endpoints_lock_wait_ms > LOCK_WAIT_WARN_MS {
+        log_error_async(&format!(
+            "Slow endpoints read lock: {endpoints_lock_wait_ms}ms for uri {uri} from {ip}"
+        ))
+        .await;
+    }
 
-        if lock.download_endpoints.contains_key(uri) {
-            log_download_accessed(uri, ip).await;
-            return next.run(request).await.into_response();
-        }
+    if is_download {
+        log_download_accessed(uri, ip).await;
+        return next.run(request).await.into_response();
     }
 
     //
@@ -155,6 +169,7 @@ pub async fn authenticate_agent_by_header_token(
             return StatusCode::BAD_GATEWAY.into_response();
         }
     };
+
     let auth_header = match h.to_str() {
         Ok(head) => head,
         Err(_) => {
@@ -163,14 +178,24 @@ pub async fn authenticate_agent_by_header_token(
         }
     };
 
-    {
+    let tokens_lock_start = Instant::now();
+    let has_token = {
         let lock = state.agent_tokens.read().await;
+        lock.contains(auth_header)
+    };
 
-        if lock.contains(auth_header) {
-            // The happy path, token present
-            // log_page_accessed_auth(uri, ip).await;
-            return next.run(request).await.into_response();
-        }
+    let tokens_lock_wait_ms = tokens_lock_start.elapsed().as_millis();
+    if tokens_lock_wait_ms > LOCK_WAIT_WARN_MS {
+        log_error_async(&format!(
+            "Slow agent_tokens read lock: {tokens_lock_wait_ms}ms for uri {uri} from {ip}"
+        ))
+        .await;
+    }
+
+    if has_token {
+        // The happy path, token present
+        // log_page_accessed_auth(uri, ip).await;
+        return next.run(request).await.into_response();
     }
 
     // The unhappy path

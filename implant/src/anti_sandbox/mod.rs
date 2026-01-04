@@ -18,9 +18,8 @@ pub fn anti_sandbox() {
         // We cannot do this check when running as a svc
         if !IS_IMPLANT_SVC.load(Ordering::SeqCst) {
             use crate::anti_sandbox::trig::trig_mouse_movements;
-
             #[cfg(debug_assertions)]
-            use shared::pretty_print::print_info;
+            use crate::utils::console::print_info;
 
             // N.b. this could block for a period of time; but will not panic. See function for more details.
             trig_mouse_movements();
@@ -38,7 +37,8 @@ pub fn anti_sandbox() {
 
         #[cfg(debug_assertions)]
         {
-            use shared::pretty_print::print_info;
+            use crate::utils::console::print_info;
+
             print_info("Ram size check complete..");
         }
     }

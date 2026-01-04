@@ -44,7 +44,11 @@ VOLUME ["/data"]
 COPY --from=builder /app/target/release/c2 .
 COPY --from=builder /app/c2/profiles/ ./profiles
 COPY --from=builder /app/implant/ ./implant/
+COPY --from=builder /app/shared_no_std/ ./shared_no_std/
 COPY --from=builder /app/shared/ ./shared/
 COPY --from=builder /app/loader/ ./loader/
+
+RUN mkdir -p /app/implant/.tmp
+ENV TMPDIR=/app/implant/.tmp
 
 ENTRYPOINT ["/app/c2"]

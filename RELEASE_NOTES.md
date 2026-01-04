@@ -6,6 +6,17 @@ pulling updates.
 
 **IN ANY CASE ALWAYS BACKUP YOUR PROFILES BEFORE UPDATING!!!!**
 
+## v0.7.2
+
+- Makes stable the `spawn` command (x64 only) which now uses Early Cascade Injection to launch a new agent. There are question marks over the effectiveness of this against EDR's thanks to the work of [Smukx](https://x.com/5mukx/). Leaving in as the default now; further options to be explored before v1.0 is released.
+- `Wyrm Object Files` are introduced which are small, self-contained code modules that are baked into the implant at compile time. This allows you to extend the functionality of Wyrm and bring in your custom tooling without having to understand the entire source code of Wyrm to implement additional custom functionality. You can simply invoke the wof at runtime via `wof <function_name> (optional input)`. See docs for full explanation.
+- Process injection introduced via the `inject <payload> <pid>` command.
+- Improves AMSI bypass technique by using [VEH Squared](https://fluxsec.red/vectored-exception-handling-squared-rust) instead of patching the function entry for AmsiScanBuffer.
+- Reflective DLL stub now inherits the ETW patching option if specified in the profile.
+- Significantly improves stability of C2 where resource exhaustion was happening because I used `scc` when trying to optimise some time ago, switched to normal `HashMap` and `RwLocks` and it runs a dream. Incidently, this led to the server locking out. Further improved stability by reducing lock contention over awaits.
+- Internal refactoring, nothing to write home about, but still nice improvements from a code perspective.
+- Debug builds should print output to the debug console (accessible via DebugView) - thanks to [@c5pider](https://x.com/C5pider) and [@RastaMouse](https://x.com/_RastaMouse) for that idea :)
+
 ## v0.7.1
 
 - Bug fix for the reflective DLL - it was not fully reflective in v0.7, I left some of the logic in the injector which has been migrated to the rDLL bootstrap mechanism. The rDLL should now be reflective from external tooling (so long as you start execution at the `Load` export).

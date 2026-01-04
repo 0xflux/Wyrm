@@ -1,4 +1,4 @@
-use std::{
+﻿use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -42,31 +42,21 @@ async fn remove_file(file_path: impl AsRef<Path>) -> Result<(), String> {
 }
 
 async fn list_agents(state: State<Arc<AppState>>) -> Option<Value> {
-    let agents = state.connected_agents.list_agents();
-
     let mut new_agents: Vec<AgentC2MemoryNotifications> = Vec::new();
 
-    let mut maybe_entry = agents.first_entry_async().await;
-    while let Some(row) = maybe_entry {
-        let agent = row.read().await;
-
-        // time formatting
+    let agents = state.connected_agents.snapshot_agents().await;
+    for agent in agents {
         let last_check_in = agent
             .last_checkin_time
             .to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
 
-        // The string we will send back representing the individual agent
         let formatted = format!(
             "\t{}\t\t{}\t{}\t{}",
             agent.uid, last_check_in, agent.first_run_data.b, agent.first_run_data.c,
         );
 
         let new_messages = pull_notifications_for_agent(agent.uid.clone(), state.clone()).await;
-
         new_agents.push((formatted, agent.is_stale, new_messages));
-
-        drop(agent);
-        maybe_entry = row.next_async().await;
     }
 
     Some(serde_json::to_value(&new_agents).expect("could not serialise"))
@@ -120,6 +110,10 @@ async fn pull_notifications_for_agent(uid: String, state: State<Arc<AppState>>) 
     // pulled.
     let mut ids = Vec::new();
 
+    //
+    // Pulling the notifications will also mark as complete; so grab them and return
+    //
+
     let agent_notifications = match state.db_pool.pull_notifications_for_agent(&uid).await {
         Ok(inner) => {
             let inner = inner.map(|t| {
@@ -133,21 +127,13 @@ async fn pull_notifications_for_agent(uid: String, state: State<Arc<AppState>>) 
             }
         }
         Err(e) => {
-            panic!("Could not pull notifications for agent {uid}. {e}");
+            log_error_async(&format!(
+                "Could not pull notifications for agent {uid}. {e}"
+            ))
+            .await;
+            return None;
         }
     };
-
-    // At this point the notifications have been pulled, but they are still set in teh database.
-    // So we need to set them as pulled so we don't duplicate tasking.
-
-    // assert_eq!(ids.is_empty(), false);
-
-    state
-        .db_pool
-        .mark_agent_notification_completed(&ids)
-        .await
-        .unwrap();
-
     agent_notifications
 }
 
@@ -311,26 +297,12 @@ async fn drop_file_handler(
         );
     }
 
-    //
-    // Check whether we actually have that file available on the server.
-    // If we do not have the file, we want to return `None` as to not task the agent with downloading a file that doesn't
-    // exist. An error message will appear in the server error log.
-    //
-    let mut found = false;
-    {
-        let lock = state.endpoints.read().await;
-
-        for row in lock.download_endpoints.iter() {
-            if row.0.eq(&data.internal_name) {
-                found = true;
-                // The URI doesn't include the leading /, so we add it here
-                data.download_uri = Some(format!("/{}", row.0));
-                break;
-            }
-        }
-    }
-
-    if !found {
+    let Some(download_uri) = state
+        .endpoints
+        .read()
+        .await
+        .find_format_download_endpoint(&data.internal_name)
+    else {
         let msg = format!(
             "Could not find staged file when instructing agent to drop a file to disk. Looking for file name: '{}' \
             but it does not exist in memory.",
@@ -338,7 +310,9 @@ async fn drop_file_handler(
         );
         log_error_async(&msg).await;
         return Some(serde_json::to_value(WyrmResult::Err::<String>(msg)).unwrap());
-    }
+    };
+
+    data.download_uri = Some(download_uri);
 
     task_agent::<String>(Command::Drop, Some(data.into()), uid.unwrap(), state).await
 }

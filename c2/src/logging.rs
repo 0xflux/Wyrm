@@ -1,4 +1,4 @@
-use std::{env, io::Write, path::PathBuf};
+use std::{env, fmt::Display, io::Write, path::PathBuf};
 
 use chrono::{SecondsFormat, Utc};
 use tokio::io::AsyncWriteExt;
@@ -161,4 +161,16 @@ macro_rules! create_dir {
             }
         }
     }};
+}
+
+pub fn print_success(msg: impl Display) {
+    println!("[+] {msg}");
+}
+
+pub fn print_info(msg: impl Display) {
+    println!("[i] {msg}");
+}
+
+pub fn print_failed(msg: impl Display) {
+    println!("[-] {msg}");
 }

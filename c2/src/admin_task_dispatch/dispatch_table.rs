@@ -2,9 +2,12 @@ use std::sync::Arc;
 
 use crate::{
     admin_task_dispatch::{
-        delete_staged_resources, drop_file_handler, execute::dotex, export_completed_tasks_to_json,
-        implant_builder::stage_file_upload_from_users_disk, list_agents, list_staged_resources,
-        remove_agent_from_list, show_server_time, task_agent, task_agent_sleep,
+        delete_staged_resources, drop_file_handler,
+        execute::{SpawnInject, dotex, spawn_inject_with_network_resource},
+        export_completed_tasks_to_json,
+        implant_builder::stage_file_upload_from_users_disk,
+        list_agents, list_staged_resources, remove_agent_from_list, show_server_time, task_agent,
+        task_agent_sleep,
     },
     app_state::AppState,
     logging::log_error_async,
@@ -138,13 +141,25 @@ pub async fn admin_dispatch(
         AdminCommand::WhoAmI => {
             task_agent::<String>(Command::WhoAmI, None, uid.unwrap(), state).await
         }
-        AdminCommand::Spawn(inner) => match serde_json::to_string(&inner) {
-            Ok(s) => task_agent(Command::Spawn, Some(s), uid.unwrap(), state).await,
-            Err(e) => {
-                log_error_async(&e.to_string()).await;
-                None
-            }
-        },
+        AdminCommand::Spawn(download_name) => {
+            spawn_inject_with_network_resource(
+                uid,
+                SpawnInject::Spawn(download_name),
+                state.clone(),
+            )
+            .await
+        }
+        AdminCommand::StaticWof(name) => {
+            task_agent::<String>(Command::StaticWof, Some(name), uid.unwrap(), state).await
+        }
+        AdminCommand::Inject(inject_inner) => {
+            spawn_inject_with_network_resource(
+                uid,
+                SpawnInject::Inject(inject_inner),
+                state.clone(),
+            )
+            .await
+        }
     };
 
     serde_json::to_vec(&result).unwrap()

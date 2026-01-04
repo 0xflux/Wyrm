@@ -13,27 +13,27 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] Ransomware **SIMULATION** for Business
 7) [ ] Execute dotnet in sacrificial process
 
-### v0.7.2
+### v0.7.3
 
-1) [ ] Finish implementation of `spawn`
-   1) [ ] spawn_{} (-d "path" / -r "{name}")
-   2) [ ] Early bird hollowing-ish & APC / cascade
-   3) [ ] Option for spawning as image from profile
-   4) [ ] Documentation for this feature
-2) [ ] `can_hijack`
+1) [ ] `can_hijack`
    1) [ ] Specify a path to the image, and Wyrm tells you if you can SOH - this would be great for process injection without risking process injection triggers that an EDR could pick up
    2) [ ] Docs
-3) [ ] Separate profile section for loader specific configs?
-4) [ ] `ps` needs testing in an AD lab; as well as anything else which may rely on kerb / AD config (e.g. the hostname/domain or smth?)
-5) [ ] Position independent shellcode stub for the DLL which allows it to be injected into a foreign process
+2) [ ] `ps` needs testing in an AD lab; as well as anything else which may rely on kerb / AD config (e.g. the hostname/domain or smth?)
+3) [ ] Position independent shellcode stub for the DLL which allows it to be injected into a foreign process
     1)  [ ] This can be a 4th 'deliverable' maybe called (profile)_shellcode.bin which the user uploads
-6) [ ] `kill_thread` command (useful for sideloaded DLLs)
-7) [ ] The loader should inherit option for ETW bypass
-8) [ ] Reflective injector should dispatch the ETW bypass too I think if set? Or separate profile option?
-9) [ ] Nostd crate:
-   1)  [ ] find_export_address
-   2)  [ ] etc..? reduce code duplication
-   3)  [ ] Change the Load function name to something more unique (update docs) and add as const to crate to prevent duplicates
+    2)  [ ] I'm not sure this is necessary given the export..?
+4) [ ] `kill_thread` command (useful for sideloaded DLLs)
+5) [ ] Validate `dotex` actually unloads the memory
+6) [ ] Check for xor key in use? Turn that off, not needed with network encryption?
+7) [ ] Comptime BOF Rust
+8) [ ] Runtime BOF 
+9) [ ] Static link bof at comptime
+10) [ ] The loader should inherit option for ETW bypass
+11) [ ] `inject` malleable options (malleable options for it to inject on spawn from the default loader)
+12) [ ] `spawn` should take a param (last position) if not in profile to spawn as
+13) [ ] `spawn` should give the operator the pid of the spawned process
+14) [ ] Go back and refactor `wyrm.rs` to use `task.deserialise_metadata::<InjectInnerForPayload>()` generics
+15) [ ] Cargo clippy
 
 ### v1.0 - Whelpfire
 
@@ -50,49 +50,55 @@ developed as a premium or otherwise private feature. These will be few and far b
 11) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
 12) [ ] Staging the encrypted payload as opposed to a stageless only build
 13) [ ] When sideloaded no console output coming through
+14) [ ] EDR shim removal? https://malwaretech.com/2024/02/bypassing-edrs-with-edr-preload.html
+15) [ ] Can I make it x86?
+16) [ ] Consider a javascript scripting kit (look at nuclei) (suggestion by @sindhwadrikunj)
+17) [ ] Other spawn / inject options
+18) [ ] WOF API's
+    1)  [ ] C2 download file
+    2)  [ ] C2 print info / print fail
+19) [ ] Stack spoofing for unbacked memory
 
 ### v1.1
 
 These are to be split out further as required for more manageable releases.
 
 1) [ ] Long running tasks which have a specified integrity level, so any task set under this scheme can execute at a given integrity level for that machine
-2) [ ] `spawn` + malleable options
-3) [ ] `inject` + malleable options (malleable options for it to inject on spawn from the default loader)
-4) [ ] Killing the agent should support from thread as well as from process (in the case of an injected process).
-5) [ ] Agent & C2 supports multiple endpoints (selectable in build process from cli) / c2 profiles
+2) [ ] Killing the agent should support from thread as well as from process (in the case of an injected process).
+3) [ ] Agent & C2 supports multiple endpoints (selectable in build process from cli) / c2 profiles
    1) This needs to be implemented in the wizard also
-6)  [ ] `zip` command to natively zip a folder
-7)  [ ] Improve pillage function
-8)  [ ] Concurrent removable media scanner - runs when main thread is sleeping between calls and looks for a removable disk being added. Auto-pillage.
+4)  [ ] `zip` command to natively zip a folder
+5)  [ ] Improve pillage function
+6)  [ ] Concurrent removable media scanner - runs when main thread is sleeping between calls and looks for a removable disk being added. Auto-pillage.
    1)  [ ] The auto pillage file extensions should be specified in the profile toml
-9)  [ ] Auto Escalator (this could be done a separate project that can be used by others, but also compiles into this):
+7)  [ ] Auto Escalator (this could be done a separate project that can be used by others, but also compiles into this):
     1)  [ ] User -> SYSTEM (service paths etc)
     2)  [ ] Local user -> Local Admin
     3)  [ ] Local Admin -> SYSTEM
-10) [ ] Improved anti-sandbox checks
-11) [ ] Additional lateral movement options
-12) [ ] C2 junk padding response size (needs to play nice with NGPB)
-13) [ ] Export agent db info for reporting
-14) [ ] Read users clipboard continuously and upload to C2
-15) [ ] Multiple C2 implementations on the agent. This could be a task which orders the creation on the implant itself.
-16) [ ] Capture screenshots
-17) [ ] Autoloot:
+8)  [ ] Improved anti-sandbox checks
+9)  [ ] Additional lateral movement options
+10) [ ] C2 junk padding response size (needs to play nice with NGPB)
+11) [ ] Export agent db info for reporting
+12) [ ] Read users clipboard continuously and upload to C2
+13) [ ] Multiple C2 implementations on the agent. This could be a task which orders the creation on the implant itself.
+14) [ ] Capture screenshots
+15) [ ] Autoloot:
     1)  [ ] SSH keys
     2)  [ ] Filenames of office docs, .pdf, .jpg, .mov, .kdbx
-18) [ ] Builds agent that can use APIs via hells/halos gate, etc.
+16) [ ] Builds agent that can use APIs via hells/halos gate, etc.
     1)  [ ] Look at FreshyCalls as an alternate
-19) [ ] Pool Party
-20) [ ] C2 rotation strategy from profile
-21) [ ] `cat`
-22) [ ] `tasks` and `task_kill`
-23) [ ] SOCKS proxy
-24) [ ] Shellcode loader
-25) [ ] C2 configurable so it is hosted on TOR, with C2 fronted redirectors into the TOR network
-26) [ ] `drives` search for additional drive volumes
-27) [ ] Scope / date / time checks
-28) [ ] Add a note to an implant
-29) [ ] Some UAC bypasses?
-30) [ ] Specify specific proxy for agent to use
+17) [ ] Pool Party
+18) [ ] C2 rotation strategy from profile
+19) [ ] `cat`
+20) [ ] `tasks` and `task_kill`
+21) [ ] SOCKS proxy
+22) [ ] Shellcode loader
+23) [ ] C2 configurable so it is hosted on TOR, with C2 fronted redirectors into the TOR network
+24) [ ] `drives` search for additional drive volumes
+25) [ ] Scope / date / time checks
+26) [ ] Add a note to an implant
+27) [ ] Some UAC bypasses?
+28) [ ] Specify specific proxy for agent to use
 
 ### Voidheart - v2.0
 
@@ -101,16 +107,15 @@ These are to be split out further as required for more manageable releases.
 1) [ ] Run tools in memory and send output back to operator
 2) [ ] C2 over DNS / DOH
 3) [ ] SMB agents
-4) [ ] Spawn to / Spawn as (including from malleable configuration)
-5) [ ] Allow multiplayer
-6) [ ] Time-stomping for builds & also agent can stomp files on target
-7) [ ] Any inspiration from [trustedsec's BOFs](https://github.com/trustedsec/CS-Situational-Awareness-BOF) around some sitrep stuff this can do?
+4) [ ] Allow multiplayer
+5) [ ] Time-stomping for builds & also agent can stomp files on target
+6) [ ] Any inspiration from [trustedsec's BOFs](https://github.com/trustedsec/CS-Situational-Awareness-BOF) around some sitrep stuff this can do?
    1)  [ ] `ldapsearch`
-8) [ ] 'Overwatch' system on the C2
-9) [ ] TOPT
-10) [ ] Add ability to protect staged downloads with a header `key=value`, to try prevent mass downloading of an agent in cases where the operator wants it behind a check
-11) [ ] Post Quantum Encryption for below TLS implant comms
-12) [ ] Create multiple users 
+7) [ ] 'Overwatch' system on the C2
+8) [ ] TOPT
+9)  [ ] Add ability to protect staged downloads with a header `key=value`, to try prevent mass downloading of an agent in cases where the operator wants it behind a check
+10) [ ] Post Quantum Encryption for below TLS implant comms
+11) [ ] Create multiple users 
     1)  [ ] Make implant multiplayer - this may need a bit of rearchitecting
 
 ### Ashen Crown - v3.0

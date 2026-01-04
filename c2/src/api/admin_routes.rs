@@ -9,7 +9,7 @@ use crate::{
 };
 use axum::{
     Json,
-    extract::{ConnectInfo, Multipart, Path, State},
+    extract::{Multipart, Path, State},
     http::{
         HeaderMap, StatusCode,
         header::{CONTENT_DISPOSITION, CONTENT_TYPE},
@@ -50,7 +50,7 @@ pub async fn poll_agent_notifications(
 ) -> (StatusCode, String) {
     match state.db_pool.agent_has_pending_notifications(&uid).await {
         Ok(has_pending) => {
-            if has_pending || state.connected_agents.contains_agent_by_id(&uid) {
+            if has_pending || state.connected_agents.contains_agent_by_id(&uid).await {
                 (StatusCode::OK, has_pending.to_string())
             } else {
                 (StatusCode::NOT_FOUND, has_pending.to_string())
@@ -106,7 +106,11 @@ pub async fn admin_login(
     headers: HeaderMap,
     Json(body): Json<AdminLoginPacket>,
 ) -> (CookieJar, Response) {
-    let ip = headers.get("X-Forwarded-For").unwrap().to_str().unwrap();
+    let ip = if let Some(h) = headers.get("X-Forwarded-For") {
+        h.to_str().unwrap_or("Not Found")
+    } else {
+        "Not found"
+    };
     let username = body.username;
     let password = body.password;
 

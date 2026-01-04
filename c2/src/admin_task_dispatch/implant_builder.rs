@@ -14,7 +14,7 @@ use tokio::{
 };
 
 use crate::{
-    FILE_STORE_PATH,
+    FILE_STORE_PATH, WOFS_PATH,
     admin_task_dispatch::{
         add_api_endpoint_for_staged_resource, is_download_staging_url_error, remove_dir,
         remove_file,
@@ -123,6 +123,7 @@ async fn write_loader_to_tmp(
         WyrmResult::Err(e) => {
             let _ = remove_dir(&save_path).await?;
             let msg = format!("Error constructing a NewAgentStaging. {e:?}");
+            log_error_async(&msg).await;
             return Err(msg);
         }
     };
@@ -362,6 +363,8 @@ pub async fn compile_agent(
         tokio::process::Command::new("cargo")
     };
 
+    let default_spawn_as = data.default_spawn_as.clone().unwrap_or_default();
+
     let c2_endpoints = data
         .c2_endpoints
         .iter()
@@ -371,6 +374,13 @@ pub async fn compile_agent(
     let jitter = data.jitter.unwrap_or_default();
 
     let exports = parse_exports_to_string_for_env(&data.exports);
+    let wofs = match &data.wofs {
+        Some(w) => w
+            .iter()
+            .map(|folder| format!("{}/{folder};", WOFS_PATH))
+            .collect::<String>(),
+        None => String::new(),
+    };
 
     cmd.env("RUSTUP_TOOLCHAIN", toolchain)
         .current_dir("./implant")
@@ -389,6 +399,8 @@ pub async fn compile_agent(
         .env("EXPORTS_PROXY", exports.export_proxy)
         .env("SECURITY_TOKEN", &data.agent_security_token)
         .env("STAGE_TYPE", format!("{stage_type}"))
+        .env("DEFAULT_SPAWN_AS", default_spawn_as)
+        .env("WOF", wofs)
         .env("MUTEX", &data.mutex.clone().unwrap_or_default());
 
     cmd.arg("build");
@@ -473,6 +485,7 @@ pub async fn write_implant_to_tmp_folder<'a>(
         WyrmResult::Err(e) => {
             let _ = remove_dir(&save_path).await?;
             let msg = format!("Error constructing a NewAgentStaging. {e:?}");
+            log_error_async(&msg).await;
             return Err(msg);
         }
     };

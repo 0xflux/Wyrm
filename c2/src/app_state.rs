@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
     env,
+    path::PathBuf,
     sync::Arc,
     time::{Duration, Instant},
 };
@@ -12,9 +13,10 @@ use tokio::{
 };
 
 use crate::{
-    COOKIE_TTL,
+    COOKIE_TTL, FILE_STORE_PATH,
     agents::AgentList,
     db::Db,
+    logging::log_error_async,
     profiles::{Profile, add_listeners_from_profiles, add_tokens_from_profiles},
 };
 
@@ -30,7 +32,7 @@ pub struct AppState {
     sessions: Arc<Mutex<HashMap<String, Instant>>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DownloadEndpointData {
     pub file_name: String,
     pub internal_name: String,
@@ -47,13 +49,57 @@ impl DownloadEndpointData {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Endpoints {
     /// API endpoints which can be polled by the agent to check in / get tasks / POST data
     pub c2_endpoints: HashSet<String>,
     /// `HashMap<endpoint, DownloadEndpointData>` - A collection of URI endpoints,
     /// not including a /, which can serve agents over HTTP(s).
     pub download_endpoints: HashMap<String, DownloadEndpointData>,
+}
+
+impl Endpoints {
+    /// Searches for, and formats with a leading `/` a download endpoint if it exists.
+    ///
+    /// # Returns
+    /// - `Some` containing `/download_endpoint` if it exists.
+    /// - `None` if the endpoint was not found.
+    pub fn find_format_download_endpoint(&self, needle: &str) -> Option<String> {
+        for row in self.download_endpoints.iter() {
+            if row.0.eq(needle) {
+                // The URI doesn't include the leading /, so we add it here
+                return Some(format!("/{}", row.0));
+            }
+        }
+
+        None
+    }
+
+    pub async fn read_staged_file_by_file_name(&self, needle: &str) -> Result<Vec<u8>, String> {
+        //
+        // Note internal name is NOT used.. so filename it is
+        // TODO rm internal_name from the DownloadEndpointData if not needed
+        //
+        for (_, v) in self.download_endpoints.iter() {
+            if v.file_name == needle {
+                let mut path = PathBuf::from(FILE_STORE_PATH);
+                path.push(&v.file_name);
+
+                let tool_data = match tokio::fs::read(&path).await {
+                    Ok(f) => f,
+                    Err(e) => {
+                        return Err(format!("Could not read file {}, {e}", path.display()));
+                    }
+                };
+
+                return Ok(tool_data);
+            }
+        }
+
+        Err(format!(
+            "Could not find {needle} in staged resources by internal name"
+        ))
+    }
 }
 
 impl AppState {

@@ -1,21 +1,25 @@
-//! All database related functions
+﻿//! All database related functions
 
 use std::{
     collections::{HashMap, HashSet},
     env,
+    time::Duration,
 };
 
 use chrono::{DateTime, Utc};
-use shared::{
-    pretty_print::{print_failed, print_info, print_success},
-    tasks::{Command, FirstRunData, NewAgentStaging, Task},
-};
-use shared_c2_client::{NotificationForAgent, NotificationsForAgents, StagedResourceData};
+use shared::tasks::{Command, FirstRunData, NewAgentStaging, Task};
+use shared_c2_client::{NotificationsForAgents, StagedResourceData};
 use sqlx::{Pool, Postgres, Row, migrate::Migrator, postgres::PgPoolOptions};
 
-use crate::{agents::Agent, app_state::DownloadEndpointData, logging::log_error_async};
+use crate::{
+    agents::Agent,
+    app_state::DownloadEndpointData,
+    logging::{print_failed, print_info, print_success},
+};
 
-const MAX_DB_CONNECTIONS: u32 = 5;
+const MAX_DB_CONNECTIONS: u32 = 30;
+const DB_ACQUIRE_TIMEOUT_SECS: u64 = 3;
+const DB_STATEMENT_TIMEOUT_MS: u64 = 30_000;
 static MIGRATOR: Migrator = sqlx::migrate!("./migrations");
 
 pub struct Db {
@@ -37,6 +41,14 @@ impl Db {
 
         let pool = PgPoolOptions::new()
             .max_connections(MAX_DB_CONNECTIONS)
+            .acquire_timeout(Duration::from_secs(DB_ACQUIRE_TIMEOUT_SECS))
+            .after_connect(|conn, _meta| {
+                Box::pin(async move {
+                    let stmt = format!("SET statement_timeout = {}", DB_STATEMENT_TIMEOUT_MS);
+                    sqlx::query(&stmt).execute(conn).await?;
+                    Ok(())
+                })
+            })
             .connect(&db_string)
             .await
             .map_err(|e| {
@@ -104,11 +116,17 @@ impl Db {
     ) -> Result<Option<Vec<Task>>, sqlx::Error> {
         let rows = sqlx::query(
             r#"
-            SELECT id, command_id, data
-            FROM tasks
-            WHERE agent_id=$1
-                AND fetched = FALSE
-            ORDER BY id ASC
+            UPDATE tasks
+            SET fetched = TRUE
+            WHERE id IN (
+                SELECT id
+                FROM tasks
+                WHERE agent_id = $1
+                    AND fetched IS NOT TRUE
+                ORDER BY id ASC
+                FOR UPDATE SKIP LOCKED
+            )
+            RETURNING id, command_id, data
             "#,
         )
         .bind(uid)
@@ -142,19 +160,10 @@ impl Db {
                     .expect("Could not add task to completed");
             }
 
-            //
-            // Mark the task as fetched - so we don't double poll
-            //
-            if let Err(e) = self.mark_task_fetched(&task).await {
-                log_error_async(&format!(
-                    "Could not mark task ID {} as fetched. {e}",
-                    task.id
-                ))
-                .await;
-            };
-
             tasks.push(task);
         }
+
+        tasks.sort_by_key(|task| task.id);
 
         Ok(Some(tasks))
     }
@@ -243,22 +252,6 @@ impl Db {
         Ok(())
     }
 
-    /// Marks a task as fetched in the db
-    pub async fn mark_task_fetched(&self, task: &Task) -> Result<(), sqlx::Error> {
-        let _ = sqlx::query(
-            r#"
-            UPDATE tasks
-            SET fetched = TRUE
-            WHERE id = $1
-        "#,
-        )
-        .bind(task.id)
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
-    }
-
     /// Adds a completed task into the `completed_tasks` table which stores the results
     /// and metadata associated with completed task results, to be used by the client.
     pub async fn add_completed_task(&self, task: &Task, agent_id: &str) -> Result<(), sqlx::Error> {
@@ -288,11 +281,11 @@ impl Db {
             r#"
             SELECT ct.id
             FROM completed_tasks ct
-            JOIN tasks t
-                ON ct.task_id = t.id
             WHERE
-                t.agent_id = $1
+                ct.agent_id = $1
                 AND ct.client_pulled_update = FALSE
+                AND ct.command_id IS NOT NULL
+            LIMIT 1
         "#,
         )
         .bind(uid)
@@ -314,22 +307,29 @@ impl Db {
         &self,
         uid: &String,
     ) -> Result<Option<NotificationsForAgents>, sqlx::Error> {
-        let rows: NotificationsForAgents = sqlx::query_as(
+        let mut rows: NotificationsForAgents = sqlx::query_as(
             r#"
-            SELECT
+            WITH pending AS (
+                SELECT id
+                FROM completed_tasks
+                WHERE
+                    client_pulled_update = FALSE
+                    AND agent_id = $1
+                    AND command_id IS NOT NULL
+                ORDER BY task_id ASC
+                FOR UPDATE SKIP LOCKED
+            )
+            UPDATE completed_tasks ct
+            SET client_pulled_update = TRUE
+            FROM pending
+            WHERE ct.id = pending.id
+            RETURNING
                 ct.id AS completed_id,
                 ct.task_id,
-                t.command_id,
-                t.agent_id,
+                ct.command_id,
+                ct.agent_id,
                 ct.result,
                 ct.time_completed_ms
-            FROM completed_tasks ct
-            JOIN tasks t
-                ON ct.task_id = t.id
-            WHERE
-                ct.client_pulled_update = FALSE
-                AND t.agent_id = $1
-            ORDER BY ct.task_id ASC
         "#,
         )
         .bind(uid)
@@ -340,25 +340,9 @@ impl Db {
             return Ok(None);
         }
 
+        rows.sort_by_key(|row| row.task_id);
+
         Ok(Some(rows))
-    }
-
-    pub async fn mark_agent_notification_completed(
-        &self,
-        completed_ids: &[i32],
-    ) -> Result<(), sqlx::Error> {
-        let _ = sqlx::query(
-            r#"
-            UPDATE completed_tasks
-            SET client_pulled_update = TRUE
-            WHERE id = ANY($1::int4[])
-            "#,
-        )
-        .bind(completed_ids)
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
     }
 
     /// Updates the agents last check-in time, both in the database, and the in memory copy of the agent.

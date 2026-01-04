@@ -57,9 +57,9 @@ fn ConnectedAgents(tabs: RwSignal<ActiveTabs>) -> impl IntoView {
         spawn_local(async move {
             loop {
                 // If server-side health check shows we are logged out, stop polling.
-                if !crate::controller::is_logged_in().await {
-                    break;
-                }
+                // if !crate::controller::is_logged_in().await {
+                //     break;
+                // }
 
                 let result = match api_request(
                     AdminCommand::ListAgents,
@@ -246,7 +246,7 @@ fn MessagePanel() -> impl IntoView {
     let tabs: RwSignal<ActiveTabs> =
         use_context().expect("could not get tabs context in MessagePanel()");
 
-    let messages = create_memo(move |_| {
+    let messages = Memo::new(move |_| {
         let map = agent_map.get();
         let Some(agent_id) = tabs
             .read()
