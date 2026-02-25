@@ -18,22 +18,14 @@ developed as a premium or otherwise private feature. These will be few and far b
 1) [ ] `can_hijack`
    1) [ ] Specify a path to the image, and Wyrm tells you if you can SOH - this would be great for process injection without risking process injection triggers that an EDR could pick up
    2) [ ] Docs
-2) [ ] `ps` needs testing in an AD lab; as well as anything else which may rely on kerb / AD config (e.g. the hostname/domain or smth?)
-3) [ ] Position independent shellcode stub for the DLL which allows it to be injected into a foreign process
-    1)  [ ] This can be a 4th 'deliverable' maybe called (profile)_shellcode.bin which the user uploads
-    2)  [ ] I'm not sure this is necessary given the export..?
-4) [ ] `kill_thread` command (useful for sideloaded DLLs)
-5) [ ] Validate `dotex` actually unloads the memory
-6) [ ] Check for xor key in use? Turn that off, not needed with network encryption?
-7) [ ] Comptime BOF Rust
-8) [ ] Runtime BOF 
-9) [ ] Static link bof at comptime
-10) [ ] The loader should inherit option for ETW bypass
-11) [ ] `inject` malleable options (malleable options for it to inject on spawn from the default loader)
-12) [ ] `spawn` should take a param (last position) if not in profile to spawn as
-13) [ ] `spawn` should give the operator the pid of the spawned process
-14) [ ] Go back and refactor `wyrm.rs` to use `task.deserialise_metadata::<InjectInnerForPayload>()` generics
-15) [ ] Cargo clippy
+2) [ ] Validate `dotex` actually unloads the memory
+3) [ ] Check for xor key in use? Turn that off, not needed with network encryption?
+4) [ ] The loader should inherit option for ETW bypass
+5) [ ] `inject` malleable options (malleable options for it to inject on spawn from the default loader)
+6) [ ] `spawn` should take a param (last position) if not in profile to spawn as
+7) [ ] `spawn` should give the operator the pid of the spawned process
+8) [ ] Go back and refactor `wyrm.rs` to use `task.deserialise_metadata::<InjectInnerForPayload>()` generics
+9) [ ] Investigate inject behaviour in calc (some instability found on use)
 
 ### v1.0 - Whelpfire
 
