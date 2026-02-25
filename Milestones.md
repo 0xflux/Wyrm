@@ -37,7 +37,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 6) [ ] Separate URIs for POST and GET
 7) [ ] Multiple URLs / IPs for C2
 8) [ ] Round robin and different styles for URI & URL rotation
-9)  [ ] Can I tidy wyrm.rs, maybe dynamic dispatch and traits for main dispatch fn?
+9) [ ] Can I tidy wyrm.rs, maybe dynamic dispatch and traits for main dispatch fn?
 10) [ ] Loaders should stomp the MZ and "this program.."
 11) [ ] Support domain fronting through HTTP headers in malleable profile (check in comms code `.with_header("Host", host)`)
 12) [ ] Staging the encrypted payload as opposed to a stageless only build
