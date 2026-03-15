@@ -49,6 +49,7 @@ developed as a premium or otherwise private feature. These will be few and far b
     1)  [ ] C2 download file
     2)  [ ] C2 print info / print fail
 19) [ ] Stack spoofing for unbacked memory
+20) [ ] AMSI option in profile for classic bypass or VEH^2
 
 ### v1.1
 
