@@ -24,6 +24,7 @@ developed as a premium or otherwise private feature. These will be few and far b
 5) [ ] `spawn` should give the operator the pid of the spawned process
 6) [ ] Go back and refactor `wyrm.rs` to use `task.deserialise_metadata::<InjectInnerForPayload>()` generics
 7) [ ] Investigate inject behaviour in calc (some instability found on use)
+8) [ ] C2 should have delete option for staged payloads
 
 ### v1.0 - Whelpfire
 
